@@ -1,0 +1,43 @@
+{
+  "name": "moment-path",
+  "private": true,
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:apps": "turbo run dev --filter=@momentpath/api --filter=@momentpath/web",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:integration": "turbo run test:integration",
+    "test:e2e": "pnpm --filter @momentpath/web test:e2e",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:validate": "prisma validate",
+    "openapi:generate": "pnpm --filter @momentpath/api openapi:export && pnpm --filter @momentpath/api-client generate",
+    "local:postgres": "node scripts/local-postgres.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@momentpath/config": "workspace:*",
+    "@momentpath/contracts": "workspace:*",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "@types/node": "^24.13.6",
+    "eslint": "9.39.5",
+    "prettier": "3.9.8",
+    "prisma": "7.10.0",
+    "tsx": "4.23.15",
+    "turbo": "2.11.2",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.1",
+    "vitest": "5.0.1"
+  }
+}

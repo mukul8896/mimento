@@ -1,0 +1,72 @@
+# Local development dependencies. `pnpm dev` starts these, migrates, seeds and runs the apps.
+# The "app" profile additionally builds and runs the API and web containers:
+#   docker compose --profile app up --build
+name: momentpath
+
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_USER: momentpath
+      POSTGRES_PASSWORD: momentpath
+      POSTGRES_DB: momentpath
+    ports: ['5432:5432']
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U momentpath -d momentpath']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: ['server', '/data', '--console-address', ':9001']
+    environment:
+      MINIO_ROOT_USER: momentpath
+      MINIO_ROOT_PASSWORD: momentpath-dev-secret
+    ports: ['9000:9000', '9001:9001']
+    volumes: [miniodata:/data]
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Creates the private bucket and allows browser uploads from the web origin (CORS).
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      minio: { condition: service_healthy }
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 momentpath momentpath-dev-secret &&
+      mc mb --ignore-existing local/momentpath-media &&
+      mc anonymous set none local/momentpath-media &&
+      echo 'bucket ready'
+      "
+    restart: 'no'
+
+  api:
+    profiles: [app]
+    build: { context: ., dockerfile: infra/docker/api.Dockerfile }
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://momentpath:momentpath@postgres:5432/momentpath
+      S3_ENDPOINT: http://minio:9000
+    depends_on:
+      postgres: { condition: service_healthy }
+    ports: ['4000:4000']
+
+  web:
+    profiles: [app]
+    build: { context: ., dockerfile: infra/docker/web.Dockerfile }
+    env_file: .env
+    environment:
+      API_INTERNAL_URL: http://api:4000
+    depends_on:
+      api: { condition: service_started }
+    ports: ['3000:3000']
+
+volumes:
+  pgdata:
+  miniodata:

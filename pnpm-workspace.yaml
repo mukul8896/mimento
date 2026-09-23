@@ -1,0 +1,21 @@
+packages:
+  - apps/*
+  - packages/*
+
+onlyBuiltDependencies:
+  - '@embedded-postgres/darwin-arm64'
+  - '@embedded-postgres/darwin-x64'
+  - '@embedded-postgres/linux-x64'
+  - '@embedded-postgres/linux-arm64'
+  - '@prisma/engines'
+  - '@swc/core'
+  - esbuild
+  - prisma
+  - sharp
+  - unrs-resolver
+
+# Security patches for transitive dependencies (see `pnpm audit`). Remove once upstream ships them.
+overrides:
+  multer: ^2.3.0
+  mysql2: ^3.23.1
+  deepmerge-ts: ^8.0.0

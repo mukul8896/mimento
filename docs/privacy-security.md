@@ -1,0 +1,53 @@
+# Privacy and security controls (Phase 1)
+
+## Implemented
+
+| Area               | Control                                                                                                                                                                                    | Where                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| Authentication     | No accounts. 256-bit owner token (HttpOnly cookie) and per-experience manage token, both stored as SHA-256; `ADMIN_TOKEN` for moderation                                                   | `modules/identity/*`, `apps/web/src/lib/auth/owner.ts`           |
+| Token validation   | Signature (JWKS), issuer, audience, expiry, not-before; RS256/PS256/ES256 only                                                                                                             | `identity/token-verifier.ts`                                     |
+| Sessions (creator) | Tokens sealed in HttpOnly, SameSite=Lax, Secure (https) cookies; refreshed server-side                                                                                                     | `lib/auth/session.ts`, `proxy.ts`                                |
+| CSRF               | BFF and logout require same-origin `Origin`/`Sec-Fetch-Site`; recipient API is header-based                                                                                                | `lib/security.ts`, BFF route                                     |
+| Authorization      | Every creator query filters by owner id from the verified token; foreign ids return 404                                                                                                    | `common/ownership.ts`, integration tests                         |
+| Admin              | Realm role `momentpath-admin` required; content review is audited; gift secrets never shown                                                                                                | `administration`, `moderation`                                   |
+| Share links        | 256-bit random token; SHA-256 stored + purpose-bound AES-GCM ciphertext; rotation                                                                                                          | `publishing`                                                     |
+| Gift secrets       | AES-256-GCM, HKDF sub-keys, AAD bound to version+step, key rotation via keyring; only the reveal endpoint returns them, after server-side eligibility                                      | `common/crypto.ts`, `gifts`, `recipient-sessions`                |
+| Rich text          | Stored as restricted JSON, rendered as React elements; no HTML path                                                                                                                        | ADR 0003                                                         |
+| Themes             | Closed token set (hex colours, enums); no CSS/JS                                                                                                                                           | `contracts/theme.ts`                                             |
+| Uploads            | Allow-list (JPEG/PNG/WebP/GIF), ≤ 5 MB, ≤ 6000 px, byte-level type check, size must match grant, signed time-limited URLs, keys never contain file names, JPEG/PNG metadata (GPS) stripped | `media`                                                          |
+| Headers            | Nonce-based CSP (no `unsafe-inline` scripts or styles in production), frame-ancestors none, nosniff, Permissions-Policy, HSTS (https), COOP                                                | `apps/web/src/proxy.ts`, `bootstrap.ts` (helmet)                 |
+| Recipient pages    | `noindex, nofollow`, robots disallow, no sitemap, `no-store, private`, `Referrer-Policy: no-referrer`                                                                                      | `proxy.ts`, `PrivateResponseInterceptor`                         |
+| Neutral errors     | Unknown, malformed, disabled, expired, deleted and taken-down links return the same response                                                                                               | `Problem.unavailable()`, tests                                   |
+| Rate limiting      | 120 req/min per IP globally; stricter on session start (20/min), gift reveal (10/min), reports (5/10 min)                                                                                  | `@nestjs/throttler`                                              |
+| CORS               | API allows only the web origin; no credentials                                                                                                                                             | `bootstrap.ts`                                                   |
+| Logging            | Request id on every error; headers and bodies never logged; share tokens and signed keys redacted from paths                                                                               | `common/logging.ts`                                              |
+| Close control      | Always visible, outside the step area, keyboard/touch/screen-reader accessible; closing records no answer; evasive No rejected server-side                                                 | player, `checkAnswer`, E2E                                       |
+| Deletion           | Experience delete purges versions, sessions, answers, gifts and media rows in one transaction; storage objects via outbox; account delete anonymises the local profile                     | `experience-lifecycle.service.ts`, `account-deletion.service.ts` |
+| Data minimisation  | No IP, user agent, location or precise timestamps shown to creators (results show start date only)                                                                                         | `results.service.ts`                                             |
+
+## Retention (Phase 1 defaults)
+
+| Data                           | Retention                                                                                     |
+| ------------------------------ | --------------------------------------------------------------------------------------------- |
+| Recipient sessions and answers | 180 days after the session starts, then deleted by the outbox housekeeping                    |
+| Idempotency records            | 24 hours                                                                                      |
+| Processed outbox events        | 30 days                                                                                       |
+| Deleted experiences            | Content removed immediately; a content-free tombstone row remains for audit/report references |
+| Audit log                      | Kept (contains identifiers only); define a period with legal review                           |
+
+## Known limitations and production blockers
+
+1. **Malware scanning is not implemented.** In `APP_ENV=production`, images must have
+   `scanStatus = CLEAN` to be published, so publishing with images is blocked in production until a
+   scanner (e.g. ClamAV worker, Phase 2) sets that status. Text-only experiences work.
+2. WebP and GIF metadata is not stripped (JPEG and PNG are). Full re-encoding is a Phase 2 media
+   worker task.
+3. Rate limits are in memory, per API instance. Use one instance or move to Redis (Phase 4).
+4. The scratch-card hidden text is delivered with the experience (it is not a secret). Only the
+   final gift is protected server-side.
+5. Timing of the AFTER_DELAY No mode is enforced in the browser; the server enforces only the
+   EVASIVE rule (No can never be submitted).
+6. Links can be forwarded and screenshots cannot be prevented; the UI says so wherever links are
+   shared and on one-time gifts.
+7. Legal review (privacy notice, terms, moderation process, gift/voucher wording) is required
+   before commercial launch in India.

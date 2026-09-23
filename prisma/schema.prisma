@@ -1,0 +1,384 @@
+// MomentPath Phase 1 data model.
+// Ownership, lifecycle and access control are relational columns with foreign keys.
+// Step configuration and themes are JSONB, always validated by @momentpath/contracts.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../apps/api/src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  ACTIVE
+  DELETED
+}
+
+enum ExperienceStatus {
+  DRAFT
+  PUBLISHED
+  DISABLED
+  EXPIRED
+  DELETED
+}
+
+/// What a surprise needs before it can be published: ready-made templates are free, richer
+/// templates and fully custom builds are paid.
+enum Tier {
+  FREE
+  PLUS
+  PRO
+}
+
+enum EntitlementSource {
+  COMPLIMENTARY
+  PURCHASE
+}
+
+enum ModerationState {
+  ACTIVE
+  TAKEN_DOWN
+}
+
+enum ResponseVisibility {
+  FULL
+  AGGREGATE_ONLY
+}
+
+enum VersionState {
+  DRAFT
+  PUBLISHED
+}
+
+enum StepType {
+  MESSAGE
+  IMAGE
+  MULTIPLE_CHOICE
+  YES_NO_CHOICE
+  SCRATCH_REVEAL
+  GIFT_REVEAL
+}
+
+enum GiftKind {
+  VOUCHER_CODE
+  URL
+  QR_IMAGE
+  INSTRUCTION
+  PHYSICAL_MESSAGE
+}
+
+enum MediaStatus {
+  PENDING_UPLOAD
+  READY
+  REJECTED
+  DELETED
+}
+
+enum ScanStatus {
+  NOT_SCANNED
+  CLEAN
+  INFECTED
+}
+
+enum ReportCategory {
+  HARASSMENT
+  SEXUAL_CONTENT
+  HATE
+  SCAM_OR_FRAUD
+  VIOLENCE
+  COPYRIGHT
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  ACTIONED
+  DISMISSED
+}
+
+enum ActorType {
+  USER
+  ADMIN
+  RECIPIENT
+  SYSTEM
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+/// Anonymous creator identity. There are no accounts: the owner token is the credential.
+model UserProfile {
+  id          String       @id @default(uuid()) @db.Uuid
+  /// Opaque owner identity. Anonymous creators get `anon:<uuid>`; there is no login.
+  subject     String       @unique
+  /// SHA-256 of the raw owner token. The raw token lives only in the creator's cookie.
+  ownerTokenHash String?   @unique
+  email       String?
+  displayName String?
+  status      UserStatus   @default(ACTIVE)
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
+  deletedAt   DateTime?    @db.Timestamptz(3)
+  experiences Experience[]
+  media       MediaAsset[]
+  auditLogs   AuditLog[]
+  idempotency IdempotencyRecord[]
+}
+
+model Experience {
+  id                 String             @id @default(uuid()) @db.Uuid
+  ownerId            String             @db.Uuid
+  owner              UserProfile        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title              String
+  status             ExperienceStatus   @default(DRAFT)
+  moderationState    ModerationState    @default(ACTIVE)
+  takedownReason     String?
+  /// SHA-256 of the raw share token. The raw token is never stored in plain text.
+  accessTokenHash    String?            @unique
+  /// AES-256-GCM ciphertext of the raw share token so the owner can copy the link again.
+  accessTokenEnc     String?
+  /// SHA-256 of the raw manage token. Grants access to THIS experience only, so a shared
+  /// recovery link cannot reach the creator's other experiences.
+  manageTokenHash    String?            @unique
+  /// AES-256-GCM ciphertext of the raw manage token so the creator can copy the link again.
+  manageTokenEnc     String?
+  activeVersionId    String?            @unique @db.Uuid
+  activeVersion      ExperienceVersion? @relation("ActiveVersion", fields: [activeVersionId], references: [id], onDelete: Restrict)
+  templateKey        String?
+  publishedAt        DateTime?          @db.Timestamptz(3)
+  expiresAt          DateTime?          @db.Timestamptz(3)
+  disabledAt         DateTime?          @db.Timestamptz(3)
+  deletedAt          DateTime?          @db.Timestamptz(3)
+  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(3)
+  versions           ExperienceVersion[] @relation("Versions")
+  media              MediaAsset[]
+  sessions           RecipientSession[]
+  reports            AbuseReport[]
+  entitlement        Entitlement?
+
+  @@index([ownerId, updatedAt(sort: Desc), id])
+  @@index([status, createdAt(sort: Desc), id])
+}
+
+/// A draft (mutable, one per experience) or an immutable published snapshot.
+model ExperienceVersion {
+  id           String           @id @default(uuid()) @db.Uuid
+  experienceId String           @db.Uuid
+  experience   Experience       @relation("Versions", fields: [experienceId], references: [id], onDelete: Cascade)
+  activeFor    Experience?      @relation("ActiveVersion")
+  /// 0 for the draft; 1..n for published versions.
+  number       Int
+  state        VersionState
+  title        String
+  theme        Json
+  /// Whether individual answers are shown to the creator. Recipients are told before starting.
+  responseVisibility ResponseVisibility @default(FULL)
+  /// Optimistic-concurrency counter for draft autosave.
+  revision     Int              @default(1)
+  publishedAt  DateTime?        @db.Timestamptz(3)
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @db.Timestamptz(3)
+  steps        Step[]
+  gifts        Gift[]
+  sessions     RecipientSession[]
+
+  @@unique([experienceId, number])
+}
+
+model Step {
+  id        String            @id @default(uuid()) @db.Uuid
+  versionId String            @db.Uuid
+  version   ExperienceVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  /// Stable identifier preserved across draft saves and published versions.
+  key       String            @db.Uuid
+  position  Int
+  type      StepType
+  config    Json
+  createdAt DateTime          @default(now()) @db.Timestamptz(3)
+  responses Response[]
+
+  @@unique([versionId, key])
+  @@unique([versionId, position])
+}
+
+/// Encrypted gift payload for a GIFT_REVEAL step in a specific version.
+model Gift {
+  id                  String            @id @default(uuid()) @db.Uuid
+  versionId           String            @db.Uuid
+  version             ExperienceVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  stepKey             String            @db.Uuid
+  kind                GiftKind
+  /// keyId.iv.tag.ciphertext (base64url), AES-256-GCM, AAD bound to version and step.
+  payloadEnc          String
+  /// QR image media referenced by the secret, kept relational for ownership and cleanup.
+  mediaId             String?           @db.Uuid
+  media               MediaAsset?       @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+  oneTimeReveal       Boolean           @default(false)
+  revealedAt          DateTime?         @db.Timestamptz(3)
+  revealedBySessionId String?           @db.Uuid
+  revealCount         Int               @default(0)
+  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@unique([versionId, stepKey])
+}
+
+model MediaAsset {
+  id           String      @id @default(uuid()) @db.Uuid
+  ownerId      String      @db.Uuid
+  owner        UserProfile @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  experienceId String      @db.Uuid
+  experience   Experience  @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  storageKey   String      @unique
+  status       MediaStatus @default(PENDING_UPLOAD)
+  scanStatus   ScanStatus  @default(NOT_SCANNED)
+  mimeType     String
+  declaredSize Int
+  sizeBytes    Int?
+  width        Int?
+  height       Int?
+  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime    @updatedAt @db.Timestamptz(3)
+  gifts        Gift[]
+
+  @@index([experienceId, status])
+  @@index([ownerId])
+}
+
+/// Anonymous recipient progress. No IP address, user agent or location is stored.
+model RecipientSession {
+  id           String            @id @default(uuid()) @db.Uuid
+  experienceId String            @db.Uuid
+  experience   Experience        @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  versionId    String            @db.Uuid
+  version      ExperienceVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  /// SHA-256 of the session token held by the recipient's browser.
+  tokenHash    String            @unique
+  /// What this recipient was told: true if the creator can see individual answers.
+  answersShared Boolean
+  startedAt    DateTime          @default(now()) @db.Timestamptz(3)
+  lastActiveAt DateTime          @default(now()) @db.Timestamptz(3)
+  completedAt  DateTime?         @db.Timestamptz(3)
+  closedAt     DateTime?         @db.Timestamptz(3)
+  expiresAt    DateTime          @db.Timestamptz(3)
+  responses    Response[]
+
+  @@index([experienceId, startedAt])
+  @@index([expiresAt])
+}
+
+model Response {
+  id          String           @id @default(uuid()) @db.Uuid
+  sessionId   String           @db.Uuid
+  session     RecipientSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  stepId      String           @db.Uuid
+  step        Step             @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  stepKey     String           @db.Uuid
+  answer      Json
+  submittedAt DateTime         @default(now()) @db.Timestamptz(3)
+
+  @@unique([sessionId, stepId])
+  @@index([stepId])
+}
+
+model Template {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  name        String
+  description String
+  tier        Tier     @default(FREE)
+  version     Int      @default(1)
+  content     Json
+  position    Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+}
+
+/// What has been unlocked for one experience. Bound to the experience rather than the creator:
+/// without accounts a creator is only as durable as a cookie, but an experience keeps its manage
+/// link. One row per experience; upgrading replaces the tier.
+model Entitlement {
+  id           String            @id @default(uuid()) @db.Uuid
+  experienceId String            @unique @db.Uuid
+  experience   Experience        @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  tier         Tier
+  source       EntitlementSource
+  note         String?
+  /// Payment provider reference (stage 3). Unique so a replayed webhook cannot double-grant.
+  providerRef  String?           @unique
+  grantedById  String?           @db.Uuid
+  createdAt    DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime          @updatedAt @db.Timestamptz(3)
+}
+
+model AbuseReport {
+  id             String         @id @default(uuid()) @db.Uuid
+  experienceId   String?        @db.Uuid
+  experience     Experience?    @relation(fields: [experienceId], references: [id], onDelete: SetNull)
+  category       ReportCategory
+  details        String
+  status         ReportStatus   @default(OPEN)
+  resolutionNote String?
+  resolvedById   String?        @db.Uuid
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+  resolvedAt     DateTime?      @db.Timestamptz(3)
+
+  @@index([status, createdAt(sort: Desc), id])
+  @@index([experienceId])
+}
+
+/// Security-relevant actions. Never contains message bodies, answers, tokens or secrets.
+model AuditLog {
+  id         String       @id @default(uuid()) @db.Uuid
+  actorType  ActorType
+  actorId    String?      @db.Uuid
+  actor      UserProfile? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action     String
+  targetType String
+  targetId   String?
+  metadata   Json         @default("{}")
+  requestId  String?
+  createdAt  DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([targetType, targetId, createdAt])
+  @@index([createdAt(sort: Desc), id])
+}
+
+/// Transactional outbox for reliable asynchronous work (e.g. storage cleanup).
+model OutboxEvent {
+  id          String       @id @default(uuid()) @db.Uuid
+  type        String
+  payload     Json
+  status      OutboxStatus @default(PENDING)
+  attempts    Int          @default(0)
+  availableAt DateTime     @default(now()) @db.Timestamptz(3)
+  processedAt DateTime?    @db.Timestamptz(3)
+  lastError   String?
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([status, availableAt])
+}
+
+/// Stored results for Idempotency-Key requests (publish and destructive operations).
+model IdempotencyRecord {
+  id             String      @id @default(uuid()) @db.Uuid
+  userId         String      @db.Uuid
+  user           UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key            String
+  requestHash    String
+  responseStatus Int
+  responseBody   Json
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+  expiresAt      DateTime    @db.Timestamptz(3)
+
+  @@unique([userId, key])
+  @@index([expiresAt])
+}

@@ -1,0 +1,67 @@
+# Production stack. Note the --env-file: compose interpolates ${VAR} from that file (or the
+# shell), while env_file: only injects variables into the containers. Both are needed.
+#
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+#
+# Differs from the development compose on purpose:
+#   - no MinIO. Production uses an S3-compatible service with a browser-reachable endpoint
+#     (Cloudflare R2 is the cheap default); a MinIO container on the private network cannot serve
+#     the presigned upload URLs the browser needs.
+#   - Caddy terminates TLS and is the only published port. It obtains and renews certificates
+#     automatically from the DOMAIN in .env.production.
+#   - Postgres keeps its data in a named volume and is published on loopback only, so release-step
+#     migrations can run from the server itself without exposing the database to the internet.
+name: momentpath-prod
+
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set in .env.production}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env.production}
+      POSTGRES_DB: ${POSTGRES_DB:-momentpath}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    # 127.0.0.1 only: reachable for `pnpm db:deploy` on the box, not from outside.
+    ports: ['127.0.0.1:5432:5432']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-momentpath}']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: { context: ., dockerfile: infra/docker/api.Dockerfile }
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-momentpath}
+    depends_on:
+      postgres: { condition: service_healthy }
+    expose: ['4000']
+
+  web:
+    build: { context: ., dockerfile: infra/docker/web.Dockerfile }
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      API_INTERNAL_URL: http://api:4000
+    depends_on: [api]
+    expose: ['3000']
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports: ['80:80', '443:443', '443:443/udp']
+    environment:
+      DOMAIN: ${DOMAIN:?set in .env.production}
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on: [web]
+
+volumes:
+  pgdata:
+  caddydata:
+  caddyconfig:

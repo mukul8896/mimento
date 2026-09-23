@@ -1,0 +1,99 @@
+@import 'tailwindcss';
+@source '../../../../packages/design-system/src';
+
+@theme {
+  --color-brand-50: #fff1f4;
+  --color-brand-100: #ffe0e8;
+  --color-brand-200: #ffc2d2;
+  --color-brand-500: #e0386b;
+  --color-brand-600: #c81e55;
+  --color-brand-700: #a61546;
+  --color-brand-800: #85123a;
+  --color-ink-50: #f7f7f8;
+  --color-ink-100: #eeeef1;
+  --color-ink-200: #dcdce2;
+  --color-ink-300: #c2c2cc;
+  --color-ink-400: #8e8e9c;
+  --color-ink-500: #6b6b7a;
+  --color-ink-600: #535362;
+  --color-ink-700: #3f3f4c;
+  --color-ink-800: #2a2a35;
+  --color-ink-900: #1b1b24;
+  --color-ink-950: #0f0f15;
+  --color-danger-600: #c62828;
+  --color-danger-700: #a31f1f;
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  @apply bg-ink-50 text-ink-900 antialiased;
+}
+
+/* Player theme tokens are applied as CSS custom properties on the player root. */
+.mp-player {
+  --mp-bg: #fff4f6;
+  --mp-surface: #ffffff;
+  --mp-text: #3a1d27;
+  --mp-accent: #b3264f;
+  --mp-accent-text: #ffffff;
+  background: var(--mp-bg);
+  color: var(--mp-text);
+}
+.mp-font-SANS {
+  font-family: var(--font-sans);
+}
+.mp-font-SERIF {
+  font-family: ui-serif, Georgia, Cambria, 'Times New Roman', serif;
+}
+.mp-font-ROUNDED {
+  font-family: ui-rounded, 'SF Pro Rounded', 'Nunito', var(--font-sans);
+}
+.mp-font-MONO {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.mp-scale-COMPACT {
+  font-size: 0.9375rem;
+}
+.mp-scale-COMFORTABLE {
+  font-size: 1.0625rem;
+}
+.mp-scale-LARGE {
+  font-size: 1.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ProseMirror essentials (Tiptap's own style injection is disabled for CSP). */
+.ProseMirror {
+  position: relative;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-variant-ligatures: none;
+}
+.ProseMirror [contenteditable='false'] {
+  white-space: normal;
+}
+.ProseMirror-hideselection *::selection {
+  background: transparent;
+}
+.ProseMirror-gapcursor {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+}
+.ProseMirror-focused .ProseMirror-gapcursor {
+  display: block;
+}

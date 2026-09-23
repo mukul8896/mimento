@@ -1,0 +1,153 @@
+# INSTRUCTION.md — current application state
+
+_Last updated: 2026-09-23 (Docker verified; accounts removed — stage 1 of the no-signup plan)._ Update this file at the end of every session.
+
+## Status snapshot
+
+**Phase 1 is implemented and verified locally. Accounts have since been removed (stage 1 below);
+stages 2 and 3 are not started.**
+
+| Area                                                                                    | State                                                                                              |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Contracts, Prisma schema/migrations/seed                                                | Done                                                                                               |
+| API (all Phase 1 modules)                                                               | Done — 52 unit + 45 integration tests passing on real PostgreSQL                                   |
+| Web (auth, dashboard, editor, preview, publish, manage/results, account, admin, player) | Done — builds, lint/type-check clean, 5 unit tests                                                 |
+| Playwright E2E (desktop + 360px touch phone, axe, CSP)                                  | 36 passed / 1 skipped (touch-only test on desktop) against `next start`                            |
+| Security audit (`pnpm audit --prod`)                                                    | Clean (transitive overrides in pnpm-workspace.yaml)                                                |
+| Docker Compose, Dockerfiles                                                             | **Verified 2026-09-23** — services healthy, both images build, API + web serve                     |
+| GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
+| Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
+
+## Product change: no accounts (decided 2026-09-23, owner-approved)
+
+Every comparable product (Gifft.me, GiftFeels, YoursToOpen, openme.gift) lets people build and send
+without registering, and Keycloak was the most expensive thing to host. Registration and OIDC are
+therefore removed. This supersedes the account model in the master prompt — **update that document
+before the next session rebuilds what was taken out.**
+
+Planned in three stages:
+
+1. **Anonymous owner tokens + Keycloak removal — DONE.** See
+   [ADR 0005](docs/decisions/0005-no-accounts.md) for the design and trade-offs.
+2. Template tiers and entitlement checks (free / advanced / custom builder) — not started.
+   `Experience.templateKey` and the Template model already exist, so this is mostly gating what is
+   built rather than new features.
+3. Stripe Checkout, anonymous, with the entitlement attached to the owner or experience — not started.
+
+### What stage 1 changed
+
+- **Identity is a secret token**, following the share-token pattern: a 256-bit owner token
+  (`mp_owner` HttpOnly cookie, `x-owner-token`) minted by `POST /owners` on first visit to a creator
+  route, plus a per-experience manage token (`x-manage-token`) that is scoped to that one experience
+  so a shared recovery link cannot reach the owner's others.
+- **`UserProfile` rows were kept** — only authentication changed, so ownership, results, audit and
+  cascade deletion behave exactly as before. `subject` is now `anon:<uuid>`.
+- **`ADMIN_TOKEN` replaces the realm role.** The operator gets a real profile row so audit entries
+  keep a valid actor. Production refuses to boot without it. Web entry point: `/operator`.
+- Removed: Keycloak (service, realm, `infra/keycloak`), `openid-client`, `iron-session`, the OIDC
+  test issuer, the four web auth routes, and the split-horizon OIDC workaround added earlier today.
+- Added: `/m/[token]` (manage link → cookie, keeping the token out of URLs and Referer headers),
+  `/forget` (clear this device), `/operator` + `/operator/session`.
+
+### Recovery after clearing browser data (added 2026-09-23)
+
+Two links, both now surfaced in the UI and covered by `e2e/recovery.spec.ts`:
+
+- **Manage link** (`/m/<token>`) — one experience, shown on that experience's manage page. Restores
+  editing and its replies on any device.
+- **Recovery link** (`/r/<token>`) — the owner token itself, shown on `/account` behind a reveal
+  with a warning that it is a master key. Restores every experience the creator made.
+
+The recovery link needs no new storage: the owner token is in the request's HttpOnly cookie, so the
+server renders the link directly. It is never returned by the API, and the raw token is still only
+ever stored as SHA-256.
+
+Note that losing access does **not** break the surprise for its recipient — the share link is keyed
+on `accessTokenHash`, independent of the creator's cookie, so it keeps playing and still records
+answers.
+
+### Known gaps from this change
+
+- Recovery still depends on the creator **choosing to save a link**. Optional email capture at
+  publish time, purely to send those links, is **not built** — it is the mitigation for people who
+  save nothing. It would add PII, so `docs/privacy-security.md` needs updating with it.
+- Abuse accountability is weaker: rate limits key on IP only and there is no identity to ban. This
+  makes the upload-scanning production blocker more pressing, not less.
+
+## Decisions taken with the owner
+
+- Build Phase 1 directly without the plan-approval gate.
+- Git repository initialised; **do not commit** — the owner reviews and commits.
+- Docker is now installed and the Compose stack is verified (2026-09-23). The no-Docker path still
+  works as a fallback: `pnpm local:postgres` (embedded PostgreSQL, data in `.local/postgres`, DB
+  `momentpath_local`), a native Keycloak 26 distribution (`kc.sh start-dev --import-realm` with
+  `infra/keycloak/momentpath-realm.json`), and the filesystem storage adapter. `.env` now points at
+  the Compose database (`momentpath`); the pre-Docker copy is kept as `.env.bak-nodocker`.
+- The app must be mobile friendly everywhere (creator UI too, not only the recipient player).
+
+## Technical decisions worth knowing
+
+- Versions pinned: TypeScript 5.9, NestJS 11, Prisma 7.10, pnpm 10, ESLint 9 (see CLAUDE.md for reasons).
+- Node tsconfig uses `module: node20` / `moduleResolution: node16` (TS 6 in editors deprecates node10; node20
+  allows CommonJS to require ESM-only packages such as `jose`).
+- OpenAPI is generated as 3.1. Avoid bare `z.string().nullable()` in API response schemas — nestjs-zod +
+  @nestjs/swagger turn it into `string[]`. Always add a constraint (e.g. `.max(2000)`).
+- `@ZodResponse` must always pass `status`, otherwise only a `default` response is documented and the typed
+  client returns `never`.
+- Share tokens: 256-bit, stored as SHA-256 hash + AES-GCM ciphertext (owner can re-copy). The publish response
+  never contains the token (it would be persisted in idempotency records); the web fetches `share-link` after.
+- Recipient session token travels in the `x-recipient-session` header, stored in localStorage; never in URLs.
+
+## Docker verification (2026-09-23) — five fixes it took
+
+1. **MinIO images were unpullable.** `minio/minio` and `minio/mc` no longer exist on Docker Hub (the
+   repositories 404). The same release tags are published on quay.io, so `docker-compose.yml` now uses
+   `quay.io/minio/minio` and `quay.io/minio/mc`.
+2. **API image build failed at `prisma generate`.** `prisma.config.ts` resolves `env('DATABASE_URL')`
+   even for `generate`, and `.env` is excluded by `.dockerignore` (correctly). The build stage of
+   `infra/docker/api.Dockerfile` now sets a placeholder `DATABASE_URL`; the runtime stage is a separate
+   `FROM`, so nothing leaks into the final image.
+3. **API container crashed on boot.** `apps/api/src/common/logging.ts` asked pino for the `pino-pretty`
+   transport whenever `APP_ENV=development`, but pino-pretty is a devDependency absent from the
+   production install — pino throws "unable to determine transport target". It now falls back to JSON
+   logs when the package cannot be resolved (`prettyTransportAvailable()`, covered by unit tests).
+
+4. **Sign in / Create experience were dead in the container.** `/login` returned 500 and `/register`
+   sent the browser to `http://0.0.0.0:3000`. Two separate causes:
+   - The web server ran OIDC discovery against `OIDC_ISSUER` (`http://localhost:8080/...`), which
+     inside the container is the container itself → `ECONNREFUSED`. Fixed by split-horizon OIDC:
+     Keycloak pins its frontend URL (`KC_HOSTNAME=http://localhost:8080`) and answers back-channel
+     callers dynamically (`KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true`), so one `iss` serves both sides;
+     the web container discovers over the new optional `OIDC_INTERNAL_ISSUER`
+     (`http://keycloak:8080/realms/momentpath`). `client.discovery` cannot be used for this (it
+     requires discovery URL == issuer), so `lib/auth/oidc.ts` fetches the document and builds the
+     `Configuration` itself — after asserting the advertised issuer equals `OIDC_ISSUER`. Unset
+     outside containers, behaviour is unchanged.
+   - `/register` and the proxy's login redirect derived their target from the request origin, which a
+     standalone Next server bound to `0.0.0.0` reports as `http://0.0.0.0:3000`. Both now use
+     `WEB_ORIGIN`, as `auth/callback` and `logout` already did.
+5. **`web` did not wait for Keycloak.** `depends_on` now requires `keycloak: service_healthy`.
+
+Verified after the fixes: postgres/keycloak/minio healthy, bucket created, `prisma migrate deploy` +
+`db seed` against the Compose database, both images build, `GET /api/v1/health` → `{"status":"ok"}`,
+`/api/v1/docs-json` → 200, web `/` → 200 with the CSP nonce, and `/bff/api/v1/health` → 200 (web →
+API over the Compose network). A full Authorization Code + PKCE sign-in as `alice@example.test`
+completes: `/login` → Keycloak → `/auth/callback` → `mp_session` cookie → `/dashboard` 200, and
+authenticated `/bff/api/v1/experiences` calls (GET, POST, DELETE) succeed, which also confirms the API
+accepts the `iss` that Keycloak now pins. The stack runs on the standard ports 3000/4000.
+
+The Playwright suite also passes against the containers, run headed: **36 passed, 1 skipped** in 43s
+(the skip is the touch-only evasive-No test, which the desktop project does not run). Note that
+`playwright.config.ts` disables API rate limits only when it starts the API itself; with
+`reuseExistingServer` it reuses the container, where all BFF traffic shares one source IP, so set
+`RATE_LIMIT_DISABLED=true` on the `api` service for a container run (a compose override file is
+enough — it was reverted afterwards).
+
+Not covered: the CI workflow still has no remote to run on.
+
+## Next steps
+
+1. Owner: run `pnpm dev` (or `docker compose --profile app up`) and try the app; push to GitHub so CI runs.
+2. Owner decisions pending (see the Phase 1 completion report): malware scanning approach,
+   retention periods, product name/domain, legal review, Phase 2 approval and priorities.
+3. After approval only: Phase 2 (branching + React Flow, payments, workers, scanning, etc.).

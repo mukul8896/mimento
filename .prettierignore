@@ -1,0 +1,15 @@
+pnpm-lock.yaml
+dist
+.next
+.turbo
+coverage
+playwright-report
+test-results
+prisma/migrations
+packages/api-client/openapi.json
+packages/api-client/src/schema.ts
+apps/api/src/generated
+.local
+apps/web/next-env.d.ts
+apps/web/e2e/.auth
+interactive-surprise-builder-master-prompt.md

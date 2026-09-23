@@ -1,0 +1,17 @@
+# TLS is obtained and renewed automatically. Everything reaches the web app, which proxies
+# /bff/* to the API itself — the API is never published directly.
+{$DOMAIN} {
+	encode zstd gzip
+
+	# The apps set their own security headers (CSP with a per-request nonce, HSTS, frame-ancestors).
+	# Caddy only adds what it is better placed to know.
+	header {
+		-Server
+	}
+
+	reverse_proxy web:3000 {
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up Host {host}
+	}
+}

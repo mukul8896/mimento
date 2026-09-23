@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: 'true'
+
+jobs:
+  quality:
+    name: Format, lint, types, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: cp .env.example .env
+      - name: Prisma schema validation and client generation
+        run: pnpm db:validate && pnpm db:generate
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: OpenAPI client is up to date
+        run: pnpm openapi:generate && git diff --exit-code packages/api-client
+      - name: Dependency security scan
+        run: pnpm audit --prod --audit-level=high
+
+  integration:
+    name: API integration tests and migration validation
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env: { POSTGRES_USER: ci, POSTGRES_PASSWORD: ci, POSTGRES_DB: ci }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci" --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_SERVER_URL: postgresql://ci:ci@localhost:5432/ci
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - name: Migrations apply cleanly and match the schema
+        run: |
+          pnpm db:deploy
+          pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+      - run: pnpm test:integration
+
+  e2e:
+    name: Playwright end-to-end
+    runs-on: ubuntu-latest
+    needs: [quality]
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env: { POSTGRES_USER: momentpath, POSTGRES_PASSWORD: momentpath, POSTGRES_DB: momentpath }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U momentpath" --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Configure environment
+        run: |
+          cp .env.example .env
+          echo "APP_ENV=test" >> .env
+      - name: Start Keycloak with the development realm
+        run: |
+          docker run -d --name keycloak -p 8080:8080 -p 9000:9000 \
+            -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \
+            -v "$PWD/infra/keycloak:/opt/keycloak/data/import:ro" \
+            quay.io/keycloak/keycloak:26.7.4 start-dev --import-realm --health-enabled=true
+          for i in $(seq 1 60); do curl -sf http://localhost:9000/health/ready && break; sleep 3; done
+      - run: pnpm db:generate && pnpm db:deploy && pnpm db:seed
+      - run: pnpm build
+      - run: pnpm --filter @momentpath/web exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7
