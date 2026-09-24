@@ -208,6 +208,8 @@ export const GiftRevealConfigSchema = z.strictObject({
   kind: GiftKindSchema.default('PHYSICAL_MESSAGE'),
   revealButtonLabel: label('Reveal my surprise'),
   oneTimeReveal: z.boolean().default(false),
+  /** Scheduled reveal: the gift stays locked until this moment (enforced by the server). */
+  revealAt: z.iso.datetime({ offset: true }).nullable().default(null),
 });
 
 export const StepConfigSchemas = {

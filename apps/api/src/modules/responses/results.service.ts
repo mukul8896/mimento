@@ -97,12 +97,42 @@ export class ResultsService {
       }
     }
 
+    // Reach: distinct sessions that answered each step, in the live version's step order.
+    const reachedBy = new Map<string, number>();
+    for (const session of sessions) {
+      for (const key of new Set(session.responses.map((r) => r.stepKey))) {
+        reachedBy.set(key, (reachedBy.get(key) ?? 0) + 1);
+      }
+    }
+    const live = versions.find((v) => v.id === exp.activeVersionId) ?? versions.at(-1);
+    const reach = (live ? toDraftSteps(live.steps) : []).map((s) => ({
+      stepKey: s.key,
+      label: stepLabel(s),
+      reached: reachedBy.get(s.key) ?? 0,
+    }));
+
+    const since = new Date(Date.now() - 29 * 86_400_000);
+    since.setUTCHours(0, 0, 0, 0);
+    const [openRows, openTotal] = await Promise.all([
+      this.prisma.experienceDailyOpen.findMany({
+        where: { experienceId: exp.id, day: { gte: since } },
+        orderBy: { day: 'asc' },
+      }),
+      this.prisma.experienceDailyOpen.aggregate({
+        where: { experienceId: exp.id },
+        _sum: { opens: true },
+      }),
+    ]);
+
     const questionSteps = [...stepByKey.values()].filter(
       (s) => s.type === 'MULTIPLE_CHOICE' || s.type === 'YES_NO_CHOICE',
     );
     const shared = sessions.filter((s) => s.answersShared);
     return {
       responseVisibility: draft?.responseVisibility ?? 'FULL',
+      opens: openTotal._sum.opens ?? 0,
+      opensByDay: openRows.map((r) => ({ day: r.day.toISOString().slice(0, 10), opens: r.opens })),
+      reach,
       started: sessions.length,
       completed: sessions.filter((s) => s.completedAt).length,
       closedEarly: sessions.filter((s) => s.closedAt && !s.completedAt).length,

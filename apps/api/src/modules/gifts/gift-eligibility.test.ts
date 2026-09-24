@@ -40,4 +40,12 @@ describe('giftEligibility', () => {
       giftEligibility(base({ gift: { ...gift, oneTimeReveal: false }, sessionId: 's2' })),
     ).toEqual({ ok: true });
   });
+  it('keeps a scheduled gift locked until its time, then allows it', () => {
+    const revealAt = new Date('2026-12-25T00:00:00Z');
+    expect(giftEligibility(base({ revealAt, now: new Date('2026-12-24T23:59:00Z') }))).toEqual({
+      ok: false,
+      reason: 'NOT_YET',
+    });
+    expect(giftEligibility(base({ revealAt, now: revealAt }))).toEqual({ ok: true });
+  });
 });

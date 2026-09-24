@@ -24,6 +24,11 @@ function readStored(token: string): string | null {
   }
 }
 
+/** Used by short links, which start the session themselves and then open the private link. */
+export function rememberSession(token: string, session: string): void {
+  store(token, session);
+}
+
 function store(token: string, session: string): void {
   try {
     window.localStorage.setItem(storageKey(token), session);
@@ -33,7 +38,9 @@ function store(token: string, session: string): void {
 }
 
 function toPlayerError(err: unknown): never {
-  if (err instanceof ApiError) throw new PlayerError(err.problem.code, err.problem.title);
+  if (err instanceof ApiError) {
+    throw new PlayerError(err.problem.code, err.problem.title, err.problem.detail ?? undefined);
+  }
   throw new PlayerError('NETWORK', 'Check your connection and try again.');
 }
 
@@ -51,7 +58,7 @@ export class ApiBackend implements PlayerBackend {
     return { 'x-recipient-session': this.session ?? '' };
   }
 
-  async load(): Promise<PlayerState> {
+  async load(options: { pin?: string } = {}): Promise<PlayerState> {
     const api = browserApi();
     const path = { token: this.token };
     const stored = readStored(this.token);
@@ -66,7 +73,10 @@ export class ApiBackend implements PlayerBackend {
     }
     try {
       const started = unwrap(
-        await api.POST('/api/v1/public/experiences/{token}/sessions', { params: { path } }),
+        await api.POST('/api/v1/public/experiences/{token}/sessions', {
+          params: { path },
+          body: options.pin ? { pin: options.pin } : undefined,
+        }),
       );
       this.session = started.sessionToken;
       store(this.token, started.sessionToken);

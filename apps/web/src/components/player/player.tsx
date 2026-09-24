@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Answer, DraftStep, RevealedGift, Theme } from '@momentpath/contracts';
 import { PlayerError, type PlayerBackend, type PlayerState } from './backend';
 import { ReportDialog } from './report-dialog';
+import { OpeningSoon, PinGate } from './access-screens';
 import { CountdownStep } from './steps/countdown-step';
 import { GalleryStep } from './steps/gallery-step';
 import { GiftStep } from './steps/gift-step';
@@ -87,10 +88,12 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
   const reducedMotion = useReducedMotion() ?? false;
 
   const [attempt, setAttempt] = useState(0);
+  const [pin, setPin] = useState<string | undefined>(undefined);
+  const retry = useCallback(() => setAttempt((a) => a + 1), []);
 
   useEffect(() => {
     let cancelled = false;
-    backend.load().then(
+    backend.load(pin ? { pin } : undefined).then(
       (loaded) => {
         if (cancelled) return;
         setError(null);
@@ -107,7 +110,7 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
     return () => {
       cancelled = true;
     };
-  }, [backend, attempt]);
+  }, [backend, attempt, pin]);
 
   const theme = state?.experience.theme ?? initialTheme;
   const steps: DraftStep[] = useMemo(() => state?.experience.steps ?? [], [state]);
@@ -236,6 +239,20 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
               Reopen
             </button>
           </div>
+        ) : error &&
+          (error.code === 'PIN_REQUIRED' ||
+            error.code === 'PIN_INCORRECT' ||
+            error.code === 'PIN_LOCKED') ? (
+          <PinGate
+            code={error.code}
+            lockedUntil={error.detail}
+            onSubmit={(value) => {
+              setPin(value);
+              retry();
+            }}
+          />
+        ) : error?.code === 'NOT_YET_OPEN' && error.detail ? (
+          <OpeningSoon opensAt={error.detail} onOpen={retry} />
         ) : error ? (
           <div className="space-y-4 text-center">
             <p>{error.message}</p>

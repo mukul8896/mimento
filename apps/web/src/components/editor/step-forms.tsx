@@ -501,6 +501,12 @@ function GiftForm({ step, onChange, ctx }: FormProps<'GIFT_REVEAL'>) {
         checked={c.oneTimeReveal}
         onChange={(oneTimeReveal) => onChange({ ...c, oneTimeReveal })}
       />
+      <DateTimeField
+        label="Unlock on or after (optional)"
+        hint="For birthdays at midnight: everything else can be played, but the gift waits until then."
+        value={c.revealAt}
+        onChange={(revealAt) => onChange({ ...c, revealAt })}
+      />
       <GiftSecretForm key={`${step.key}-${c.kind}`} stepKey={step.key} kind={c.kind} ctx={ctx} />
     </div>
   );

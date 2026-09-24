@@ -6,7 +6,9 @@ import {
   ExperienceListQuerySchema,
   ExperienceListResponseSchema,
   ManageLinkResponseSchema,
+  AccessSettingsSchema,
   RestoreVersionResponseSchema,
+  UpdateAccessRequestSchema,
   SetExpiryRequestSchema,
   UpdateDraftRequestSchema,
   UpdateDraftResponseSchema,
@@ -23,5 +25,7 @@ export class UpdateDraftResponseDto extends createZodDto(UpdateDraftResponseSche
 export class SetExpiryRequestDto extends createZodDto(SetExpiryRequestSchema) {}
 
 export class ManageLinkResponseDto extends createZodDto(ManageLinkResponseSchema) {}
+export class UpdateAccessRequestDto extends createZodDto(UpdateAccessRequestSchema) {}
+export class AccessSettingsDto extends createZodDto(AccessSettingsSchema) {}
 export class VersionListResponseDto extends createZodDto(VersionListResponseSchema) {}
 export class RestoreVersionResponseDto extends createZodDto(RestoreVersionResponseSchema) {}

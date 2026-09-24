@@ -107,6 +107,55 @@ export const ExperienceListResponseSchema = z.object({
   nextCursor: z.string().max(2000).nullable(),
 });
 
+export const PinSchema = z.string().regex(/^\d{4,8}$/, 'Use 4 to 8 digits');
+
+/** Words a short link may not be, so they can never shadow a page of the site. */
+export const RESERVED_SLUGS = [
+  'admin',
+  'api',
+  'bff',
+  'account',
+  'dashboard',
+  'new',
+  'edit',
+  'pricing',
+  'terms',
+  'privacy',
+  'refunds',
+  'contact',
+  'operator',
+  'webhooks',
+  'login',
+  'help',
+  'support',
+  'about',
+  'wish',
+  'wishrevealer',
+] as const;
+
+export const SlugSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/, 'Use 3–40 letters, numbers or dashes')
+  .refine((s) => !s.includes('--'), 'Use single dashes')
+  .refine((s) => !(RESERVED_SLUGS as readonly string[]).includes(s), 'That link name is reserved');
+
+/** Scheduled opening, PIN and short link. Fields left out are unchanged. */
+export const UpdateAccessRequestSchema = z.strictObject({
+  opensAt: IsoDateTime.nullable().optional(),
+  pin: PinSchema.nullable().optional(),
+  slug: SlugSchema.nullable().optional(),
+});
+
+export type UpdateAccessRequest = z.infer<typeof UpdateAccessRequestSchema>;
+
+export const AccessSettingsSchema = z.object({
+  opensAt: IsoDateTime.nullable(),
+  hasPin: z.boolean(),
+  slug: z.string().max(40).nullable(),
+});
+
 /** What this surprise needs to be shared, and what it has. */
 export const TierStateSchema = z.object({
   required: TierSchema,
@@ -120,6 +169,7 @@ export const ExperienceDetailSchema = ExperienceSummarySchema.extend({
   hasUnpublishedChanges: z.boolean(),
   takedownReason: z.string().max(2000).nullable(),
   tier: TierStateSchema,
+  access: AccessSettingsSchema,
 });
 
 /** Operator grant (stage 2). Purchases will use the same shape from the payment webhook. */
@@ -244,6 +294,13 @@ export const MediaAssetSchema = z.object({
 // Results
 export const ResultsResponseSchema = z.object({
   responseVisibility: ResponseVisibilitySchema,
+  /** Times the recipient page was opened (all days), and per day for the last 30 days. */
+  opens: z.number().int(),
+  opensByDay: z.array(z.object({ day: z.iso.date(), opens: z.number().int() })),
+  /** How many sessions got as far as answering each step, in step order. */
+  reach: z.array(
+    z.object({ stepKey: StepKeySchema, label: z.string(), reached: z.number().int() }),
+  ),
   started: z.number().int(),
   completed: z.number().int(),
   closedEarly: z.number().int(),
@@ -287,9 +344,14 @@ export const PublicExperienceSchema = z.object({
 export type PublicExperience = z.infer<typeof PublicExperienceSchema>;
 
 export const PublicExperienceMetaSchema = z.object({
+  /** Generic while a PIN is required, so the link alone does not reveal what it is. */
   title: z.string(),
   theme: ThemeSchema,
+  opensAt: IsoDateTime.nullable(),
+  pinRequired: z.boolean(),
 });
+
+export const StartSessionRequestSchema = z.strictObject({ pin: PinSchema.optional() });
 
 export const SessionProgressSchema = z.object({
   completedStepKeys: z.array(StepKeySchema),
@@ -303,6 +365,12 @@ export const SessionStateResponseSchema = z.object({
   sessionToken: z.string(),
   experience: PublicExperienceSchema,
   progress: SessionProgressSchema,
+});
+
+/** Opening a short link: the PIN starts a session and hands over the private link. */
+export const ShortLinkSessionRequestSchema = z.strictObject({ pin: PinSchema });
+export const ShortLinkSessionResponseSchema = SessionStateResponseSchema.extend({
+  shareToken: z.string().max(200),
 });
 
 export const SubmitAnswerRequestSchema = z.strictObject({

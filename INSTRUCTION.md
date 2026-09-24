@@ -18,6 +18,25 @@ stages 2 and 3 are not started.**
 | GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
 | Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
 
+## Phase 2d-2 — scheduling, PIN, short links, analytics (2026-09-24)
+
+- Migration `20260924210000_access_and_analytics`: `Experience.opensAt`, `pinHash`, `pinFailures`,
+  `pinLockedUntil`, `slug` (unique) and table `ExperienceDailyOpen` (experienceId, UTC day, opens).
+- `PUT /experiences/:id/access` (opening time, PIN, short link; audit `access.updated` records
+  which setting changed, never the PIN). A short link requires a PIN; removing the PIN while a
+  link exists is refused (`SHORT_LINK_NEEDS_PIN`). Reserved names in `RESERVED_SLUGS`.
+- Recipient: `meta` counts the open, hides the title while a PIN is set, returns `opensAt` and
+  `pinRequired`. `POST …/sessions` takes an optional `{ pin }` (parsed in the controller because
+  the body is optional). Errors: `NOT_YET_OPEN` (detail = ISO time), `PIN_REQUIRED`,
+  `PIN_INCORRECT`, `PIN_LOCKED` (detail = unlock time). 10 wrong PINs lock for 15 minutes.
+- `POST /public/links/:slug/sessions {pin}` → session + share token; the web `/p/[slug]` page
+  stores the session and redirects to `/e/<token>`, so the PIN is asked once. Wrong name and wrong
+  PIN give the same 403.
+- Scheduled gift: `GIFT_REVEAL.config.revealAt`; eligibility reason `NOT_YET` → `GIFT_NOT_YET`.
+- Results gained `opens`, `opensByDay` (30 days) and `reach` (sessions per step).
+- Known trade-off (docs/privacy-security.md): the shared lockout lets someone with the link lock
+  a surprise for 15 minutes.
+
 ## Phase 2d-1 — new step types (2026-09-24)
 
 - Six step types (contracts `steps.ts`, DB enum migration `20260924190000_more_step_types`):

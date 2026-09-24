@@ -148,6 +148,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/experiences/{id}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["ExperiencesController_access"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/experiences/{id}/versions": {
         parameters: {
             query?: never;
@@ -430,6 +446,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["PublicController_report"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/links/{slug}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ShortLinkController_start"];
         delete?: never;
         options?: never;
         head?: never;
@@ -812,9 +844,24 @@ export interface components {
                 held: "FREE" | "PLUS" | "PRO";
                 satisfied: boolean;
             };
+            access: {
+                opensAt: string | null;
+                hasPin: boolean;
+                slug: string | null;
+            };
         };
         ManageLinkResponseDto_Output: {
             manageToken: string;
+        };
+        UpdateAccessRequestDto: {
+            opensAt?: string | null;
+            pin?: string | null;
+            slug?: string | null;
+        };
+        AccessSettingsDto_Output: {
+            opensAt: string | null;
+            hasPin: boolean;
+            slug: string | null;
         };
         VersionListResponseDto_Output: {
             items: {
@@ -1112,6 +1159,8 @@ export interface components {
                 revealButtonLabel: string;
                 /** @default false */
                 oneTimeReveal: boolean;
+                /** @default null */
+                revealAt: string | null;
             };
             next?: components["schemas"]["StepRouting_Output"];
         };
@@ -1511,6 +1560,8 @@ export interface components {
                 revealButtonLabel: string;
                 /** @default false */
                 oneTimeReveal: boolean;
+                /** @default null */
+                revealAt: string | null;
             };
             next?: components["schemas"]["StepRouting"];
         };
@@ -1639,6 +1690,11 @@ export interface components {
         PublicExperienceMetaDto_Output: {
             title: string;
             theme: components["schemas"]["Theme_Output"];
+            opensAt: string | null;
+            pinRequired: boolean;
+        };
+        StartSessionRequestDto: {
+            pin?: string;
         };
         SessionStateResponseDto_Output: {
             sessionToken: string;
@@ -1743,6 +1799,33 @@ export interface components {
             /** @constant */
             accepted: true;
         };
+        ShortLinkSessionRequestDto: {
+            pin: string;
+        };
+        ShortLinkSessionResponseDto_Output: {
+            sessionToken: string;
+            experience: {
+                title: string;
+                theme: components["schemas"]["Theme_Output"];
+                versionNumber: number;
+                responsesVisibleToCreator: boolean;
+                steps: components["schemas"]["Step_Output"][];
+                media: {
+                    /** Format: uuid */
+                    id: string;
+                    url: string;
+                    width: number | null;
+                    height: number | null;
+                }[];
+            };
+            progress: {
+                completedStepKeys: string[];
+                nextStepKey: string | null;
+                completed: boolean;
+                giftRevealed: boolean;
+            };
+            shareToken: string;
+        };
         Answer_Output: {
             /** @constant */
             kind: "ACK";
@@ -1763,6 +1846,18 @@ export interface components {
         ResultsResponseDto_Output: {
             /** @enum {string} */
             responseVisibility: "FULL" | "AGGREGATE_ONLY";
+            opens: number;
+            opensByDay: {
+                /** Format: date */
+                day: string;
+                opens: number;
+            }[];
+            reach: {
+                /** Format: uuid */
+                stepKey: string;
+                label: string;
+                reached: number;
+            }[];
             started: number;
             completed: number;
             closedEarly: number;
@@ -2213,6 +2308,31 @@ export interface operations {
             };
         };
     };
+    ExperiencesController_access: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAccessRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessSettingsDto_Output"];
+                };
+            };
+        };
+    };
     ExperiencesController_versions: {
         parameters: {
             query?: never;
@@ -2508,7 +2628,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["StartSessionRequestDto"];
+            };
+        };
         responses: {
             201: {
                 headers: {
@@ -2643,6 +2767,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AcceptedResponseDto_Output"];
+                };
+            };
+        };
+    };
+    ShortLinkController_start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShortLinkSessionRequestDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShortLinkSessionResponseDto_Output"];
                 };
             };
         };

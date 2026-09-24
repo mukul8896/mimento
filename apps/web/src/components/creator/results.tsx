@@ -10,9 +10,10 @@ export function Results({ results }: { results: ResultsData }) {
   return (
     <Card>
       <h2 className="font-semibold">Results</h2>
-      <dl className="mt-3 grid grid-cols-3 gap-3 text-center">
+      <dl className="mt-3 grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
         {[
-          ['Opened', results.started],
+          ['Link opened', results.opens],
+          ['Started', results.started],
           ['Completed', results.completed],
           ['Left early', results.closedEarly],
         ].map(([label, value]) => (
@@ -22,10 +23,43 @@ export function Results({ results }: { results: ResultsData }) {
           </div>
         ))}
       </dl>
+      <p className="mt-2 text-xs text-ink-500">
+        Opened in the last 30 days: {results.opensByDay.reduce((n, d) => n + d.opens, 0)} times.
+        Opens count every visit, including yours.
+      </p>
       <p className="mt-3 text-xs text-ink-500">
         Leaving early or closing the page never counts as an answer. MomentPath does not collect
         recipients’ IP addresses, locations or devices.
       </p>
+
+      {results.started > 0 && results.reach.length > 0 ? (
+        <div className="mt-5">
+          <h3 className="text-sm font-medium">How far people got</h3>
+          <ul className="mt-2 space-y-1.5" data-testid="reach">
+            {results.reach.map((step, i) => (
+              <li key={step.stepKey} className="text-sm">
+                <div className="flex justify-between gap-2">
+                  <span className="min-w-0 truncate">
+                    {i + 1}. {step.label}
+                  </span>
+                  <span className="shrink-0 text-ink-600">
+                    {step.reached} of {results.started}
+                  </span>
+                </div>
+                <div className="mt-1 h-2 rounded-full bg-ink-100" aria-hidden="true">
+                  <div
+                    className="h-2 rounded-full bg-brand-500"
+                    style={{ width: `${(step.reached / results.started) * 100}%` }}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-xs text-ink-500">
+            With branching, some steps are only on one path, so fewer people reach them.
+          </p>
+        </div>
+      ) : null}
 
       {results.steps.length > 0 ? (
         <div className="mt-5 space-y-4">
@@ -86,7 +120,9 @@ export function Results({ results }: { results: ResultsData }) {
                           ? a.answer.value
                           : a.answer.kind === 'OPTION'
                             ? a.answer.optionId
-                            : '';
+                            : a.answer.kind === 'TEXT'
+                              ? a.answer.value
+                              : '';
                       const step = results.steps.find((s) => s.stepKey === a.stepKey);
                       return (
                         <li key={a.stepKey}>

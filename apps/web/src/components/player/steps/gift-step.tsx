@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { RevealedGift } from '@momentpath/contracts';
 import { RichText } from '@/components/rich-text';
 import { accentButton, outlineButton } from '../theme';
@@ -78,9 +78,32 @@ function GiftDetails({ gift }: { gift: RevealedGift }) {
   }
 }
 
+/** Ticks every second until `at`, then stops; null when there is nothing to wait for. */
+function useTimeLeft(at: string | null): number | null {
+  const target = at ? new Date(at).getTime() : null;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (target === null || target <= Date.now()) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [target]);
+  return target === null ? null : Math.max(0, target - now);
+}
+
+function formatLeft(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  const d = Math.floor(s / 86400);
+  const h = Math.floor(s / 3600) % 24;
+  const m = Math.floor(s / 60) % 60;
+  return d > 0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m ${s % 60}s`;
+}
+
 export function GiftStep({ step, busy, reveal }: StepProps<'GIFT_REVEAL'>) {
   const [gift, setGift] = useState<RevealedGift | null>(null);
   const cfg = step.config;
+  // Scheduled reveal: the server refuses early reveals too; this only explains the wait.
+  const left = useTimeLeft(cfg.revealAt);
+  const waiting = left !== null && left > 0;
   return (
     <div className="space-y-5 text-center">
       <h2 className="text-[1.75em] font-bold leading-tight">{cfg.title}</h2>
@@ -95,10 +118,18 @@ export function GiftStep({ step, busy, reveal }: StepProps<'GIFT_REVEAL'>) {
         </div>
       ) : (
         <>
+          {waiting ? (
+            <p className="space-y-1" data-testid="gift-waiting">
+              <span className="block">Your surprise unlocks in</span>
+              <span role="timer" className="block text-[1.75em] font-bold tabular-nums">
+                {formatLeft(left)}
+              </span>
+            </p>
+          ) : null}
           <button
             type="button"
             className={`${accentButton} w-full sm:w-auto`}
-            disabled={busy}
+            disabled={busy || waiting}
             onClick={async () => setGift(await reveal())}
           >
             {cfg.revealButtonLabel}

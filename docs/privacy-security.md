@@ -20,6 +20,8 @@
 | Neutral errors     | Unknown, malformed, disabled, expired, deleted and taken-down links return the same response                                                                                                                                                                                                                                                                                             | `Problem.unavailable()`, tests                                   |
 | Rate limiting      | 120 req/min per IP globally; stricter on session start (20/min), gift reveal (10/min), reports (5/10 min)                                                                                                                                                                                                                                                                                | `@nestjs/throttler`                                              |
 | Payments           | Hosted checkout only (no provider script under our CSP; no card/UPI data reaches us); prices set server-side; unlock only after the API itself asks the provider; Razorpay amounts compared exactly; webhooks HMAC-verified (Standard Webhooks with 5-min window for Dodo), deduplicated in the same transaction; live keys refused outside production; orders store no customer details | `modules/payments`, ADR 0006                                     |
+| Recipient access   | Optional PIN (4–8 digits, salted scrypt); 10 wrong PINs lock the experience for 15 min for everyone; title hidden until unlocked; short links require a PIN and give one neutral error for wrong name or PIN; scheduled opening and gift reveal enforced server-side                                                                                                                     | `recipient-sessions`, `common/pin.ts`                            |
+| Analytics          | Page opens counted per experience per UTC day (a number only); reach computed from existing answers                                                                                                                                                                                                                                                                                      | `ExperienceDailyOpen`, `results.service.ts`                      |
 | CORS               | API allows only the web origin; no credentials                                                                                                                                                                                                                                                                                                                                           | `bootstrap.ts`                                                   |
 | Logging            | Request id on every error; headers and bodies never logged; share tokens and signed keys redacted from paths                                                                                                                                                                                                                                                                             | `common/logging.ts`                                              |
 | Close control      | Always visible, outside the step area, keyboard/touch/screen-reader accessible; closing records no answer; evasive No rejected server-side                                                                                                                                                                                                                                               | player, `checkAnswer`, E2E                                       |
@@ -45,13 +47,16 @@
 2. ~~WebP and GIF metadata is not stripped~~ — done in Phase 2b: stripped at upload, and every image
    is re-encoded by the worker (display ≤ 1600 px and thumbnail ≤ 400 px, WebP), which drops all
    metadata. The original is kept but never served once a copy exists.
-3. Rate limits are in memory, per API instance. Use one instance or move to Redis (Phase 4).
-4. The scratch-card hidden text is delivered with the experience (it is not a secret). Only the
+3. The PIN lockout is shared by everyone, so someone who has the link (or guesses a short link
+   name) can deliberately lock a surprise for 15 minutes with wrong PINs. The per-IP throttle on
+   short links (10/min) slows this; a persistent problem would call for per-IP lockout (Redis).
+4. Rate limits are in memory, per API instance. Use one instance or move to Redis (Phase 4).
+5. The scratch-card hidden text is delivered with the experience (it is not a secret). Only the
    final gift is protected server-side.
-5. Timing of the AFTER_DELAY No mode is enforced in the browser; the server enforces only the
+6. Timing of the AFTER_DELAY No mode is enforced in the browser; the server enforces only the
    EVASIVE rule (No can never be submitted).
-6. Links can be forwarded and screenshots cannot be prevented; the UI says so wherever links are
+7. Links can be forwarded and screenshots cannot be prevented; the UI says so wherever links are
    shared and on one-time gifts.
-7. Legal review (privacy notice, terms, moderation process, gift/voucher wording) is required
+8. Legal review (privacy notice, terms, moderation process, gift/voucher wording) is required
    before commercial launch in India. The `/terms`, `/privacy`, `/refunds` and `/contact` pages are
    drafts written from how the product works; they must be reviewed before live payments.

@@ -3,6 +3,9 @@ export interface EligibilityInput {
   /** The recipient's path so far (contracts walkPath): every key before the last is answered. */
   path: readonly string[];
   isGiftStep: boolean;
+  /** Scheduled reveal: locked until this moment. */
+  revealAt?: Date | null;
+  now?: Date;
   gift: {
     oneTimeReveal: boolean;
     revealedAt: Date | null;
@@ -13,7 +16,10 @@ export interface EligibilityInput {
 
 export type Eligibility =
   | { ok: true }
-  | { ok: false; reason: 'NOT_A_GIFT_STEP' | 'NO_GIFT' | 'STEPS_INCOMPLETE' | 'ALREADY_REVEALED' };
+  | {
+      ok: false;
+      reason: 'NOT_A_GIFT_STEP' | 'NO_GIFT' | 'STEPS_INCOMPLETE' | 'NOT_YET' | 'ALREADY_REVEALED';
+    };
 
 /**
  * The single rule deciding whether a recipient session may receive the gift secret: the gift
@@ -25,6 +31,9 @@ export function giftEligibility(input: EligibilityInput): Eligibility {
   if (!input.isGiftStep) return { ok: false, reason: 'NOT_A_GIFT_STEP' };
   if (!input.gift) return { ok: false, reason: 'NO_GIFT' };
   if (!input.path.includes(input.giftStepKey)) return { ok: false, reason: 'STEPS_INCOMPLETE' };
+  if (input.revealAt && (input.now ?? new Date()) < input.revealAt) {
+    return { ok: false, reason: 'NOT_YET' };
+  }
   if (
     input.gift.oneTimeReveal &&
     input.gift.revealedAt !== null &&

@@ -8,7 +8,9 @@ import {
   Post,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiHeader, ApiNoContentResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiHeader, ApiNoContentResponse, ApiTags } from '@nestjs/swagger';
+import { StartSessionRequestSchema } from '@momentpath/contracts';
+import { Problem } from '../../common/problem';
 import { Throttle } from '@nestjs/throttler';
 import { ZodResponse } from 'nestjs-zod';
 import { Public } from '../identity/decorators';
@@ -19,6 +21,9 @@ import {
   RevealGiftRequestDto,
   RevealGiftResponseDto,
   SessionStateResponseDto,
+  ShortLinkSessionRequestDto,
+  ShortLinkSessionResponseDto,
+  StartSessionRequestDto,
   SubmitAnswerRequestDto,
   SubmitAnswerResponseDto,
 } from './dto';
@@ -52,8 +57,12 @@ export class PublicController {
   @Post('sessions')
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ZodResponse({ status: 201, type: SessionStateResponseDto })
-  start(@Param('token') token: string) {
-    return this.sessions.start(token);
+  @ApiBody({ type: StartSessionRequestDto, required: false })
+  start(@Param('token') token: string, @Body() body: unknown) {
+    // The body is optional (only PIN-protected surprises need one), so it is parsed here.
+    const parsed = StartSessionRequestSchema.safeParse(body ?? {});
+    if (!parsed.success) throw Problem.badRequest('INVALID_PIN', 'Use 4 to 8 digits');
+    return this.sessions.start(token, parsed.data.pin);
   }
 
   @Get('session')
@@ -104,5 +113,25 @@ export class PublicController {
   async report(@Param('token') token: string, @Body() body: ReportAbuseRequestDto) {
     await this.sessions.report(token, body.category, body.details);
     return { accepted: true as const };
+  }
+}
+
+/**
+ * Short links (/p/<slug>). They are readable and guessable, so they only work with the PIN, and
+ * wrong names and wrong PINs look the same. The PIN lockout covers guesses from many IPs; this
+ * throttle slows down a single one.
+ */
+@ApiTags('public')
+@Public()
+@UseInterceptors(PrivateResponseInterceptor)
+@Controller('public/links/:slug')
+export class ShortLinkController {
+  constructor(private readonly sessions: RecipientSessionsService) {}
+
+  @Post('sessions')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ZodResponse({ status: 201, type: ShortLinkSessionResponseDto })
+  start(@Param('slug') slug: string, @Body() body: ShortLinkSessionRequestDto) {
+    return this.sessions.startByShortLink(slug.toLowerCase().slice(0, 40), body.pin);
   }
 }

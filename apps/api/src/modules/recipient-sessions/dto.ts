@@ -6,6 +6,9 @@ import {
   RevealGiftRequestSchema,
   RevealGiftResponseSchema,
   SessionStateResponseSchema,
+  ShortLinkSessionRequestSchema,
+  ShortLinkSessionResponseSchema,
+  StartSessionRequestSchema,
   SubmitAnswerRequestSchema,
   SubmitAnswerResponseSchema,
 } from '@momentpath/contracts';
@@ -18,3 +21,6 @@ export class RevealGiftRequestDto extends createZodDto(RevealGiftRequestSchema) 
 export class RevealGiftResponseDto extends createZodDto(RevealGiftResponseSchema) {}
 export class ReportAbuseRequestDto extends createZodDto(ReportAbuseRequestSchema) {}
 export class AcceptedResponseDto extends createZodDto(AcceptedResponseSchema) {}
+export class StartSessionRequestDto extends createZodDto(StartSessionRequestSchema) {}
+export class ShortLinkSessionRequestDto extends createZodDto(ShortLinkSessionRequestSchema) {}
+export class ShortLinkSessionResponseDto extends createZodDto(ShortLinkSessionResponseSchema) {}

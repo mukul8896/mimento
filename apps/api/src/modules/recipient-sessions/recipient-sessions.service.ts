@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   AnswerSchema,
   checkAnswer,
@@ -9,7 +9,14 @@ import {
   type Answer,
   type DraftStep,
 } from '@momentpath/contracts';
-import { generateToken, isWellFormedToken, sha256 } from '../../common/crypto';
+import {
+  generateToken,
+  isWellFormedToken,
+  KEYRING,
+  sha256,
+  type Keyring,
+} from '../../common/crypto';
+import { verifyPin } from '../../common/pin';
 import { Problem } from '../../common/problem';
 import { PrismaService, type Tx } from '../../prisma/prisma.service';
 import type { Experience, RecipientSession, ReportCategory } from '../../generated/prisma/client';
@@ -22,6 +29,11 @@ import { MediaService, RECIPIENT_MEDIA_URL_TTL_SECONDS } from '../media/media.se
 import { computeProgress, publicStep } from './progress';
 
 const SESSION_RETENTION_DAYS = 180;
+/** Wrong PINs allowed before the experience locks, and for how long. */
+const PIN_ATTEMPTS = 10;
+const PIN_LOCK_MS = 15 * 60 * 1000;
+/** Shown instead of the real title while a PIN is required. */
+const PRIVATE_TITLE = 'A private surprise';
 
 @Injectable()
 export class RecipientSessionsService {
@@ -30,7 +42,66 @@ export class RecipientSessionsService {
     private readonly media: MediaService,
     private readonly gifts: GiftsService,
     private readonly audit: AuditService,
+    @Inject(KEYRING) private readonly keyring: Keyring,
   ) {}
+
+  /** Scheduled opening: before `opensAt` nobody can start, but the link can say when. */
+  private assertOpen(exp: Experience, now = new Date()): void {
+    if (exp.opensAt && exp.opensAt > now) {
+      throw new Problem(
+        403,
+        'NOT_YET_OPEN',
+        'This surprise is not open yet',
+        exp.opensAt.toISOString(),
+      );
+    }
+  }
+
+  /**
+   * PIN gate with a lockout shared by everyone, so spreading guesses over many devices does not
+   * help: after PIN_ATTEMPTS wrong PINs the experience refuses all PINs for PIN_LOCK_MS.
+   */
+  private async checkPin(
+    exp: Experience,
+    pin: string | undefined,
+    now = new Date(),
+  ): Promise<void> {
+    if (!exp.pinHash) return;
+    if (exp.pinLockedUntil && exp.pinLockedUntil > now) {
+      throw new Problem(
+        429,
+        'PIN_LOCKED',
+        'Too many wrong PINs. Try again later.',
+        exp.pinLockedUntil.toISOString(),
+      );
+    }
+    if (!pin) throw new Problem(401, 'PIN_REQUIRED', 'Enter the PIN to open this surprise');
+    if (await verifyPin(pin, exp.pinHash)) {
+      if (exp.pinFailures > 0) {
+        await this.prisma.experience.update({ where: { id: exp.id }, data: { pinFailures: 0 } });
+      }
+      return;
+    }
+    const failed = await this.prisma.experience.update({
+      where: { id: exp.id },
+      data: { pinFailures: { increment: 1 } },
+    });
+    if (failed.pinFailures >= PIN_ATTEMPTS) {
+      await this.prisma.experience.update({
+        where: { id: exp.id },
+        data: { pinFailures: 0, pinLockedUntil: new Date(now.getTime() + PIN_LOCK_MS) },
+      });
+    }
+    throw new Problem(403, 'PIN_INCORRECT', 'That PIN is not right');
+  }
+
+  /** One more open today. Counts only, per UTC day; nothing about the visitor is stored. */
+  private async countOpen(experienceId: string): Promise<void> {
+    await this.prisma.$executeRaw`
+      INSERT INTO "ExperienceDailyOpen" ("experienceId", "day", "opens")
+      VALUES (${experienceId}::uuid, (now() AT TIME ZONE 'UTC')::date, 1)
+      ON CONFLICT ("experienceId", "day") DO UPDATE SET "opens" = "ExperienceDailyOpen"."opens" + 1`;
+  }
 
   /** Resolves a share token to a publicly available experience, failing closed and neutrally. */
   async resolve(token: string, client: PrismaService | Tx = this.prisma): Promise<Experience> {
@@ -76,17 +147,55 @@ export class RecipientSessionsService {
     return new Map(responses.map((r) => [r.stepKey, AnswerSchema.parse(r.answer)]));
   }
 
+  /** Rendered with the recipient page, so it is also where opens are counted. */
   async meta(token: string) {
     const exp = await this.resolve(token);
     const version = await this.prisma.experienceVersion.findUniqueOrThrow({
       where: { id: exp.activeVersionId! },
     });
-    return { title: version.title, theme: ThemeSchema.parse(version.theme) };
+    await this.countOpen(exp.id);
+    return {
+      title: exp.pinHash ? PRIVATE_TITLE : version.title,
+      theme: ThemeSchema.parse(version.theme),
+      opensAt: exp.opensAt?.toISOString() ?? null,
+      pinRequired: exp.pinHash !== null,
+    };
   }
 
   /** Starts an anonymous session pinned to the currently active version. */
-  async start(token: string) {
+  async start(token: string, pin?: string) {
     const exp = await this.resolve(token);
+    this.assertOpen(exp);
+    await this.checkPin(exp, pin);
+    return this.startFor(exp);
+  }
+
+  /**
+   * A short link (/p/<slug>) plus its PIN: starts a session and returns the private link so the
+   * browser can continue there. An unknown link and a wrong PIN get the same answer, so
+   * guessing names reveals nothing.
+   */
+  async startByShortLink(slug: string, pin: string) {
+    const exp = await this.prisma.experience.findUnique({ where: { slug } });
+    const neutral = new Problem(403, 'PIN_INCORRECT', 'That link and PIN do not match');
+    if (!exp || !exp.pinHash || !exp.accessTokenEnc || !isPubliclyAvailable(exp, new Date())) {
+      throw neutral;
+    }
+    this.assertOpen(exp);
+    try {
+      await this.checkPin(exp, pin);
+    } catch (err) {
+      if (err instanceof Problem && err.code === 'PIN_INCORRECT') throw neutral;
+      throw err;
+    }
+    const started = await this.startFor(exp);
+    return {
+      ...started,
+      shareToken: this.keyring.decrypt(exp.accessTokenEnc, 'share-token', `share:${exp.id}`),
+    };
+  }
+
+  private async startFor(exp: Experience) {
     const versionId = exp.activeVersionId!;
     const version = await this.prisma.experienceVersion.findUniqueOrThrow({
       where: { id: versionId },
@@ -203,6 +312,11 @@ export class RecipientSessionsService {
         giftStepKey: stepKey,
         path: walkPath(flowSteps(steps), answers).path,
         isGiftStep: step?.type === 'GIFT_REVEAL',
+        revealAt:
+          step?.type === 'GIFT_REVEAL' && step.config.revealAt
+            ? new Date(step.config.revealAt)
+            : null,
+        now: new Date(),
         gift: giftRow,
         sessionId: session.id,
       });
@@ -212,6 +326,14 @@ export class RecipientSessionsService {
             410,
             'GIFT_ALREADY_REVEALED',
             'This surprise has already been revealed',
+          );
+        }
+        if (eligibility.reason === 'NOT_YET') {
+          throw new Problem(
+            403,
+            'GIFT_NOT_YET',
+            'This surprise unlocks a little later',
+            step?.type === 'GIFT_REVEAL' ? (step.config.revealAt ?? undefined) : undefined,
           );
         }
         if (eligibility.reason === 'STEPS_INCOMPLETE') {

@@ -171,6 +171,14 @@ model Experience {
   templateKey        String?
   publishedAt        DateTime?          @db.Timestamptz(3)
   expiresAt          DateTime?          @db.Timestamptz(3)
+  /// Scheduled opening: before this, the link shows a countdown and no session can start.
+  opensAt            DateTime?          @db.Timestamptz(3)
+  /// Optional recipient PIN (scrypt, salted). Failed attempts lock the experience for a while.
+  pinHash            String?
+  pinFailures        Int                @default(0)
+  pinLockedUntil     DateTime?          @db.Timestamptz(3)
+  /// Readable short link (/p/<slug>). Only usable with the PIN, which is required to set one.
+  slug               String?            @unique
   disabledAt         DateTime?          @db.Timestamptz(3)
   deletedAt          DateTime?          @db.Timestamptz(3)
   createdAt          DateTime           @default(now()) @db.Timestamptz(3)
@@ -181,6 +189,7 @@ model Experience {
   reports            AbuseReport[]
   entitlement        Entitlement?
   paymentOrders      PaymentOrder[]
+  dailyOpens         ExperienceDailyOpen[]
 
   @@index([ownerId, updatedAt(sort: Desc), id])
   @@index([status, createdAt(sort: Desc), id])
@@ -345,6 +354,16 @@ model Entitlement {
   grantedById  String?           @db.Uuid
   createdAt    DateTime          @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime          @updatedAt @db.Timestamptz(3)
+}
+
+/// How many times the recipient page was opened, per UTC day. No visitor data is kept.
+model ExperienceDailyOpen {
+  experienceId String     @db.Uuid
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  day          DateTime   @db.Date
+  opens        Int        @default(0)
+
+  @@id([experienceId, day])
 }
 
 /// One checkout attempt for one experience at one provider. Kept after the experience is deleted

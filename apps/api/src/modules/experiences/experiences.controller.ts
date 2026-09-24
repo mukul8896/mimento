@@ -26,7 +26,9 @@ import {
   ExperienceDetailDto,
   ExperienceListQueryDto,
   ExperienceListResponseDto,
+  AccessSettingsDto,
   ManageLinkResponseDto,
+  UpdateAccessRequestDto,
   RestoreVersionResponseDto,
   SetExpiryRequestDto,
   UpdateDraftRequestDto,
@@ -72,6 +74,18 @@ export class ExperiencesController {
   @ZodResponse({ status: 200, type: ExperienceDetailDto })
   detail(@CurrentPrincipal() principal: Principal, @Param('id', ParseUUIDPipe) id: string) {
     return this.experiences.detail(principal, id);
+  }
+
+  /** Scheduled opening, recipient PIN and short link. */
+  @Put(':id/access')
+  @ZodResponse({ status: 200, type: AccessSettingsDto })
+  access(
+    @CurrentPrincipal() principal: Principal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: UpdateAccessRequestDto,
+    @Req() req: Request,
+  ) {
+    return this.experiences.updateAccess(principal, id, body, requestId(req));
   }
 
   @Get(':id/versions')

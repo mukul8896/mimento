@@ -54,7 +54,8 @@ export async function proxy(request: NextRequest) {
   const isCreatorRoute = CREATOR_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
-  const isRecipientRoute = pathname.startsWith('/e/');
+  // /p/<slug> short links lead to a recipient page, so they get the same private headers.
+  const isRecipientRoute = pathname.startsWith('/e/') || pathname.startsWith('/p/');
   const isBff = pathname.startsWith('/bff/');
 
   const pending: PendingCookie[] = [];

@@ -5,14 +5,16 @@ import {
   referencedMediaIds,
   type DraftStep,
   type ExperienceSummary,
+  type UpdateAccessRequest,
   type UpdateDraftRequest,
 } from '@momentpath/contracts';
 import { generateToken, KEYRING, sha256, type Keyring } from '../../common/crypto';
+import { hashPin } from '../../common/pin';
 import { requireOwnedExperience } from '../../common/ownership';
 import { decodeCursor, page } from '../../common/pagination';
 import { Problem } from '../../common/problem';
 import { PrismaService, type Tx } from '../../prisma/prisma.service';
-import type { Experience, Prisma } from '../../generated/prisma/client';
+import { Prisma, type Experience } from '../../generated/prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { EntitlementsService } from '../entitlements/entitlements.service';
 import { GiftsService } from '../gifts/gifts.service';
@@ -23,6 +25,14 @@ import { effectiveStatus } from './lifecycle';
 import { stepRow, toDraftSteps } from './step-mapping';
 
 type ListFilter = 'DRAFT' | 'PUBLISHED' | 'INACTIVE' | undefined;
+
+export function accessOf(exp: Pick<Experience, 'opensAt' | 'pinHash' | 'slug'>) {
+  return {
+    opensAt: exp.opensAt?.toISOString() ?? null,
+    hasPin: exp.pinHash !== null,
+    slug: exp.slug,
+  };
+}
 
 @Injectable()
 export class ExperiencesService {
@@ -219,6 +229,7 @@ export class ExperiencesService {
         active === null || draft.updatedAt > (active.publishedAt ?? active.createdAt),
       takedownReason: exp.moderationState === 'TAKEN_DOWN' ? exp.takedownReason : null,
       tier,
+      access: accessOf(exp),
     };
   }
 
@@ -245,6 +256,61 @@ export class ExperiencesService {
       media: await this.media.ownerMedia(exp.id),
       updatedAt: draft.updatedAt.toISOString(),
     };
+  }
+
+  /**
+   * Scheduled opening, PIN and short link. A short link is guessable by design, so it only
+   * exists while a PIN protects the experience; removing the PIN while a link is set is refused
+   * rather than silently exposing the surprise.
+   */
+  async updateAccess(
+    principal: Principal,
+    experienceId: string,
+    body: UpdateAccessRequest,
+    requestId: string | null,
+  ) {
+    const exp = await requireOwnedExperience(this.prisma, principal, experienceId);
+    const pinHash =
+      body.pin === undefined ? exp.pinHash : body.pin === null ? null : await hashPin(body.pin);
+    const slug = body.slug === undefined ? exp.slug : body.slug;
+    if (slug && !pinHash) {
+      throw Problem.unprocessable('SHORT_LINK_NEEDS_PIN', 'Set a PIN before using a short link', [
+        { stepKey: null, field: 'pin', message: 'A short link can be guessed, so it needs a PIN.' },
+      ]);
+    }
+    let updated;
+    try {
+      updated = await this.prisma.experience.update({
+        where: { id: exp.id },
+        data: {
+          ...(body.opensAt === undefined
+            ? {}
+            : { opensAt: body.opensAt ? new Date(body.opensAt) : null }),
+          ...(body.pin === undefined ? {} : { pinHash, pinFailures: 0, pinLockedUntil: null }),
+          ...(body.slug === undefined ? {} : { slug }),
+        },
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw Problem.conflict('SHORT_LINK_TAKEN', 'That short link is taken. Try another.');
+      }
+      throw err;
+    }
+    await this.audit.record({
+      actorType: 'USER',
+      actorId: principal.userId,
+      action: 'access.updated',
+      targetType: 'experience',
+      targetId: exp.id,
+      requestId,
+      // Which settings changed, never the PIN itself.
+      metadata: {
+        opensAt: body.opensAt !== undefined,
+        pin: body.pin === undefined ? 'unchanged' : body.pin === null ? 'removed' : 'set',
+        slug: body.slug !== undefined,
+      },
+    });
+    return accessOf(updated);
   }
 
   /** Published versions, newest first, for the editor's history. */

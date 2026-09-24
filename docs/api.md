@@ -13,32 +13,34 @@
 
 ## Endpoints
 
-| Method & path                                                                                        | Purpose                                                                                    |
-| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `GET /me` · `DELETE /me`                                                                             | Current creator · delete account and all data                                              |
-| `GET /templates`                                                                                     | Seeded templates                                                                           |
-| `GET /experiences` · `POST /experiences`                                                             | List (filter `DRAFT`/`PUBLISHED`/`INACTIVE`) · create from template or blank               |
-| `GET /experiences/{id}`                                                                              | Detail with lifecycle and stats                                                            |
-| `GET /experiences/{id}/draft` · `PUT …/draft`                                                        | Draft document · autosave (`revision` for optimistic concurrency, 409 on conflict)         |
-| `GET /experiences/{id}/versions` · `POST …/versions/{number}/restore`                                | Published versions · replace the draft with one (steps, routing, theme, re-encrypted gift) |
-| `GET/PUT /experiences/{id}/draft/gifts/{stepKey}`                                                    | Owner-only gift secret (encrypted at rest)                                                 |
-| `POST /experiences/{id}/media/uploads` · `POST …/media/{mediaId}/complete`                           | Signed upload URL · validate uploaded bytes                                                |
-| `POST /experiences/{id}/publish-check` · `POST …/publish`                                            | Validate · publish immutable version                                                       |
-| `GET /experiences/{id}/share-link` · `POST …/share-link/rotate`                                      | Copy link · replace link                                                                   |
-| `POST /experiences/{id}/disable` · `enable` · `expire` · `PUT …/expiry` · `DELETE /experiences/{id}` | Lifecycle                                                                                  |
-| `GET /experiences/{id}/results`                                                                      | Aggregates and permitted responses                                                         |
-| `GET /pricing`                                                                                       | Public price list (per configured provider)                                                |
-| `GET /experiences/{id}/checkout` · `POST …/checkout`                                                 | Tier needed vs held and priced offers · open hosted checkout (Razorpay / Dodo)             |
-| `POST /experiences/{id}/checkout/{orderId}/confirm`                                                  | Ask the provider about the payment; unlock if paid                                         |
-| `POST /payments/webhooks/{razorpay,dodo}`                                                            | Signed provider webhooks (raw body; not in the generated client)                           |
-| `GET /public/experiences/{token}/meta`                                                               | Availability, title and theme (server render)                                              |
-| `POST /public/experiences/{token}/sessions` · `GET …/session`                                        | Start · resume                                                                             |
-| `POST …/session/answers` · `POST …/session/close` · `POST …/session/gift`                            | Answer · close (records nothing) · reveal gift                                             |
-| `POST /public/experiences/{token}/reports`                                                           | Abuse report (always 202)                                                                  |
-| `GET /admin/reports` · `POST /admin/reports/{id}/resolve`                                            | Moderation queue                                                                           |
-| `GET /admin/experiences` · `GET …/{id}/content` · `POST …/{id}/takedown` · `POST …/{id}/restore`     | Takedown workflow                                                                          |
-| `POST /admin/experiences/{id}/entitlement`                                                           | Operator grant of a tier (support, refunds)                                                |
-| `GET /admin/audit-logs`                                                                              | Audit trail                                                                                |
+| Method & path                                                                                        | Purpose                                                                                               |
+| ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `GET /me` · `DELETE /me`                                                                             | Current creator · delete account and all data                                                         |
+| `GET /templates`                                                                                     | Seeded templates                                                                                      |
+| `GET /experiences` · `POST /experiences`                                                             | List (filter `DRAFT`/`PUBLISHED`/`INACTIVE`) · create from template or blank                          |
+| `GET /experiences/{id}`                                                                              | Detail with lifecycle and stats                                                                       |
+| `GET /experiences/{id}/draft` · `PUT …/draft`                                                        | Draft document · autosave (`revision` for optimistic concurrency, 409 on conflict)                    |
+| `GET /experiences/{id}/versions` · `POST …/versions/{number}/restore`                                | Published versions · replace the draft with one (steps, routing, theme, re-encrypted gift)            |
+| `PUT /experiences/{id}/access`                                                                       | Scheduled opening, recipient PIN (hashed), short link (requires the PIN)                              |
+| `GET/PUT /experiences/{id}/draft/gifts/{stepKey}`                                                    | Owner-only gift secret (encrypted at rest)                                                            |
+| `POST /experiences/{id}/media/uploads` · `POST …/media/{mediaId}/complete`                           | Signed upload URL · validate uploaded bytes                                                           |
+| `POST /experiences/{id}/publish-check` · `POST …/publish`                                            | Validate · publish immutable version                                                                  |
+| `GET /experiences/{id}/share-link` · `POST …/share-link/rotate`                                      | Copy link · replace link                                                                              |
+| `POST /experiences/{id}/disable` · `enable` · `expire` · `PUT …/expiry` · `DELETE /experiences/{id}` | Lifecycle                                                                                             |
+| `GET /experiences/{id}/results`                                                                      | Aggregates and permitted responses                                                                    |
+| `GET /pricing`                                                                                       | Public price list (per configured provider)                                                           |
+| `GET /experiences/{id}/checkout` · `POST …/checkout`                                                 | Tier needed vs held and priced offers · open hosted checkout (Razorpay / Dodo)                        |
+| `POST /experiences/{id}/checkout/{orderId}/confirm`                                                  | Ask the provider about the payment; unlock if paid                                                    |
+| `POST /payments/webhooks/{razorpay,dodo}`                                                            | Signed provider webhooks (raw body; not in the generated client)                                      |
+| `GET /public/experiences/{token}/meta`                                                               | Availability, title and theme (server render)                                                         |
+| `POST /public/experiences/{token}/sessions` · `GET …/session`                                        | Start (with `pin` when required) · resume                                                             |
+| `POST /public/links/{slug}/sessions`                                                                 | Short link + PIN: starts a session and returns the private link (neutral error for wrong name or PIN) |
+| `POST …/session/answers` · `POST …/session/close` · `POST …/session/gift`                            | Answer · close (records nothing) · reveal gift                                                        |
+| `POST /public/experiences/{token}/reports`                                                           | Abuse report (always 202)                                                                             |
+| `GET /admin/reports` · `POST /admin/reports/{id}/resolve`                                            | Moderation queue                                                                                      |
+| `GET /admin/experiences` · `GET …/{id}/content` · `POST …/{id}/takedown` · `POST …/{id}/restore`     | Takedown workflow                                                                                     |
+| `POST /admin/experiences/{id}/entitlement`                                                           | Operator grant of a tier (support, refunds)                                                           |
+| `GET /admin/audit-logs`                                                                              | Audit trail                                                                                           |
 
 ## Regenerating the client
 

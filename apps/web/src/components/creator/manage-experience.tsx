@@ -7,6 +7,7 @@ import type { Schemas } from '@momentpath/api-client';
 import { Alert, Badge, Button, Card, Dialog, Field, Input } from '@momentpath/design-system';
 import { ApiError, browserApi, unwrap } from '@/lib/api/browser';
 import { formatDateTime, STATUS_LABEL, STATUS_TONE } from '@/lib/format';
+import { AccessPanel } from './access-panel';
 import { UnlockPanel } from './unlock-panel';
 
 type Detail = Schemas['ExperienceDetailDto_Output'];
@@ -209,6 +210,8 @@ export function ManageExperience({ experience }: { experience: Detail }) {
           </div>
         )}
       </Card>
+
+      <AccessPanel experienceId={id} initial={experience.access} />
 
       <Card>
         <h2 className="font-semibold">Availability</h2>

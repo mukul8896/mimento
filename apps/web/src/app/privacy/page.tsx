@@ -34,6 +34,13 @@ export default function PrivacyPage() {
             provider&apos;s reference. We never receive card, bank or UPI details.
           </li>
           <li>
+            <strong>Visit counts:</strong> how many times a surprise&apos;s page was opened each
+            day, as a number, so its creator can see it arrived. Nothing about the visitor.
+          </li>
+          <li>
+            <strong>PINs:</strong> if a creator sets one, we keep only a scrambled (hashed) copy.
+          </li>
+          <li>
             <strong>Security records:</strong> an audit log of actions such as publishing, payments
             or takedowns. It never contains messages, answers or gift codes. IP addresses are used
             briefly in memory to limit abuse and are not stored.
