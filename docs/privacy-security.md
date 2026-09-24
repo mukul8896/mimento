@@ -14,7 +14,7 @@
 | Gift secrets       | AES-256-GCM, HKDF sub-keys, AAD bound to version+step, key rotation via keyring; only the reveal endpoint returns them, after server-side eligibility                                                                                                                                                                                                                                    | `common/crypto.ts`, `gifts`, `recipient-sessions`                |
 | Rich text          | Stored as restricted JSON, rendered as React elements; no HTML path                                                                                                                                                                                                                                                                                                                      | ADR 0003                                                         |
 | Themes             | Closed token set (hex colours, enums); no CSS/JS                                                                                                                                                                                                                                                                                                                                         | `contracts/theme.ts`                                             |
-| Uploads            | Allow-list (JPEG/PNG/WebP/GIF), ≤ 5 MB, ≤ 6000 px, byte-level type check, size must match grant, signed time-limited URLs, keys never contain file names, JPEG/PNG metadata (GPS) stripped                                                                                                                                                                                               | `media`                                                          |
+| Uploads            | Allow-list (JPEG/PNG/WebP/GIF), ≤ 5 MB, ≤ 6000 px, byte-level type check, size must match grant, signed time-limited URLs, keys never contain file names, metadata (GPS) stripped for all four formats, ClamAV scan and re-encode in the worker (ADR 0007)                                                                                                                               | `media`                                                          |
 | Headers            | Nonce-based CSP (no `unsafe-inline` scripts or styles in production), frame-ancestors none, nosniff, Permissions-Policy, HSTS (https), COOP                                                                                                                                                                                                                                              | `apps/web/src/proxy.ts`, `bootstrap.ts` (helmet)                 |
 | Recipient pages    | `noindex, nofollow`, robots disallow, no sitemap, `no-store, private`, `Referrer-Policy: no-referrer`                                                                                                                                                                                                                                                                                    | `proxy.ts`, `PrivateResponseInterceptor`                         |
 | Neutral errors     | Unknown, malformed, disabled, expired, deleted and taken-down links return the same response                                                                                                                                                                                                                                                                                             | `Problem.unavailable()`, tests                                   |
@@ -39,11 +39,12 @@
 
 ## Known limitations and production blockers
 
-1. **Malware scanning is not implemented.** In `APP_ENV=production`, images must have
-   `scanStatus = CLEAN` to be published, so publishing with images is blocked in production until a
-   scanner (e.g. ClamAV worker, Phase 2) sets that status. Text-only experiences work.
-2. WebP and GIF metadata is not stripped (JPEG and PNG are). Full re-encoding is a Phase 2 media
-   worker task.
+1. ~~Malware scanning is not implemented~~ — done in Phase 2b: the worker scans every upload with
+   ClamAV; production only publishes `CLEAN` images, infected ones are deleted and audited
+   (`media.infected`). Signatures are only as fresh as the clamd container's `freshclam` updates.
+2. ~~WebP and GIF metadata is not stripped~~ — done in Phase 2b: stripped at upload, and every image
+   is re-encoded by the worker (display ≤ 1600 px and thumbnail ≤ 400 px, WebP), which drops all
+   metadata. The original is kept but never served once a copy exists.
 3. Rate limits are in memory, per API instance. Use one instance or move to Redis (Phase 4).
 4. The scratch-card hidden text is delivered with the experience (it is not a secret). Only the
    final gift is protected server-side.

@@ -61,13 +61,20 @@ export class PublishValidatorService {
       const byId = new Map(assets.map((a) => [a.id, a]));
       for (const [mediaId, stepKey] of refs) {
         const asset = byId.get(mediaId);
-        if (!asset || asset.status !== 'READY') {
+        if (asset?.scanStatus === 'INFECTED') {
+          issues.push({
+            stepKey,
+            field: 'media',
+            message:
+              'An image was removed because our virus scan flagged it. Upload a different one.',
+          });
+        } else if (!asset || asset.status !== 'READY') {
           issues.push({ stepKey, field: 'media', message: 'An image has not finished uploading.' });
         } else if (!this.media.isPublishable(asset)) {
           issues.push({
             stepKey,
             field: 'media',
-            message: 'An image is waiting for its safety scan.',
+            message: 'An image is still being checked for viruses. Try again in a minute.',
           });
         }
       }

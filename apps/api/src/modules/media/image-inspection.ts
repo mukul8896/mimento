@@ -33,13 +33,17 @@ export function inspectImage(bytes: Buffer, declaredMime: string): InspectionRes
 }
 
 /**
- * Removes metadata segments that commonly carry GPS location and device details.
- * JPEG: APP1 (EXIF/XMP), APP13 (IPTC) segments. PNG: eXIf and textual chunks.
- * WebP/GIF are passed through unchanged (full re-encoding is a Phase 2 media-worker task).
+ * Removes metadata that commonly carries GPS location and device details, at upload time.
+ * JPEG: APP1 (EXIF/XMP), APP13 (IPTC). PNG: eXIf and textual chunks. WebP: EXIF and XMP chunks.
+ * GIF: comment and non-animation application extensions (XMP). The media pipeline later
+ * re-encodes every image, which drops whatever this misses; this covers the gap until then.
+ * Any layout it does not understand is returned unchanged rather than risk corrupting it.
  */
 export function stripImageMetadata(bytes: Buffer, mime: string): Buffer {
   if (mime === 'image/jpeg') return stripJpeg(bytes);
   if (mime === 'image/png') return stripPng(bytes);
+  if (mime === 'image/webp') return stripWebp(bytes);
+  if (mime === 'image/gif') return stripGif(bytes);
   return bytes;
 }
 
@@ -82,4 +86,102 @@ function stripPng(bytes: Buffer): Buffer {
     if (type === 'IEND') break;
   }
   return Buffer.concat(out);
+}
+
+const VP8X_EXIF = 0x08;
+const VP8X_XMP = 0x04;
+
+function stripWebp(bytes: Buffer): Buffer {
+  if (
+    bytes.length < 12 ||
+    bytes.toString('latin1', 0, 4) !== 'RIFF' ||
+    bytes.toString('latin1', 8, 12) !== 'WEBP'
+  ) {
+    return bytes;
+  }
+  const out: Buffer[] = [];
+  let offset = 12;
+  let dropped = false;
+  while (offset + 8 <= bytes.length) {
+    const fourcc = bytes.toString('latin1', offset, offset + 4);
+    const size = bytes.readUInt32LE(offset + 4);
+    const end = offset + 8 + size + (size % 2); // chunks are padded to an even length
+    if (end > bytes.length) return bytes;
+    if (fourcc === 'EXIF' || fourcc === 'XMP ') {
+      dropped = true;
+    } else if (fourcc === 'VP8X' && size >= 1) {
+      const chunk = Buffer.from(bytes.subarray(offset, end));
+      chunk[8] = (chunk[8] ?? 0) & ~(VP8X_EXIF | VP8X_XMP);
+      out.push(chunk);
+    } else {
+      out.push(bytes.subarray(offset, end));
+    }
+    offset = end;
+  }
+  if (!dropped || offset !== bytes.length) return bytes;
+  const body = Buffer.concat(out);
+  const header = Buffer.alloc(12);
+  header.write('RIFF', 0, 'latin1');
+  header.writeUInt32LE(body.length + 4, 4);
+  header.write('WEBP', 8, 'latin1');
+  return Buffer.concat([header, body]);
+}
+
+/** Application extensions that only control animation looping; everything else is dropped. */
+const GIF_KEEP_APPS = new Set(['NETSCAPE2.0', 'ANIMEXTS1.0']);
+
+function stripGif(bytes: Buffer): Buffer {
+  const signature = bytes.toString('latin1', 0, 6);
+  if (bytes.length < 13 || (signature !== 'GIF87a' && signature !== 'GIF89a')) return bytes;
+  const colorTable = (packed: number) => (packed & 0x80 ? 3 * 2 ** ((packed & 0x07) + 1) : 0);
+
+  // Skips a run of data sub-blocks; returns the offset after the terminator, or -1.
+  const skipSubBlocks = (from: number): number => {
+    let at = from;
+    while (at < bytes.length) {
+      const len = bytes[at]!;
+      at += 1 + len;
+      if (len === 0) return at;
+    }
+    return -1;
+  };
+
+  let offset = 13 + colorTable(bytes[10]!);
+  if (offset > bytes.length) return bytes;
+  const out: Buffer[] = [bytes.subarray(0, offset)];
+  let dropped = false;
+  while (offset < bytes.length) {
+    const introducer = bytes[offset];
+    if (introducer === 0x3b) {
+      out.push(bytes.subarray(offset, offset + 1));
+      return dropped ? Buffer.concat(out) : bytes;
+    }
+    if (introducer === 0x2c) {
+      // Image descriptor (10 bytes), optional local colour table, LZW code size, image data.
+      if (offset + 10 > bytes.length) return bytes;
+      const dataStart = offset + 10 + colorTable(bytes[offset + 9]!) + 1;
+      const end = skipSubBlocks(dataStart);
+      if (end < 0) return bytes;
+      out.push(bytes.subarray(offset, end));
+      offset = end;
+      continue;
+    }
+    if (introducer === 0x21) {
+      const label = bytes[offset + 1];
+      const end = skipSubBlocks(offset + 2);
+      if (end < 0) return bytes;
+      let keep = label !== 0xfe; // comment extension
+      if (label === 0xff) {
+        const idLength = bytes[offset + 2] ?? 0;
+        const id = bytes.toString('latin1', offset + 3, offset + 3 + Math.min(idLength, 11));
+        keep = GIF_KEEP_APPS.has(id);
+      }
+      if (keep) out.push(bytes.subarray(offset, end));
+      else dropped = true;
+      offset = end;
+      continue;
+    }
+    return bytes; // unknown block
+  }
+  return bytes; // no trailer
 }

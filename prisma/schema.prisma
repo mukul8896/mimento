@@ -257,11 +257,18 @@ model MediaAsset {
   sizeBytes    Int?
   width        Int?
   height       Int?
+  /// Re-encoded copies made by the media pipeline (no metadata survives re-encoding). Recipients
+  /// get the display copy; the editor shows the thumbnail. Null until processed.
+  displayKey   String?
+  thumbKey     String?
+  /// Set once the pipeline has scanned and processed the upload (whatever the outcome).
+  processedAt  DateTime?   @db.Timestamptz(3)
   createdAt    DateTime    @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime    @updatedAt @db.Timestamptz(3)
   gifts        Gift[]
 
   @@index([experienceId, status])
+  @@index([status, processedAt])
   @@index([ownerId])
 }
 

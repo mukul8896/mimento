@@ -73,6 +73,17 @@ export const EnvSchema = z
     /** How often unfinished checkouts are checked with the provider. 0 disables. */
     PAYMENTS_RECONCILE_MS: z.coerce.number().int().min(0).default(300_000),
 
+    /**
+     * What this process does. `api` serves HTTP only; `worker` runs background jobs only (outbox,
+     * media pipeline, payment reconciliation); `all` does both (development and tests).
+     */
+    PROCESS_ROLE: z.enum(['all', 'api', 'worker']).default('all'),
+    /** clamd for malware scanning of uploads. Required in production wherever jobs run. */
+    CLAMAV_HOST: z.preprocess(blankAsUnset, z.string().min(1).optional()),
+    CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
+    /** How often the media pipeline looks for new uploads to scan and resize. 0 disables. */
+    MEDIA_PIPELINE_MS: z.coerce.number().int().min(0).default(3000),
+
     RATE_LIMIT_DISABLED: bool.default(false),
     OUTBOX_POLL_MS: z.coerce.number().int().min(0).default(5000),
   })
@@ -101,6 +112,13 @@ export const EnvSchema = z
       if (!env.MEDIA_PUBLIC_BASE_URL) {
         ctx.addIssue({ code: 'custom', path: ['MEDIA_PUBLIC_BASE_URL'], message: 'Required' });
       }
+    }
+    if (env.APP_ENV === 'production' && env.PROCESS_ROLE !== 'api' && !env.CLAMAV_HOST) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['CLAMAV_HOST'],
+        message: 'Required in production so uploads are scanned before anyone sees them',
+      });
     }
     if (Boolean(env.RAZORPAY_KEY_ID) !== Boolean(env.RAZORPAY_KEY_SECRET)) {
       ctx.addIssue({

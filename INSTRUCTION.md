@@ -18,6 +18,27 @@ stages 2 and 3 are not started.**
 | GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
 | Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
 
+## Phase 2b — media worker and malware scanning (2026-09-24)
+
+Owner decisions for the rest of Phase 2 (2026-09-24): **no email** (notifications and recipient
+email verification become a paid feature later), **no translations** until the app is stable,
+**voice notes uploaded / video as YouTube-Vimeo links** (video upload may become paid), and
+**commit + push + deploy after each slice** (commits use the GitHub no-reply email, no tool
+attribution).
+
+- **No Redis** ([ADR 0007](docs/decisions/0007-background-jobs-without-redis.md)): jobs stay on the
+  Postgres outbox/`SKIP LOCKED`. `PROCESS_ROLE` = `api` | `worker` | `all`; `src/worker.ts` boots the
+  same modules without HTTP. Prod compose runs `api`, `worker` and `clamav` (`clamav/clamav-debian:1.4`,
+  multi-arch; the Alpine image has no arm64 build). ~1 GB RAM for clamd.
+- **MediaPipeline** (`modules/media/media-pipeline.ts`): READY + `processedAt IS NULL` is the job
+  (backfills old uploads). Scan → CLEAN/INFECTED (infected: deleted, `status=REJECTED`, audit
+  `media.infected`); clean → `-display` (≤1600 px) and `-thumb` (≤400 px) WebP via sharp 0.35.4.
+  clamd errors → retried, never marked clean. Served URLs prefer the display copy.
+- WebP/GIF metadata stripped at upload too (`image-inspection.ts`).
+- Migration `20260924150000_media_pipeline` (displayKey, thumbKey, processedAt).
+- Tests: fake clamd speaking real INSTREAM (`test/fake-clamd.ts`) + 5 pipeline integration tests;
+  the real clamd was checked locally with a clean PNG, EICAR (flagged) and a 4 MB file.
+
 ## Phase 2 — approved 2026-09-24, slice 2a (payments) built
 
 Owner approved Phase 2, delivered in slices: **2a payments** → 2b media/workers (ClamAV) → 2c
@@ -77,8 +98,8 @@ return flow in a browser (needs a provider; covered at API level).
   As expected, publishing **with images** is blocked in production ("An image is waiting for its
   safety scan") because no scanner exists. Owner chose to leave it that way for now; text-only
   experiences publish. The ClamAV scanner (Phase 2) needs owner approval.
-- Still open: upload malware scanning (production blocker), password SSH login still enabled,
-  no automated backups yet.
+- Still open: password SSH login still enabled, no automated backups yet. Upload scanning is
+  done (Phase 2b).
 
 ## Product change: no accounts (decided 2026-09-23, owner-approved)
 

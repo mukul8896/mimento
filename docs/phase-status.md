@@ -43,9 +43,8 @@ _Updated 22 Sep 2026._ Phase 1 implemented; awaiting owner review before Phase 2
 
 ### Deferred / blocked
 
-- **Production blocker:** malware scanning of uploads (images cannot be published in production
-  until scanned; see `docs/privacy-security.md`).
-- WebP/GIF metadata stripping (JPEG/PNG done).
+- ~~Production blocker: malware scanning of uploads~~ — done in Phase 2b (ClamAV in the worker).
+- ~~WebP/GIF metadata stripping~~ — done in Phase 2b (stripped at upload, re-encoded in the worker).
 - ~~Docker Compose and Dockerfiles not yet run~~ — verified 2026-09-23: infra services healthy, both
   images build, API and web serve (see INSTRUCTION.md for the three fixes that took).
 - CI workflow written but not yet run on GitHub (no remote configured).
@@ -56,7 +55,7 @@ _Updated 22 Sep 2026._ Phase 1 implemented; awaiting owner review before Phase 2
 | Slice                 | Scope                                                                                                     | State                                                          |
 | --------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | 2a Payments           | Razorpay (India) + Dodo (rest of world), checkout, confirm, signed webhooks, reconciler, pricing/policies | **Built and tested with fake providers**; sandbox keys pending |
-| 2b Media and workers  | Redis/BullMQ worker, ClamAV scanning (unblocks images in production), WebP/GIF metadata, thumbnails       | Not started                                                    |
+| 2b Media and workers  | Worker process (Postgres jobs, no Redis: ADR 0007), ClamAV scanning, WebP/GIF metadata, re-encoded copies | **Built and tested**; real clamd verified locally              |
 | 2c Branching          | Answer-based routing, React Flow editor, graph validation, draft version history                          | Not started                                                    |
 | 2d Richer experiences | New step types, scheduled publish/reveal, PIN, email notifications, multilingual, analytics, custom slugs | Not started                                                    |
 

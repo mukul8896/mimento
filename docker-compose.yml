@@ -46,6 +46,14 @@ services:
       "
     restart: 'no'
 
+  # Optional malware scanner: `docker compose --profile scan up -d clamav`, then set
+  # CLAMAV_HOST=localhost in .env. Without it uploads are re-encoded but stay unscanned (dev only).
+  clamav:
+    profiles: [scan]
+    image: clamav/clamav-debian:1.4
+    ports: ['127.0.0.1:3310:3310']
+    volumes: [clamdb:/var/lib/clamav]
+
   api:
     profiles: [app]
     build: { context: ., dockerfile: infra/docker/api.Dockerfile }
@@ -68,5 +76,6 @@ services:
     ports: ['3000:3000']
 
 volumes:
+  clamdb:
   pgdata:
   miniodata:

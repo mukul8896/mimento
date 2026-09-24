@@ -12,6 +12,10 @@
 #   - Postgres keeps its data in a named volume and is published on loopback only (for manual
 #     psql/pg_dump on the box), never to the internet.
 #   - Migrations run in the one-off `migrate` service, so the server needs only Docker.
+#   - Background jobs (upload scanning and resizing, outbox, payment reconciliation) run in
+#     `worker`, the same image with a different entrypoint. `api` only serves HTTP.
+#   - ClamAV scans every upload before anyone else can see it. It needs ~1.5 GB RAM and a few
+#     minutes on first start to download its signature database (kept in a volume).
 name: momentpath-prod
 
 services:
@@ -48,9 +52,36 @@ services:
     env_file: .env.production
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-momentpath}
+      PROCESS_ROLE: api
     depends_on:
       postgres: { condition: service_healthy }
     expose: ['4000']
+
+  worker:
+    build: { context: ., dockerfile: infra/docker/api.Dockerfile, target: runtime }
+    restart: unless-stopped
+    command: ['node', 'dist/worker.js']
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-momentpath}
+      PROCESS_ROLE: worker
+      CLAMAV_HOST: clamav
+    depends_on:
+      postgres: { condition: service_healthy }
+      clamav: { condition: service_healthy }
+
+  clamav:
+    # Official multi-arch image (the Alpine one has no arm64 build). Pinned to the 1.4 LTS line.
+    image: clamav/clamav-debian:1.4
+    restart: unless-stopped
+    volumes: [clamdb:/var/lib/clamav]
+    expose: ['3310']
+    healthcheck:
+      test: ['CMD-SHELL', 'clamdcheck.sh']
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 5
 
   web:
     build: { context: ., dockerfile: infra/docker/web.Dockerfile }
@@ -75,5 +106,6 @@ services:
 
 volumes:
   pgdata:
+  clamdb:
   caddydata:
   caddyconfig:

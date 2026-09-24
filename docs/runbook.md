@@ -139,6 +139,25 @@ from, so the encryption keyring in `.env.production` matters just as much: witho
 `APP_ENCRYPTION_KEYS` the gift secrets and manage tokens in a backup cannot be decrypted. Store it
 somewhere other than the server.
 
+## Worker and malware scanning
+
+Production runs two copies of the API image: `api` (HTTP, `PROCESS_ROLE=api`) and `worker`
+(`node dist/worker.js`, `PROCESS_ROLE=worker`), plus `clamav` ([ADR 0007](decisions/0007-background-jobs-without-redis.md)).
+The worker picks up every upload that is `READY` and not yet processed, scans it with clamd, then
+writes `-display` and `-thumb` WebP copies next to the original. Infected files are deleted and an
+audit entry `media.infected` is written; the creator sees "our virus scan flagged it".
+
+- **First start:** clamd downloads its signature database (a few minutes, ~1 GB RAM afterwards);
+  the worker waits for its healthcheck. Uploads made meanwhile are scanned once it is up.
+- **Is it working?** `docker compose … logs worker --tail 50` shows `Scan failed` if clamd is
+  unreachable (files are retried, never marked clean). `docker compose … exec clamav clamdcheck.sh`
+  checks clamd itself.
+- **Signature updates** run inside the clamav container (freshclam); the volume `clamdb` keeps them
+  across restarts.
+- **Locally**, `pnpm dev` runs jobs in the API process (`PROCESS_ROLE=all`) without clamd, so files
+  are re-encoded but stay unscanned — accepted outside production. To scan locally:
+  `docker compose --profile scan up -d clamav` and set `CLAMAV_HOST=localhost` in `.env`.
+
 ## Payments
 
 Razorpay serves India, Dodo Payments everyone else ([ADR 0006](decisions/0006-payments-razorpay-and-dodo.md)).

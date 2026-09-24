@@ -33,7 +33,7 @@ export class PaymentsReconciler implements OnApplicationBootstrap, OnModuleDestr
   ) {}
 
   onApplicationBootstrap(): void {
-    if (this.env.PAYMENTS_RECONCILE_MS > 0) {
+    if (this.env.PAYMENTS_RECONCILE_MS > 0 && this.env.PROCESS_ROLE !== 'api') {
       this.timer = setInterval(() => void this.tick(), this.env.PAYMENTS_RECONCILE_MS);
       this.timer.unref();
     }

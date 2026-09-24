@@ -3,6 +3,7 @@ import { APP_ENV, type AppEnv } from '../../config/env';
 import { OBJECT_STORAGE, type ObjectStorage } from '../../providers/storage';
 import { MediaBlobController } from './media-blob.controller';
 import { MediaController } from './media.controller';
+import { createScanner, MEDIA_SCANNER, MediaPipeline } from './media-pipeline';
 import { MediaService } from './media.service';
 import { FilesystemStorage } from './storage/filesystem-storage';
 import { S3Storage } from './storage/s3-storage';
@@ -29,8 +30,10 @@ export function createStorage(env: AppEnv): ObjectStorage {
   controllers: [MediaController, MediaBlobController],
   providers: [
     MediaService,
+    MediaPipeline,
     { provide: OBJECT_STORAGE, useFactory: createStorage, inject: [APP_ENV] },
+    { provide: MEDIA_SCANNER, useFactory: createScanner, inject: [APP_ENV] },
   ],
-  exports: [MediaService, OBJECT_STORAGE],
+  exports: [MediaService, MediaPipeline, OBJECT_STORAGE],
 })
 export class MediaModule {}

@@ -98,7 +98,7 @@ export class ExperienceLifecycleService {
   ): Promise<void> {
     const media = await tx.mediaAsset.findMany({
       where: { experienceId },
-      select: { storageKey: true },
+      select: { storageKey: true, displayKey: true, thumbKey: true },
     });
     await tx.experience.update({
       where: { id: experienceId },
@@ -117,7 +117,10 @@ export class ExperienceLifecycleService {
     await tx.experienceVersion.deleteMany({ where: { experienceId } });
     await tx.mediaAsset.deleteMany({ where: { experienceId } });
     if (media.length > 0) {
-      await this.outbox.enqueue(tx, 'storage.delete', { keys: media.map((m) => m.storageKey) });
+      const keys = media.flatMap((m) =>
+        [m.storageKey, m.displayKey, m.thumbKey].filter((k): k is string => !!k),
+      );
+      await this.outbox.enqueue(tx, 'storage.delete', { keys });
     }
     await this.outbox.enqueue(tx, 'experience.deleted', { experienceId });
     await this.audit.record(

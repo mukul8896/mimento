@@ -10,6 +10,11 @@ import type { MediaAsset } from '../../generated/prisma/client';
 import type { Principal } from '../identity/principal';
 import { inspectImage, stripImageMetadata } from './image-inspection';
 
+/** What to hand out: the pipeline's re-encoded copy once it exists, else the stripped original. */
+function servedKey(asset: Pick<MediaAsset, 'storageKey' | 'displayKey'>): string {
+  return asset.displayKey ?? asset.storageKey;
+}
+
 export const UPLOAD_URL_TTL_SECONDS = 10 * 60;
 export const CREATOR_MEDIA_URL_TTL_SECONDS = 30 * 60;
 export const RECIPIENT_MEDIA_URL_TTL_SECONDS = 60 * 60;
@@ -105,9 +110,9 @@ export class MediaService {
   }
 
   /**
-   * Whether an asset may be shown to recipients. In production an asset must have passed a
-   * malware scan; Phase 1 has no scanner, so production publishing with media is blocked
-   * (documented production blocker). Development and test environments allow unscanned files.
+   * Whether an asset may be shown to recipients. In production an asset must have passed the
+   * worker's ClamAV scan; development and test environments (often without clamd) also accept
+   * unscanned files, never infected ones.
    */
   isPublishable(asset: Pick<MediaAsset, 'status' | 'scanStatus'>): boolean {
     if (asset.status !== 'READY') return false;
@@ -127,7 +132,7 @@ export class MediaService {
       sizeBytes: asset.sizeBytes,
       width: asset.width,
       height: asset.height,
-      url: asset.status === 'READY' ? await this.signedUrl(asset.storageKey, ttlSeconds) : null,
+      url: asset.status === 'READY' ? await this.signedUrl(servedKey(asset), ttlSeconds) : null,
     };
   }
 
@@ -140,7 +145,7 @@ export class MediaService {
     return Promise.all(
       assets.map(async (a) => ({
         id: a.id,
-        url: await this.signedUrl(a.storageKey, CREATOR_MEDIA_URL_TTL_SECONDS),
+        url: await this.signedUrl(servedKey(a), CREATOR_MEDIA_URL_TTL_SECONDS),
         width: a.width,
         height: a.height,
       })),
@@ -158,7 +163,7 @@ export class MediaService {
         .filter((a) => this.isPublishable(a))
         .map(async (a) => ({
           id: a.id,
-          url: await this.signedUrl(a.storageKey, ttlSeconds),
+          url: await this.signedUrl(servedKey(a), ttlSeconds),
           width: a.width,
           height: a.height,
         })),

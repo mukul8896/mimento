@@ -6,6 +6,7 @@ import { Problem } from '../../common/problem';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OBJECT_STORAGE, type ObjectStorage } from '../../providers/storage';
 import { Public } from '../identity/decorators';
+import { originalKeyOf, VARIANT_MIME } from './media-variants';
 import { FilesystemStorage } from './storage/filesystem-storage';
 
 /**
@@ -67,13 +68,17 @@ export class MediaBlobController {
   ) {
     const grant = this.fs().verify(key, query);
     if (!grant || grant.op !== 'get') throw Problem.notFound();
-    const asset = await this.prisma.mediaAsset.findUnique({ where: { storageKey: grant.key } });
+    // Variants live next to the original ("<key>-display"); the original's row governs access.
+    const asset = await this.prisma.mediaAsset.findUnique({
+      where: { storageKey: originalKeyOf(grant.key) },
+    });
     if (!asset || asset.status !== 'READY') throw Problem.notFound();
+    const isVariant = grant.key !== asset.storageKey;
     const bytes = await this.fs().read(grant.key, MAX_IMAGE_BYTES);
     if (!bytes) throw Problem.notFound();
     res
       .status(200)
-      .setHeader('content-type', asset.mimeType)
+      .setHeader('content-type', isVariant ? VARIANT_MIME : asset.mimeType)
       .setHeader('cache-control', 'private, max-age=300')
       .setHeader('x-content-type-options', 'nosniff')
       .setHeader('content-security-policy', "default-src 'none'; sandbox")

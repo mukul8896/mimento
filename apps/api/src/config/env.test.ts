@@ -11,6 +11,24 @@ const base = {
   MEDIA_PUBLIC_BASE_URL: 'http://localhost:3000/bff/api',
 };
 
+describe('process roles', () => {
+  const prod = {
+    ...base,
+    APP_ENV: 'production',
+    ADMIN_TOKEN: 'a'.repeat(40),
+    STORAGE_DRIVER: 's3',
+    S3_BUCKET: 'b',
+    S3_ACCESS_KEY_ID: 'k',
+    S3_SECRET_ACCESS_KEY: 's',
+  };
+  it('needs a malware scanner wherever production runs jobs', () => {
+    expect(() => loadEnv({ ...prod, PROCESS_ROLE: 'worker' })).toThrow(/CLAMAV_HOST/);
+    expect(() => loadEnv({ ...prod })).toThrow(/CLAMAV_HOST/);
+    expect(() => loadEnv({ ...prod, PROCESS_ROLE: 'api' })).not.toThrow();
+    expect(() => loadEnv({ ...prod, PROCESS_ROLE: 'worker', CLAMAV_HOST: 'clamav' })).not.toThrow();
+  });
+});
+
 describe('payment configuration', () => {
   it('starts with no payment provider configured', () => {
     expect(() => loadEnv(base)).not.toThrow();

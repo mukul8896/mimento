@@ -7,6 +7,7 @@
     "build": "tsc -p tsconfig.build.json",
     "dev": "pnpm -w exec prisma generate && nest start --watch --preserveWatchOutput",
     "start": "node dist/main.js",
+    "worker": "node dist/worker.js",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p test/tsconfig.json",
     "lint": "eslint src test",
     "test": "vitest run --project unit",
@@ -35,6 +36,7 @@
     "pino-http": "11.0.0",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
+    "sharp": "0.35.4",
     "zod": "4.6.5"
   },
   "devDependencies": {

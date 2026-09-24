@@ -37,7 +37,7 @@ export class OutboxProcessor implements OnApplicationBootstrap, OnModuleDestroy 
   ) {}
 
   onApplicationBootstrap(): void {
-    if (this.env.OUTBOX_POLL_MS > 0) {
+    if (this.env.OUTBOX_POLL_MS > 0 && this.env.PROCESS_ROLE !== 'api') {
       this.timer = setInterval(() => void this.tick(), this.env.OUTBOX_POLL_MS);
       this.timer.unref();
     }
