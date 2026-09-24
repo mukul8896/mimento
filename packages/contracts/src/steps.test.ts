@@ -212,3 +212,13 @@ describe('sound and celebration settings', () => {
     ).toBe(false);
   });
 });
+
+describe('emojiOnly', () => {
+  it('keeps emoji (including joined and flag ones) and drops ordinary text', async () => {
+    const { emojiOnly } = await import('./sound.js');
+    expect(emojiOnly('hello 🍕 world')).toBe('🍕');
+    expect(emojiOnly('❤️👩‍❤️‍👨')).toBe('❤️👩‍❤️‍👨');
+    expect(emojiOnly('🇮🇳👍🏽')).toBe('🇮🇳👍🏽');
+    expect(emojiOnly('abc 123')).toBe('');
+  });
+});

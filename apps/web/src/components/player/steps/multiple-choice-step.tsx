@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
+import { emojiOnly } from '@momentpath/contracts';
 import { useFx } from '../fx/fx';
 import { accentButton } from '../theme';
 import type { StepProps } from './types';
@@ -26,6 +27,7 @@ export function MultipleChoiceStep({ step, busy, submit }: StepProps<'MULTIPLE_C
         </legend>
         {step.config.options.map((option) => {
           const checked = selected === option.id;
+          const emoji = emojiOnly(option.emoji);
           return (
             <label
               key={option.id}
@@ -42,18 +44,18 @@ export function MultipleChoiceStep({ step, busy, submit }: StepProps<'MULTIPLE_C
                   setSelected(option.id);
                   setWrong(false);
                   fx.effect('POP');
-                  if (option.emoji)
-                    fx.burst({ emoji: option.emoji, at: e.currentTarget.parentElement });
+                  if (emoji) fx.burst({ emoji, at: e.currentTarget.parentElement });
                 }}
                 className="size-5 accent-[var(--mp-accent)]"
               />
               <span className="min-w-0 flex-1 break-words">{option.label}</span>
-              {option.emoji ? (
+              {/* Shown beside the answer unless the answer text already contains it. */}
+              {emoji && !option.label.includes(emoji) ? (
                 <span
                   aria-hidden="true"
-                  className={`text-[1.4em] transition ${checked ? 'scale-125' : ''}`}
+                  className={`shrink-0 transition ${checked ? 'scale-125' : ''}`}
                 >
-                  {option.emoji}
+                  {emoji}
                 </span>
               ) : null}
             </label>

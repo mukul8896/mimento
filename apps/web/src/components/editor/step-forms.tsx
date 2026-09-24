@@ -4,6 +4,7 @@ import {
   MAX_GALLERY_ITEMS,
   NO_BUTTON_LIMITS,
   parseVideoUrl,
+  emojiOnly,
   SOUND_EFFECT_LABELS,
   SOUND_EFFECTS,
   type DraftStep,
@@ -131,7 +132,7 @@ function ReactionFields({
             maxLength={16}
             placeholder="🎉"
             className="text-center text-xl"
-            onChange={(e) => onChange({ ...value, emoji: e.target.value })}
+            onChange={(e) => onChange({ ...value, emoji: emojiOnly(e.target.value) })}
             {...p}
           />
         )}
@@ -233,6 +234,10 @@ function MultipleChoiceForm({ step, onChange }: FormProps<'MULTIPLE_CHOICE'>) {
       />
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium text-ink-800">Answers</legend>
+        <p className="text-xs text-ink-600">
+          Optional: put an emoji in the small box next to an answer — it bursts out on their screen
+          when they pick that answer.
+        </p>
         {c.options.map((o, i) => (
           <div key={o.id} className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
@@ -253,11 +258,13 @@ function MultipleChoiceForm({ step, onChange }: FormProps<'MULTIPLE_CHOICE'>) {
                 title="Emoji that bursts out when this answer is picked (optional)"
                 value={o.emoji}
                 maxLength={16}
-                placeholder="＋😀"
-                className="px-1 text-center"
+                placeholder="Emoji"
+                className="px-1 text-center placeholder:text-xs"
                 onChange={(e) =>
                   setOptions(
-                    c.options.map((x) => (x.id === o.id ? { ...x, emoji: e.target.value } : x)),
+                    c.options.map((x) =>
+                      x.id === o.id ? { ...x, emoji: emojiOnly(e.target.value) } : x,
+                    ),
                   )
                 }
               />

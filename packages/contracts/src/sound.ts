@@ -106,6 +106,14 @@ export const CELEBRATION_LIBRARY: Record<Celebration, { name: string; emoji: rea
     NONE: { name: 'None', emoji: [] },
   };
 
+const EMOJI_PART =
+  /\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Regional_Indicator}|\u200d|\ufe0f|\u20e3/gu;
+
+/** Keeps only emoji characters (and their joiners), so an emoji box never shows ordinary text. */
+export function emojiOnly(value: string): string {
+  return (value.match(EMOJI_PART) ?? []).join('').slice(0, 16);
+}
+
 /** What happens when the recipient picks an answer: an emoji burst and a sound. */
 export const ReactionSchema = z.strictObject({
   emoji: z.string().trim().max(16),
