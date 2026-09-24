@@ -12,7 +12,10 @@ export function PreviewPane({
   settings,
   steps,
   media,
+  startAt = null,
 }: {
+  /** The step being edited: the preview opens on it so changes show straight away. */
+  startAt?: string | null;
   title: string;
   theme: Theme;
   settings: ExperienceSettings;
@@ -21,6 +24,9 @@ export function PreviewPane({
 }) {
   const [device, setDevice] = useState<'mobile' | 'desktop'>('mobile');
   const [run, setRun] = useState(0);
+  // "Play from the start" ignores the selected step until another one is picked.
+  const [fromStartFor, setFromStartFor] = useState<string | null>(null);
+  const start = startAt !== null && fromStartFor !== startAt ? startAt : null;
   const experience: PublicExperience = useMemo(
     () => ({
       title,
@@ -32,12 +38,15 @@ export function PreviewPane({
     }),
     [title, theme, settings, steps, media],
   );
-  // A new backend restarts the preview whenever the content changes.
-  const backend = useMemo(() => new PreviewBackend(experience), [experience]);
+  // A new backend restarts the preview whenever the content or the selected step changes.
+  const backend = useMemo(
+    () => new PreviewBackend(experience, undefined, start),
+    [experience, start],
+  );
 
   return (
-    <div className="flex h-full flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
+    <div className="flex h-full min-w-0 flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div
           role="group"
           aria-label="Preview size"
@@ -58,17 +67,20 @@ export function PreviewPane({
         <button
           type="button"
           className="text-sm font-medium text-brand-700 underline"
-          onClick={() => setRun((r) => r + 1)}
+          onClick={() => {
+            setFromStartFor(startAt);
+            setRun((r) => r + 1);
+          }}
         >
-          Restart
+          Play from the start
         </button>
       </div>
       <div
-        className="flex flex-1 justify-center overflow-auto rounded-2xl bg-ink-200/60 p-3"
+        className="flex min-w-0 flex-1 justify-center overflow-auto rounded-2xl bg-ink-200/60 p-3"
         data-testid="preview"
       >
         <div
-          className={`overflow-hidden rounded-[2rem] shadow-xl ring-8 ring-ink-900 ${device === 'mobile' ? 'h-[640px] w-[360px] max-w-full' : 'h-[560px] w-full'}`}
+          className={`overflow-hidden rounded-[2rem] shadow-xl ring-8 ring-ink-900 ${device === 'mobile' ? 'h-[640px] w-full max-w-[360px]' : 'h-[560px] w-full'}`}
         >
           <div className="h-full overflow-y-auto">
             <Player key={run} backend={backend} initialTheme={theme} embedded />

@@ -83,3 +83,23 @@ test('publishing is blocked with actionable issues for an incomplete blank draft
   await page.getByTestId('confirm-publish').click();
   await expect(page.getByTestId('publish-issues')).toContainText('Add at least one step');
 });
+
+test('the preview opens on the step being edited and shows edits at once', async ({
+  page,
+  isMobile,
+}) => {
+  await page.goto('/dashboard');
+  await page.getByRole('link', { name: 'New experience' }).click();
+  await page.getByRole('button', { name: /Date invitation/ }).click();
+  await expect(page).toHaveURL(/\/edit$/);
+  if (isMobile) await page.getByRole('button', { name: 'Steps', exact: true }).click();
+  await page.getByTestId('step-list').getByRole('button', { name: /4\. / }).click();
+  await page.getByRole('textbox', { name: 'Instructions' }).fill('Scratch for our date');
+  if (isMobile) await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  const preview = page.getByTestId('preview');
+  await expect(preview.getByRole('heading', { name: 'Scratch for our date' })).toBeVisible();
+  await expectNoHorizontalScroll(page);
+  // "Play from the start" still plays it all the way through.
+  await page.getByRole('button', { name: 'Play from the start' }).click();
+  await expect(preview.getByRole('heading', { name: 'Hey you 👋' })).toBeVisible();
+});

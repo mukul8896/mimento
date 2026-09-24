@@ -61,6 +61,10 @@ Audio** — no audio files, no third-party hosts, nothing to license.
   in E2E fail on tier checks. Run E2E with billing off without editing `.env`:
   stop the Docker `api`/`web` containers, `pnpm build`, then from `apps/web`:
   `BILLING_ENABLED=false CI=1 node --env-file=../../.env node_modules/@playwright/test/cli.js test`.
+- **Follow-up fixes (same day)**: quiz answer rows (the emoji box had taken the whole row and
+  hidden the answer text and ✕); the editor preview now opens on the selected step and restarts
+  there after each edit (`PreviewBackend` `startAt`; "Play from the start" plays it all); the
+  preview phone frame no longer overflows narrow screens; long scratch-layer labels shrink/wrap.
 - **Not done / ideas**: GIF stickers (Giphy/Tenor need API keys and CSP changes — creators can
   already upload a GIF in an image step); real recorded tracks (could add CC0 files later);
   gating uploads or premium tracks behind a paid tier (currently all free).

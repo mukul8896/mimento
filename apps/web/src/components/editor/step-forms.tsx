@@ -235,28 +235,33 @@ function MultipleChoiceForm({ step, onChange }: FormProps<'MULTIPLE_CHOICE'>) {
         <legend className="text-sm font-medium text-ink-800">Answers</legend>
         {c.options.map((o, i) => (
           <div key={o.id} className="flex items-center gap-2">
-            <Input
-              aria-label={`Emoji for answer ${i + 1}`}
-              value={o.emoji}
-              maxLength={16}
-              placeholder="🙂"
-              className="w-16 shrink-0 text-center text-lg"
-              onChange={(e) =>
-                setOptions(
-                  c.options.map((x) => (x.id === o.id ? { ...x, emoji: e.target.value } : x)),
-                )
-              }
-            />
-            <Input
-              aria-label={`Answer ${i + 1}`}
-              value={o.label}
-              maxLength={80}
-              onChange={(e) =>
-                setOptions(
-                  c.options.map((x) => (x.id === o.id ? { ...x, label: e.target.value } : x)),
-                )
-              }
-            />
+            <div className="min-w-0 flex-1">
+              <Input
+                aria-label={`Answer ${i + 1}`}
+                value={o.label}
+                maxLength={80}
+                onChange={(e) =>
+                  setOptions(
+                    c.options.map((x) => (x.id === o.id ? { ...x, label: e.target.value } : x)),
+                  )
+                }
+              />
+            </div>
+            <div className="w-14 shrink-0">
+              <Input
+                aria-label={`Emoji for answer ${i + 1}`}
+                title="Emoji that bursts out when this answer is picked (optional)"
+                value={o.emoji}
+                maxLength={16}
+                placeholder="＋😀"
+                className="px-1 text-center"
+                onChange={(e) =>
+                  setOptions(
+                    c.options.map((x) => (x.id === o.id ? { ...x, emoji: e.target.value } : x)),
+                  )
+                }
+              />
+            </div>
             <Button
               variant="ghost"
               size="sm"

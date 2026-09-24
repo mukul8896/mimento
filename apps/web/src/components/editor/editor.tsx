@@ -371,11 +371,13 @@ export function Editor({ draft }: { draft: DraftDocument }) {
         <section
           aria-label="Preview"
           className={cx(
+            'min-w-0',
             view === 'preview' ? 'block' : 'hidden',
             'lg:sticky lg:top-32 lg:block lg:self-start',
           )}
         >
           <PreviewPane
+            startAt={state.selectedKey}
             title={state.title}
             theme={state.theme}
             settings={state.settings}

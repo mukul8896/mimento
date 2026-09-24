@@ -9,12 +9,23 @@ import {
 } from '@momentpath/contracts';
 import { PlayerError, type PlayerBackend, type PlayerState } from './backend';
 
-/** Same path walk as the API (contracts/flow.ts), so the preview follows branches faithfully. */
-function progressOf(steps: DraftStep[], answers: ReadonlyMap<string, Answer>): SessionProgress {
-  const walk = walkPath(flowSteps(steps), answers);
+/**
+ * Same path walk as the API (contracts/flow.ts), so the preview follows branches faithfully.
+ * `from` starts the walk at a later step (the one being edited); the steps before it count as
+ * done so the progress bar reads right.
+ */
+export function progressOf(
+  steps: DraftStep[],
+  answers: ReadonlyMap<string, Answer>,
+  from = 0,
+): SessionProgress {
+  const walk = walkPath(flowSteps(steps.slice(from)), answers);
   const gift = steps.find((s) => s.type === 'GIFT_REVEAL');
   return {
-    completedStepKeys: walk.path.filter((key) => answers.has(key)),
+    completedStepKeys: [
+      ...steps.slice(0, from).map((s) => s.key),
+      ...walk.path.filter((key) => answers.has(key)),
+    ],
     nextStepKey: walk.nextStepKey,
     completed: walk.finished && steps.length > 0,
     giftRevealed: gift ? answers.has(gift.key) : false,
@@ -30,13 +41,22 @@ export class PreviewBackend implements PlayerBackend {
     private readonly experience: PublicExperience,
     /** Demos (landing page, template gallery) can show a real-looking gift message. */
     private readonly giftMessage = 'Preview: your surprise details will appear here for the recipient.',
-  ) {}
+    /** Start at this step instead of the first (the editor previews the step being edited). */
+    startAt: string | null = null,
+  ) {
+    this.from = Math.max(
+      0,
+      experience.steps.findIndex((s) => s.key === startAt),
+    );
+  }
+
+  private readonly from: number;
 
   async load(): Promise<PlayerState> {
     this.answers = new Map();
     return {
       experience: this.experience,
-      progress: progressOf(this.experience.steps, this.answers),
+      progress: progressOf(this.experience.steps, this.answers, this.from),
     };
   }
 
@@ -46,11 +66,17 @@ export class PreviewBackend implements PlayerBackend {
     const check = checkAnswer(step, answer);
     if (!check.ok) {
       if (check.reason === 'INCORRECT')
-        return { progress: progressOf(this.experience.steps, this.answers), correct: false };
+        return {
+          progress: progressOf(this.experience.steps, this.answers, this.from),
+          correct: false,
+        };
       throw new PlayerError('INVALID_ANSWER', 'That answer is not allowed here');
     }
     this.answers.set(stepKey, answer);
-    return { progress: progressOf(this.experience.steps, this.answers), correct: check.correct };
+    return {
+      progress: progressOf(this.experience.steps, this.answers, this.from),
+      correct: check.correct,
+    };
   }
 
   async reveal(stepKey: string) {
@@ -60,7 +86,7 @@ export class PreviewBackend implements PlayerBackend {
         kind: 'PHYSICAL_MESSAGE' as const,
         message: this.giftMessage,
       },
-      progress: progressOf(this.experience.steps, this.answers),
+      progress: progressOf(this.experience.steps, this.answers, this.from),
     };
   }
 

@@ -43,10 +43,31 @@ export function ScratchStep({ step, media, busy, submit }: StepProps<'SCRATCH_RE
     ctx.fillStyle = styles.getPropertyValue('--mp-accent') || '#999';
     ctx.fillRect(0, 0, rect.width, rect.height);
     ctx.fillStyle = styles.getPropertyValue('--mp-accent-text') || '#fff';
-    ctx.font = '600 18px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(cfg.coverLabel, rect.width / 2, rect.height / 2);
+    // Long labels shrink, then wrap onto two lines, so they always stay on the card.
+    const maxWidth = rect.width - 32;
+    let size = 20;
+    let lines = [cfg.coverLabel];
+    const widest = () => Math.max(...lines.map((l) => ctx.measureText(l).width));
+    for (; size >= 12; size -= 1) {
+      ctx.font = `600 ${size}px system-ui, sans-serif`;
+      lines = [cfg.coverLabel];
+      if (widest() <= maxWidth) break;
+      const words = cfg.coverLabel.split(' ');
+      const half = Math.ceil(words.length / 2);
+      lines = [words.slice(0, half).join(' '), words.slice(half).join(' ')].filter(Boolean);
+      if (widest() <= maxWidth) break;
+    }
+    const lineHeight = size * 1.25;
+    lines.forEach((l, i) =>
+      ctx.fillText(
+        l,
+        rect.width / 2,
+        rect.height / 2 + (i - (lines.length - 1) / 2) * lineHeight,
+        maxWidth,
+      ),
+    );
   }, [cfg.coverLabel, revealed]);
 
   function scratch(e: React.PointerEvent<HTMLCanvasElement>) {
