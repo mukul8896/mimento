@@ -132,64 +132,64 @@ enum OutboxStatus {
 
 /// Anonymous creator identity. There are no accounts: the owner token is the credential.
 model UserProfile {
-  id          String       @id @default(uuid()) @db.Uuid
+  id             String              @id @default(uuid()) @db.Uuid
   /// Opaque owner identity. Anonymous creators get `anon:<uuid>`; there is no login.
-  subject     String       @unique
+  subject        String              @unique
   /// SHA-256 of the raw owner token. The raw token lives only in the creator's cookie.
-  ownerTokenHash String?   @unique
-  email       String?
-  displayName String?
-  status      UserStatus   @default(ACTIVE)
-  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
-  deletedAt   DateTime?    @db.Timestamptz(3)
-  experiences Experience[]
-  media       MediaAsset[]
-  auditLogs   AuditLog[]
-  idempotency IdempotencyRecord[]
+  ownerTokenHash String?             @unique
+  email          String?
+  displayName    String?
+  status         UserStatus          @default(ACTIVE)
+  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
+  deletedAt      DateTime?           @db.Timestamptz(3)
+  experiences    Experience[]
+  media          MediaAsset[]
+  auditLogs      AuditLog[]
+  idempotency    IdempotencyRecord[]
 }
 
 model Experience {
-  id                 String             @id @default(uuid()) @db.Uuid
-  ownerId            String             @db.Uuid
-  owner              UserProfile        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  title              String
-  status             ExperienceStatus   @default(DRAFT)
-  moderationState    ModerationState    @default(ACTIVE)
-  takedownReason     String?
+  id              String                @id @default(uuid()) @db.Uuid
+  ownerId         String                @db.Uuid
+  owner           UserProfile           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title           String
+  status          ExperienceStatus      @default(DRAFT)
+  moderationState ModerationState       @default(ACTIVE)
+  takedownReason  String?
   /// SHA-256 of the raw share token. The raw token is never stored in plain text.
-  accessTokenHash    String?            @unique
+  accessTokenHash String?               @unique
   /// AES-256-GCM ciphertext of the raw share token so the owner can copy the link again.
-  accessTokenEnc     String?
+  accessTokenEnc  String?
   /// SHA-256 of the raw manage token. Grants access to THIS experience only, so a shared
   /// recovery link cannot reach the creator's other experiences.
-  manageTokenHash    String?            @unique
+  manageTokenHash String?               @unique
   /// AES-256-GCM ciphertext of the raw manage token so the creator can copy the link again.
-  manageTokenEnc     String?
-  activeVersionId    String?            @unique @db.Uuid
-  activeVersion      ExperienceVersion? @relation("ActiveVersion", fields: [activeVersionId], references: [id], onDelete: Restrict)
-  templateKey        String?
-  publishedAt        DateTime?          @db.Timestamptz(3)
-  expiresAt          DateTime?          @db.Timestamptz(3)
+  manageTokenEnc  String?
+  activeVersionId String?               @unique @db.Uuid
+  activeVersion   ExperienceVersion?    @relation("ActiveVersion", fields: [activeVersionId], references: [id], onDelete: Restrict)
+  templateKey     String?
+  publishedAt     DateTime?             @db.Timestamptz(3)
+  expiresAt       DateTime?             @db.Timestamptz(3)
   /// Scheduled opening: before this, the link shows a countdown and no session can start.
-  opensAt            DateTime?          @db.Timestamptz(3)
+  opensAt         DateTime?             @db.Timestamptz(3)
   /// Optional recipient PIN (scrypt, salted). Failed attempts lock the experience for a while.
-  pinHash            String?
-  pinFailures        Int                @default(0)
-  pinLockedUntil     DateTime?          @db.Timestamptz(3)
+  pinHash         String?
+  pinFailures     Int                   @default(0)
+  pinLockedUntil  DateTime?             @db.Timestamptz(3)
   /// Readable short link (/p/<slug>). Only usable with the PIN, which is required to set one.
-  slug               String?            @unique
-  disabledAt         DateTime?          @db.Timestamptz(3)
-  deletedAt          DateTime?          @db.Timestamptz(3)
-  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime           @updatedAt @db.Timestamptz(3)
-  versions           ExperienceVersion[] @relation("Versions")
-  media              MediaAsset[]
-  sessions           RecipientSession[]
-  reports            AbuseReport[]
-  entitlement        Entitlement?
-  paymentOrders      PaymentOrder[]
-  dailyOpens         ExperienceDailyOpen[]
+  slug            String?               @unique
+  disabledAt      DateTime?             @db.Timestamptz(3)
+  deletedAt       DateTime?             @db.Timestamptz(3)
+  createdAt       DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime              @updatedAt @db.Timestamptz(3)
+  versions        ExperienceVersion[]   @relation("Versions")
+  media           MediaAsset[]
+  sessions        RecipientSession[]
+  reports         AbuseReport[]
+  entitlement     Entitlement?
+  paymentOrders   PaymentOrder[]
+  dailyOpens      ExperienceDailyOpen[]
 
   @@index([ownerId, updatedAt(sort: Desc), id])
   @@index([status, createdAt(sort: Desc), id])
@@ -197,25 +197,25 @@ model Experience {
 
 /// A draft (mutable, one per experience) or an immutable published snapshot.
 model ExperienceVersion {
-  id           String           @id @default(uuid()) @db.Uuid
-  experienceId String           @db.Uuid
-  experience   Experience       @relation("Versions", fields: [experienceId], references: [id], onDelete: Cascade)
-  activeFor    Experience?      @relation("ActiveVersion")
+  id                 String             @id @default(uuid()) @db.Uuid
+  experienceId       String             @db.Uuid
+  experience         Experience         @relation("Versions", fields: [experienceId], references: [id], onDelete: Cascade)
+  activeFor          Experience?        @relation("ActiveVersion")
   /// 0 for the draft; 1..n for published versions.
-  number       Int
-  state        VersionState
-  title        String
-  theme        Json
+  number             Int
+  state              VersionState
+  title              String
+  theme              Json
   /// Whether individual answers are shown to the creator. Recipients are told before starting.
   responseVisibility ResponseVisibility @default(FULL)
   /// Optimistic-concurrency counter for draft autosave.
-  revision     Int              @default(1)
-  publishedAt  DateTime?        @db.Timestamptz(3)
-  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime         @updatedAt @db.Timestamptz(3)
-  steps        Step[]
-  gifts        Gift[]
-  sessions     RecipientSession[]
+  revision           Int                @default(1)
+  publishedAt        DateTime?          @db.Timestamptz(3)
+  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(3)
+  steps              Step[]
+  gifts              Gift[]
+  sessions           RecipientSession[]
 
   @@unique([experienceId, number])
 }
@@ -291,21 +291,21 @@ model MediaAsset {
 
 /// Anonymous recipient progress. No IP address, user agent or location is stored.
 model RecipientSession {
-  id           String            @id @default(uuid()) @db.Uuid
-  experienceId String            @db.Uuid
-  experience   Experience        @relation(fields: [experienceId], references: [id], onDelete: Cascade)
-  versionId    String            @db.Uuid
-  version      ExperienceVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  id            String            @id @default(uuid()) @db.Uuid
+  experienceId  String            @db.Uuid
+  experience    Experience        @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  versionId     String            @db.Uuid
+  version       ExperienceVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
   /// SHA-256 of the session token held by the recipient's browser.
-  tokenHash    String            @unique
+  tokenHash     String            @unique
   /// What this recipient was told: true if the creator can see individual answers.
   answersShared Boolean
-  startedAt    DateTime          @default(now()) @db.Timestamptz(3)
-  lastActiveAt DateTime          @default(now()) @db.Timestamptz(3)
-  completedAt  DateTime?         @db.Timestamptz(3)
-  closedAt     DateTime?         @db.Timestamptz(3)
-  expiresAt    DateTime          @db.Timestamptz(3)
-  responses    Response[]
+  startedAt     DateTime          @default(now()) @db.Timestamptz(3)
+  lastActiveAt  DateTime          @default(now()) @db.Timestamptz(3)
+  completedAt   DateTime?         @db.Timestamptz(3)
+  closedAt      DateTime?         @db.Timestamptz(3)
+  expiresAt     DateTime          @db.Timestamptz(3)
+  responses     Response[]
 
   @@index([experienceId, startedAt])
   @@index([expiresAt])
@@ -343,7 +343,7 @@ model Template {
 /// without accounts a creator is only as durable as a cookie, but an experience keeps its manage
 /// link. One row per experience; upgrading replaces the tier.
 model Entitlement {
-  id           String            @id @default(uuid()) @db.Uuid
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   experienceId String            @unique @db.Uuid
   experience   Experience        @relation(fields: [experienceId], references: [id], onDelete: Cascade)
   tier         Tier
@@ -370,7 +370,7 @@ model ExperienceDailyOpen {
 /// (experienceId becomes null) because it is the record support needs for refunds and disputes.
 /// Contains no customer details: the provider's hosted page collects those.
 model PaymentOrder {
-  id                String             @id @default(uuid()) @db.Uuid
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   experienceId      String?            @db.Uuid
   experience        Experience?        @relation(fields: [experienceId], references: [id], onDelete: SetNull)
   tier              Tier
@@ -397,7 +397,7 @@ model PaymentOrder {
 
 /// Webhook deliveries already processed, so a provider retry is acknowledged without re-running.
 model PaymentWebhookEvent {
-  id         String          @id @default(uuid()) @db.Uuid
+  id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   provider   PaymentProvider
   eventId    String
   type       String

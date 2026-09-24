@@ -85,15 +85,9 @@ jobs:
         run: |
           cp .env.example .env
           echo "APP_ENV=test" >> .env
-      - name: Start Keycloak with the development realm
-        run: |
-          docker run -d --name keycloak -p 8080:8080 -p 9000:9000 \
-            -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \
-            -v "$PWD/infra/keycloak:/opt/keycloak/data/import:ro" \
-            quay.io/keycloak/keycloak:26.7.4 start-dev --import-realm --health-enabled=true
-          for i in $(seq 1 60); do curl -sf http://localhost:9000/health/ready && break; sleep 3; done
-      - run: pnpm db:generate && pnpm db:deploy && pnpm db:seed
-      - run: pnpm build
+      # Build first: the seed imports the compiled contracts package.
+      - run: pnpm db:generate && pnpm build
+      - run: pnpm db:deploy && pnpm db:seed
       - run: pnpm --filter @momentpath/web exec playwright install --with-deps chromium
       - run: pnpm test:e2e
       - uses: actions/upload-artifact@v4
