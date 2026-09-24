@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { TIERS } from './tiers';
+import { TemplateFieldSchema, TemplateFieldValuesSchema } from './template-fields';
 import { AnswerSchema } from './answers';
 import { GiftSecretSchema, RevealedGiftSchema } from './gifts';
 import { DraftStepSchema, MAX_STEPS, StepKeySchema } from './steps';
@@ -68,14 +69,36 @@ export const TemplateSummarySchema = z.object({
   description: z.string(),
   stepCount: z.number().int(),
   tier: TierSchema,
+  /** Grouping for the gallery, e.g. "Birthday", "Festivals", "Love". */
+  occasion: z.string().max(40),
+  emoji: z.string().max(8),
+  theme: ThemeSchema,
+  fields: z.array(TemplateFieldSchema),
 });
 export const TemplateListResponseSchema = z.object({ items: z.array(TemplateSummarySchema) });
+
+/** A playable template with example values (no media, no private data). */
+export const TemplatePreviewSchema = z.object({
+  title: z.string(),
+  theme: ThemeSchema,
+  steps: z.array(DraftStepSchema),
+  media: z.array(
+    z.object({
+      id: Uuid,
+      url: z.string(),
+      width: z.number().int().nullable(),
+      height: z.number().int().nullable(),
+    }),
+  ),
+});
 
 // ---------------------------------------------------------------------------------------
 // Experiences
 export const CreateExperienceRequestSchema = z.strictObject({
   title: z.string().trim().max(120).optional(),
   templateKey: z.string().max(60).nullable().optional(),
+  /** Quick personalisation values for the template's fields. */
+  fields: TemplateFieldValuesSchema.optional(),
 });
 
 export const ExperienceStatsSchema = z.object({
@@ -538,4 +561,21 @@ export const VersionListResponseSchema = z.object({ items: z.array(VersionSummar
 export const RestoreVersionResponseSchema = z.object({
   revision: z.number().int(),
   restoredFrom: z.number().int(),
+});
+
+// ---------------------------------------------------------------------------------------
+// Operator: which templates are free or paid, and which are shown.
+export const AdminTemplateSchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  occasion: z.string(),
+  emoji: z.string(),
+  tier: TierSchema,
+  isActive: z.boolean(),
+  position: z.number().int(),
+});
+export const AdminTemplateListResponseSchema = z.object({ items: z.array(AdminTemplateSchema) });
+export const UpdateTemplateRequestSchema = z.strictObject({
+  tier: TierSchema.optional(),
+  isActive: z.boolean().optional(),
 });

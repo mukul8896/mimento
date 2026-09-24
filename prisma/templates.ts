@@ -2,13 +2,16 @@ import {
   DEFAULT_THEME,
   PALETTE_PRESETS,
   richTextFromParagraphs,
-  type DraftStep,
-  type GiftSecret,
-  type Theme,
+  type TemplateContentInput,
   type Tier,
 } from '@momentpath/contracts';
+import { OCCASION_TEMPLATES } from './occasion-templates';
 
-/** Curated Phase 1 templates. Step keys are placeholders replaced per experience. */
+/**
+ * Curated templates. Step keys are placeholders replaced per experience; `{{field}}` text is
+ * filled from the template's fields when an experience is created (contracts/template-fields).
+ * `tier` only applies when a template is first seeded: after that the operator decides.
+ */
 export interface TemplateDefinition {
   key: string;
   name: string;
@@ -17,17 +20,12 @@ export interface TemplateDefinition {
   tier: Tier;
   position: number;
   version: number;
-  content: {
-    title: string;
-    theme: Theme;
-    steps: DraftStep[];
-    giftDefaults: Record<string, GiftSecret>;
-  };
+  content: TemplateContentInput;
 }
 
 const k = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
-export const TEMPLATES: TemplateDefinition[] = [
+const CLASSIC_TEMPLATES: TemplateDefinition[] = [
   {
     key: 'date-invitation',
     name: 'Date invitation',
@@ -37,6 +35,8 @@ export const TEMPLATES: TemplateDefinition[] = [
     version: 1,
     content: {
       title: 'A little question for you',
+      occasion: 'Love',
+      emoji: '💌',
       theme: { ...DEFAULT_THEME, palette: { ...PALETTE_PRESETS.blush }, animation: 'POP' },
       steps: [
         {
@@ -119,6 +119,8 @@ export const TEMPLATES: TemplateDefinition[] = [
     version: 1,
     content: {
       title: 'Happy birthday!',
+      occasion: 'Birthday',
+      emoji: '🎂',
       theme: { ...DEFAULT_THEME, palette: { ...PALETTE_PRESETS.sunrise }, animation: 'SLIDE' },
       steps: [
         {
@@ -199,6 +201,8 @@ export const TEMPLATES: TemplateDefinition[] = [
     version: 1,
     content: {
       title: 'Happy anniversary',
+      occasion: 'Love',
+      emoji: '💞',
       theme: {
         ...DEFAULT_THEME,
         palette: { ...PALETTE_PRESETS.midnight },
@@ -264,3 +268,5 @@ export const TEMPLATES: TemplateDefinition[] = [
     },
   },
 ];
+
+export const TEMPLATES: TemplateDefinition[] = [...CLASSIC_TEMPLATES, ...OCCASION_TEMPLATES];

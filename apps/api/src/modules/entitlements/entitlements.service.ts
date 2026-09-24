@@ -41,10 +41,11 @@ export class EntitlementsService {
       ? await client.template.findFirst({ where: { key: experience.templateKey } })
       : null;
     const templateSteps = template ? TemplateContentSchema.parse(template.content).steps : null;
+    // Only the sequence of step types matters for tiers, so raw template steps are enough.
 
     const required = requiredTier({
       templateTier: template ? template.tier : null,
-      templateStepTypes: templateSteps ? stepTypesOf(templateSteps) : null,
+      templateStepTypes: templateSteps ? templateSteps.map((s) => s.type) : null,
       stepTypes: stepTypesOf(steps),
       hasRouting: hasRouting(flowSteps(steps)),
     });

@@ -128,3 +128,78 @@ body {
 .react-flow .flow-edge-branch .react-flow__edge-path {
   stroke: var(--color-brand-500, #d946ef);
 }
+
+/* Landing page motion (CSS only, no assets). The reduced-motion rule above stills all of it. */
+@keyframes wr-float {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-115vh) rotate(28deg);
+    opacity: 0;
+  }
+}
+.wr-floater {
+  position: absolute;
+  bottom: -3rem;
+  animation: wr-float linear infinite;
+  will-change: transform;
+  pointer-events: none;
+}
+@keyframes wr-wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  20% {
+    transform: rotate(-5deg);
+  }
+  40% {
+    transform: rotate(5deg);
+  }
+  60% {
+    transform: rotate(-3deg);
+  }
+  80% {
+    transform: rotate(0deg);
+  }
+}
+.wr-wiggle {
+  animation: wr-wiggle 2.2s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+@keyframes wr-shine {
+  to {
+    background-position: 200% center;
+  }
+}
+.wr-shine {
+  background: linear-gradient(90deg, #c81e55, #f59e0b, #ec4899, #8b5cf6, #c81e55);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: wr-shine 5s linear infinite;
+}
+@keyframes wr-pulse-ring {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+.wr-pulse-ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 3px solid #ec4899;
+  animation: wr-pulse-ring 1.8s ease-out infinite;
+}

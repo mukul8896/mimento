@@ -20,10 +20,10 @@ beforeAll(async () => {
 afterAll(async () => ctx.close());
 
 describe('templates and drafts', () => {
-  it('lists the three seeded templates', async () => {
+  it('lists the seeded templates, classics first', async () => {
     const res = await alice.get('/templates');
     expect(res.status).toBe(200);
-    expect(res.body.items.map((t: { key: string }) => t.key)).toEqual([
+    expect(res.body.items.map((t: { key: string }) => t.key).slice(0, 3)).toEqual([
       'date-invitation',
       'birthday-surprise',
       'anniversary',

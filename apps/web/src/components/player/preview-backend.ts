@@ -26,7 +26,11 @@ export class PreviewBackend implements PlayerBackend {
   readonly mode = 'preview' as const;
   private answers = new Map<string, Answer>();
 
-  constructor(private readonly experience: PublicExperience) {}
+  constructor(
+    private readonly experience: PublicExperience,
+    /** Demos (landing page, template gallery) can show a real-looking gift message. */
+    private readonly giftMessage = 'Preview: your surprise details will appear here for the recipient.',
+  ) {}
 
   async load(): Promise<PlayerState> {
     this.answers = new Map();
@@ -54,7 +58,7 @@ export class PreviewBackend implements PlayerBackend {
     return {
       gift: {
         kind: 'PHYSICAL_MESSAGE' as const,
-        message: 'Preview: your surprise details will appear here for the recipient.',
+        message: this.giftMessage,
       },
       progress: progressOf(this.experience.steps, this.answers),
     };

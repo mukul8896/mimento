@@ -5,6 +5,9 @@ import {
   referencedMediaIds,
   type DraftStep,
   type ExperienceSummary,
+  fieldIssues,
+  materializeTemplate,
+  type TemplateFieldValues,
   type UpdateAccessRequest,
   type UpdateDraftRequest,
 } from '@momentpath/contracts';
@@ -139,7 +142,7 @@ export class ExperiencesService {
 
   async create(
     principal: Principal,
-    input: { title?: string; templateKey?: string | null },
+    input: { title?: string; templateKey?: string | null; fields?: TemplateFieldValues },
     requestId: string | null,
   ) {
     // A manage link opens one experience; new ones need this browser's own owner token.
@@ -149,9 +152,18 @@ export class ExperiencesService {
         'This browser was opened with a link to one surprise. Start fresh on this device to create new ones.',
       );
     }
-    const template = input.templateKey ? await this.templates.find(input.templateKey) : null;
-    if (input.templateKey && !template)
+    const content = input.templateKey ? await this.templates.find(input.templateKey) : null;
+    if (input.templateKey && !content)
       throw Problem.badRequest('UNKNOWN_TEMPLATE', 'Template not found');
+    const fieldProblems = content ? fieldIssues(content.fields, input.fields ?? {}) : [];
+    if (fieldProblems.length > 0) {
+      throw Problem.unprocessable(
+        'INVALID_TEMPLATE_FIELDS',
+        'Check the personal details',
+        fieldProblems.map((i) => ({ stepKey: null, field: i.key, message: i.message })),
+      );
+    }
+    const template = content ? materializeTemplate(content, input.fields ?? {}) : null;
 
     // Templates carry placeholder keys; every experience gets fresh stable step keys.
     const keyMap = new Map<string, string>();

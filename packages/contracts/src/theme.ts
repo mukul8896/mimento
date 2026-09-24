@@ -61,6 +61,52 @@ export const PALETTE_PRESETS = {
     accent: '#b4501b',
     accentText: '#ffffff',
   },
+  /** Diwali: deep plum with diya gold. */
+  festive: {
+    background: '#2b1438',
+    surface: '#3a1d4b',
+    text: '#fff5e1',
+    accent: '#f5b93a',
+    accentText: '#2b1438',
+  },
+  /** Holi: bright magenta on pink. */
+  holi: {
+    background: '#fff0f8',
+    surface: '#ffffff',
+    text: '#3b1036',
+    accent: '#b0106c',
+    accentText: '#ffffff',
+  },
+  /** Christmas: pine green with berry red. */
+  evergreen: {
+    background: '#0f2a1f',
+    surface: '#173a2c',
+    text: '#f4f1e8',
+    accent: '#f2c14e',
+    accentText: '#10291e',
+  },
+  /** Eid: night teal with moon gold. */
+  crescent: {
+    background: '#0e2a2a',
+    surface: '#153b3b',
+    text: '#f5f0e1',
+    accent: '#e3c16f',
+    accentText: '#14302f',
+  },
+  ocean: {
+    background: '#eef6fb',
+    surface: '#ffffff',
+    text: '#0d2c3f',
+    accent: '#0b6694',
+    accentText: '#ffffff',
+  },
+  lavender: {
+    background: '#f6f2ff',
+    surface: '#ffffff',
+    text: '#2a1f47',
+    accent: '#6d3fc6',
+    accentText: '#ffffff',
+  },
 } as const satisfies Record<string, ThemePalette>;
 export type PalettePresetName = keyof typeof PALETTE_PRESETS;
 

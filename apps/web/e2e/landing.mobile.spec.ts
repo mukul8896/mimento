@@ -1,0 +1,73 @@
+import { expect, test, type Page } from '@playwright/test';
+import { expectAccessible, expectNoHorizontalScroll } from './helpers';
+import { authFile } from './users';
+
+function consoleErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on('console', (m) => {
+    if (m.type() === 'error') errors.push(m.text());
+  });
+  page.on('pageerror', (e) => errors.push(e.message));
+  return errors;
+}
+
+test('landing: open the gift, play the demo, browse and play a template', async ({ page }) => {
+  const errors = consoleErrors(page);
+  await page.goto('/');
+  await expectNoHorizontalScroll(page);
+
+  // The hook: tap the gift to reveal the call to action.
+  await page.getByTestId('open-gift').click();
+  await expect(page.getByRole('link', { name: 'Make one in 2 minutes' })).toBeVisible();
+
+  // The demo plays in place; its No button cannot be chosen.
+  const demo = page.getByRole('region', { name: 'Try a surprise' });
+  await demo.scrollIntoViewIfNeeded();
+  await demo.getByRole('button', { name: 'Show me' }).click();
+  await expect(demo.getByRole('button', { name: 'Yes! 😍' })).toBeVisible();
+  await demo.getByRole('button', { name: 'Yes! 😍' }).click();
+  await expect(demo.getByRole('group', { name: 'Who would you surprise first?' })).toBeVisible();
+
+  // Gallery: filter to festivals and play the Diwali template.
+  const gallery = page.getByTestId('template-gallery');
+  await page
+    .getByRole('group', { name: 'Occasions' })
+    .getByRole('button', { name: 'Festivals' })
+    .click();
+  await expect(gallery.getByTestId('template-diwali-wishes')).toBeVisible();
+  await expect(gallery.getByTestId('template-proposal')).toHaveCount(0);
+  await gallery.getByTestId('template-diwali-wishes').getByRole('button').first().click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('heading', { name: /Happy Diwali, Anjali/ })).toBeVisible();
+  await expect(dialog.getByRole('link', { name: 'Use this template' })).toHaveAttribute(
+    'href',
+    '/new?template=diwali-wishes',
+  );
+  await page.keyboard.press('Escape');
+
+  await expectAccessible(page);
+  expect(errors).toEqual([]);
+});
+
+test.describe('creator', () => {
+  test.use({ storageState: authFile('alice') });
+
+  test('personalises a template from a deep link and lands in the editor', async ({
+    page,
+    isMobile,
+  }) => {
+    await page.goto('/new?template=diwali-wishes');
+    const form = page.getByTestId('personalise-form');
+    await expect(form).toBeVisible();
+    await expect(page.getByTestId('personalise-create')).toBeDisabled(); // name is required
+    await form.getByLabel('Their name').fill('Asha');
+    await form.getByLabel('Your name (optional)').fill('Dev');
+    await page.getByTestId('personalise-create').click();
+    await expect(page).toHaveURL(/\/edit$/);
+    if (isMobile) await page.getByRole('button', { name: 'Steps', exact: true }).click();
+    await expect(page.getByTestId('step-list')).toContainText('Happy Diwali, Asha!');
+    await expect(page.getByRole('textbox', { name: 'Experience title' })).toHaveValue(
+      'Happy Diwali, Asha!',
+    );
+  });
+});

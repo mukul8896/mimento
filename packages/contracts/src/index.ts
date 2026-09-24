@@ -8,3 +8,5 @@ export * from './publish-rules';
 export * from './no-button';
 export * from './api';
 export * from './flow';
+export * from './template-fields';
+export * from './template-content';

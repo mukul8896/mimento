@@ -52,6 +52,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/templates/{key}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TemplatesController_preview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/experiences/{experienceId}/media/uploads": {
         parameters: {
             query?: never;
@@ -484,6 +500,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminController_templateList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/templates/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AdminController_updateTemplate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/experiences/{id}/entitlement": {
         parameters: {
             query?: never;
@@ -674,209 +722,6 @@ export interface components {
             displayName: string | null;
             isAdmin: boolean;
         };
-        TemplateListResponseDto_Output: {
-            items: {
-                key: string;
-                name: string;
-                description: string;
-                stepCount: number;
-                /** @enum {string} */
-                tier: "FREE" | "PLUS" | "PRO";
-            }[];
-        };
-        CreateUploadRequestDto: {
-            /** @enum {string} */
-            contentType: "image/jpeg" | "image/png" | "image/webp" | "image/gif" | "audio/mpeg" | "audio/mp4" | "audio/aac" | "audio/ogg" | "audio/webm";
-            sizeBytes: number;
-        };
-        CreateUploadResponseDto_Output: {
-            /** Format: uuid */
-            mediaId: string;
-            upload: {
-                url: string;
-                /** @constant */
-                method: "PUT";
-                headers: {
-                    [key: string]: string;
-                };
-                /** Format: date-time */
-                expiresAt: string;
-            };
-        };
-        MediaAssetDto_Output: {
-            /** Format: uuid */
-            id: string;
-            /** @enum {string} */
-            status: "PENDING_UPLOAD" | "READY" | "REJECTED";
-            mimeType: string;
-            sizeBytes: number | null;
-            width: number | null;
-            height: number | null;
-            url: string | null;
-        };
-        GiftSecret_Output: {
-            /** @constant */
-            kind: "VOUCHER_CODE";
-            code: string;
-            /** @default  */
-            pin: string;
-            /** @default  */
-            redeemUrl: string | "";
-            /** @default  */
-            instructions: string;
-        } | {
-            /** @constant */
-            kind: "URL";
-            /** Format: uri */
-            url: string;
-            /** @default  */
-            instructions: string;
-        } | {
-            /** @constant */
-            kind: "QR_IMAGE";
-            /** Format: uuid */
-            mediaId: string;
-            /** @default  */
-            instructions: string;
-        } | {
-            /** @constant */
-            kind: "INSTRUCTION";
-            instructions: string;
-        } | {
-            /** @constant */
-            kind: "PHYSICAL_MESSAGE";
-            message: string;
-        };
-        GiftSecretResponseDto_Output: {
-            secret: components["schemas"]["GiftSecret_Output"] | null;
-        };
-        GiftSecret: {
-            /** @constant */
-            kind: "VOUCHER_CODE";
-            code: string;
-            /** @default  */
-            pin: string;
-            /** @default  */
-            redeemUrl: string | "";
-            /** @default  */
-            instructions: string;
-        } | {
-            /** @constant */
-            kind: "URL";
-            /** Format: uri */
-            url: string;
-            /** @default  */
-            instructions: string;
-        } | {
-            /** @constant */
-            kind: "QR_IMAGE";
-            /** Format: uuid */
-            mediaId: string;
-            /** @default  */
-            instructions: string;
-        } | {
-            /** @constant */
-            kind: "INSTRUCTION";
-            instructions: string;
-        } | {
-            /** @constant */
-            kind: "PHYSICAL_MESSAGE";
-            message: string;
-        };
-        GiftSecretRequestDto: {
-            secret: components["schemas"]["GiftSecret"];
-        };
-        ExperienceListResponseDto_Output: {
-            items: {
-                /** Format: uuid */
-                id: string;
-                title: string;
-                /** @enum {string} */
-                status: "DRAFT" | "PUBLISHED" | "DISABLED" | "EXPIRED" | "DELETED";
-                /** @enum {string} */
-                moderationState: "ACTIVE" | "TAKEN_DOWN";
-                /** Format: date-time */
-                createdAt: string;
-                /** Format: date-time */
-                updatedAt: string;
-                publishedAt: string | null;
-                expiresAt: string | null;
-                stats: {
-                    started: number;
-                    completed: number;
-                };
-            }[];
-            nextCursor: string | null;
-        };
-        CreateExperienceRequestDto: {
-            title?: string;
-            templateKey?: string | null;
-        };
-        ExperienceDetailDto_Output: {
-            /** Format: uuid */
-            id: string;
-            title: string;
-            /** @enum {string} */
-            status: "DRAFT" | "PUBLISHED" | "DISABLED" | "EXPIRED" | "DELETED";
-            /** @enum {string} */
-            moderationState: "ACTIVE" | "TAKEN_DOWN";
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-            publishedAt: string | null;
-            expiresAt: string | null;
-            stats: {
-                started: number;
-                completed: number;
-            };
-            settings: {
-                /** @enum {string} */
-                responseVisibility: "FULL" | "AGGREGATE_ONLY";
-            };
-            publishedVersion: number | null;
-            hasUnpublishedChanges: boolean;
-            takedownReason: string | null;
-            tier: {
-                /** @enum {string} */
-                required: "FREE" | "PLUS" | "PRO";
-                /** @enum {string} */
-                held: "FREE" | "PLUS" | "PRO";
-                satisfied: boolean;
-            };
-            access: {
-                opensAt: string | null;
-                hasPin: boolean;
-                slug: string | null;
-            };
-        };
-        ManageLinkResponseDto_Output: {
-            manageToken: string;
-        };
-        UpdateAccessRequestDto: {
-            opensAt?: string | null;
-            pin?: string | null;
-            slug?: string | null;
-        };
-        AccessSettingsDto_Output: {
-            opensAt: string | null;
-            hasPin: boolean;
-            slug: string | null;
-        };
-        VersionListResponseDto_Output: {
-            items: {
-                number: number;
-                title: string;
-                /** Format: date-time */
-                publishedAt: string;
-                stepCount: number;
-                isActive: boolean;
-            }[];
-        };
-        RestoreVersionResponseDto_Output: {
-            revision: number;
-            restoredFrom: number;
-        };
         Theme_Output: {
             palette: {
                 background: string;
@@ -891,6 +736,40 @@ export interface components {
             typeScale: "COMPACT" | "COMFORTABLE" | "LARGE";
             /** @enum {string} */
             animation: "NONE" | "FADE" | "SLIDE" | "POP";
+        };
+        TemplateListResponseDto_Output: {
+            items: {
+                key: string;
+                name: string;
+                description: string;
+                stepCount: number;
+                /** @enum {string} */
+                tier: "FREE" | "PLUS" | "PRO";
+                occasion: string;
+                emoji: string;
+                theme: components["schemas"]["Theme_Output"];
+                fields: {
+                    key: string;
+                    label: string;
+                    placeholder: string;
+                    /** @default  */
+                    fallback: string;
+                    /**
+                     * @default text
+                     * @enum {string}
+                     */
+                    kind: "text" | "datetime";
+                    /** @default 60 */
+                    maxLength: number;
+                    /** @default false */
+                    required: boolean;
+                    /**
+                     * @default NONE
+                     * @enum {string}
+                     */
+                    suggest: "NONE" | "NEXT_NEW_YEAR" | "IN_7_DAYS" | "TOMORROW_MORNING";
+                }[];
+            }[];
         };
         Step_Output: {
             /** Format: uuid */
@@ -1251,6 +1130,214 @@ export interface components {
             }[];
             /** @default null */
             otherwise: (string | "END") | null;
+        };
+        TemplatePreviewDto_Output: {
+            title: string;
+            theme: components["schemas"]["Theme_Output"];
+            steps: components["schemas"]["Step_Output"][];
+            media: {
+                /** Format: uuid */
+                id: string;
+                url: string;
+                width: number | null;
+                height: number | null;
+            }[];
+        };
+        CreateUploadRequestDto: {
+            /** @enum {string} */
+            contentType: "image/jpeg" | "image/png" | "image/webp" | "image/gif" | "audio/mpeg" | "audio/mp4" | "audio/aac" | "audio/ogg" | "audio/webm";
+            sizeBytes: number;
+        };
+        CreateUploadResponseDto_Output: {
+            /** Format: uuid */
+            mediaId: string;
+            upload: {
+                url: string;
+                /** @constant */
+                method: "PUT";
+                headers: {
+                    [key: string]: string;
+                };
+                /** Format: date-time */
+                expiresAt: string;
+            };
+        };
+        MediaAssetDto_Output: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            status: "PENDING_UPLOAD" | "READY" | "REJECTED";
+            mimeType: string;
+            sizeBytes: number | null;
+            width: number | null;
+            height: number | null;
+            url: string | null;
+        };
+        GiftSecret_Output: {
+            /** @constant */
+            kind: "VOUCHER_CODE";
+            code: string;
+            /** @default  */
+            pin: string;
+            /** @default  */
+            redeemUrl: string | "";
+            /** @default  */
+            instructions: string;
+        } | {
+            /** @constant */
+            kind: "URL";
+            /** Format: uri */
+            url: string;
+            /** @default  */
+            instructions: string;
+        } | {
+            /** @constant */
+            kind: "QR_IMAGE";
+            /** Format: uuid */
+            mediaId: string;
+            /** @default  */
+            instructions: string;
+        } | {
+            /** @constant */
+            kind: "INSTRUCTION";
+            instructions: string;
+        } | {
+            /** @constant */
+            kind: "PHYSICAL_MESSAGE";
+            message: string;
+        };
+        GiftSecretResponseDto_Output: {
+            secret: components["schemas"]["GiftSecret_Output"] | null;
+        };
+        GiftSecret: {
+            /** @constant */
+            kind: "VOUCHER_CODE";
+            code: string;
+            /** @default  */
+            pin: string;
+            /** @default  */
+            redeemUrl: string | "";
+            /** @default  */
+            instructions: string;
+        } | {
+            /** @constant */
+            kind: "URL";
+            /** Format: uri */
+            url: string;
+            /** @default  */
+            instructions: string;
+        } | {
+            /** @constant */
+            kind: "QR_IMAGE";
+            /** Format: uuid */
+            mediaId: string;
+            /** @default  */
+            instructions: string;
+        } | {
+            /** @constant */
+            kind: "INSTRUCTION";
+            instructions: string;
+        } | {
+            /** @constant */
+            kind: "PHYSICAL_MESSAGE";
+            message: string;
+        };
+        GiftSecretRequestDto: {
+            secret: components["schemas"]["GiftSecret"];
+        };
+        ExperienceListResponseDto_Output: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                title: string;
+                /** @enum {string} */
+                status: "DRAFT" | "PUBLISHED" | "DISABLED" | "EXPIRED" | "DELETED";
+                /** @enum {string} */
+                moderationState: "ACTIVE" | "TAKEN_DOWN";
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                publishedAt: string | null;
+                expiresAt: string | null;
+                stats: {
+                    started: number;
+                    completed: number;
+                };
+            }[];
+            nextCursor: string | null;
+        };
+        CreateExperienceRequestDto: {
+            title?: string;
+            templateKey?: string | null;
+            fields?: {
+                [key: string]: string;
+            };
+        };
+        ExperienceDetailDto_Output: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** @enum {string} */
+            status: "DRAFT" | "PUBLISHED" | "DISABLED" | "EXPIRED" | "DELETED";
+            /** @enum {string} */
+            moderationState: "ACTIVE" | "TAKEN_DOWN";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            publishedAt: string | null;
+            expiresAt: string | null;
+            stats: {
+                started: number;
+                completed: number;
+            };
+            settings: {
+                /** @enum {string} */
+                responseVisibility: "FULL" | "AGGREGATE_ONLY";
+            };
+            publishedVersion: number | null;
+            hasUnpublishedChanges: boolean;
+            takedownReason: string | null;
+            tier: {
+                /** @enum {string} */
+                required: "FREE" | "PLUS" | "PRO";
+                /** @enum {string} */
+                held: "FREE" | "PLUS" | "PRO";
+                satisfied: boolean;
+            };
+            access: {
+                opensAt: string | null;
+                hasPin: boolean;
+                slug: string | null;
+            };
+        };
+        ManageLinkResponseDto_Output: {
+            manageToken: string;
+        };
+        UpdateAccessRequestDto: {
+            opensAt?: string | null;
+            pin?: string | null;
+            slug?: string | null;
+        };
+        AccessSettingsDto_Output: {
+            opensAt: string | null;
+            hasPin: boolean;
+            slug: string | null;
+        };
+        VersionListResponseDto_Output: {
+            items: {
+                number: number;
+                title: string;
+                /** Format: date-time */
+                publishedAt: string;
+                stepCount: number;
+                isActive: boolean;
+            }[];
+        };
+        RestoreVersionResponseDto_Output: {
+            revision: number;
+            restoredFrom: number;
         };
         DraftDocumentDto_Output: {
             /** Format: uuid */
@@ -1883,6 +1970,23 @@ export interface components {
                 }[];
             }[] | null;
         };
+        AdminTemplateListResponseDto_Output: {
+            items: {
+                key: string;
+                name: string;
+                occasion: string;
+                emoji: string;
+                /** @enum {string} */
+                tier: "FREE" | "PLUS" | "PRO";
+                isActive: boolean;
+                position: number;
+            }[];
+        };
+        UpdateTemplateRequestDto: {
+            /** @enum {string} */
+            tier?: "FREE" | "PLUS" | "PRO";
+            isActive?: boolean;
+        };
         GrantEntitlementRequestDto: {
             /** @enum {string} */
             tier: "FREE" | "PLUS" | "PRO";
@@ -2099,6 +2203,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TemplateListResponseDto_Output"];
+                };
+            };
+        };
+    };
+    TemplatesController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplatePreviewDto_Output"];
                 };
             };
         };
@@ -2814,6 +2939,48 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ResultsResponseDto_Output"];
                 };
+            };
+        };
+    };
+    AdminController_templateList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTemplateListResponseDto_Output"];
+                };
+            };
+        };
+    };
+    AdminController_updateTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTemplateRequestDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

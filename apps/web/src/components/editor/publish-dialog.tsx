@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { WhatsAppShare } from '@/components/creator/whatsapp-share';
 import { useState } from 'react';
 import { Alert, Button, Dialog, Input } from '@momentpath/design-system';
 import { ApiError, browserApi, unwrap } from '@/lib/api/browser';
@@ -142,6 +143,7 @@ export function PublishDialog({
               {copied ? 'Copied!' : 'Copy'}
             </Button>
           </div>
+          <WhatsAppShare link={link} className="w-full" />
           <p className="text-xs text-ink-500">
             Anyone with the link can open it, and recipients can take screenshots. The link is
             hidden from search engines.

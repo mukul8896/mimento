@@ -1,6 +1,6 @@
 # INSTRUCTION.md — current application state
 
-_Last updated: 2026-09-24 (Phase 2 approved; slice 2a payments built — awaiting sandbox keys)._ Update this file at the end of every session.
+_Last updated: 2026-09-24 (Phase 2 live; ready-made templates and new landing page)._ Update this file at the end of every session.
 
 ## Status snapshot
 
@@ -17,6 +17,31 @@ stages 2 and 3 are not started.**
 | Docker Compose, Dockerfiles                                                             | **Verified 2026-09-23** — services healthy, both images build, API + web serve                     |
 | GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
 | Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
+
+## Ready-made templates and a new landing page (2026-09-24)
+
+- 26 templates: the 3 classics plus 23 occasion templates in `prisma/occasion-templates.ts`
+  (birthday, midnight birthday, Diwali, New Year countdown, Holi, Raksha Bandhan, Eid, Christmas,
+  Valentine, proposal, congratulations, graduation, wedding, new baby, good luck, get well,
+  thank you, sorry, farewell, friendship, Mother's/Father's Day, meet me). Six new palettes.
+- Templates declare a few `fields` ("Their name", "From", dates). Text uses `{{key}}`; creating
+  fills them once (`fillTemplate`/`materializeTemplate` in contracts), then validates the result
+  as ordinary draft steps. A string that is exactly a date placeholder becomes the ISO date
+  (countdown targets, gift unlock times). `GET /templates/:key/preview` is public and fills in
+  the examples so visitors can play a template before signing anything.
+- **Free or paid is the operator's call**: every new template seeds as FREE; `/admin` → "Templates:
+  free or paid" switches tier and visibility (`PUT /admin/templates/:key`, audited). The seed
+  never overwrites tier or visibility on existing rows.
+- Landing (`app/page.tsx`, `components/site/landing/*`): tap-to-open gift hero with confetti
+  (motion, already a dependency), floating emoji background (CSS only), an in-page playable demo
+  (preview backend, nothing stored), occasion-filtered gallery with a play-demo dialog, and
+  "use this template" deep links to `/new?template=key`. `/new` got the same cards plus a short
+  personalise sheet. WhatsApp share button on the share card and publish dialog. No paid assets
+  or services: emoji, CSS and the existing motion library only.
+- Tests: `templates.int.test.ts` (every template publishes as-is), `template-fields.test.ts`,
+  `landing.mobile.spec.ts`. Full run: 75+23+80 unit, 104 integration, 57 E2E passed.
+- Seen once in a full integration run and not reproducible in isolation or two reruns:
+  `new-steps.int.test.ts` "locked countdown" returned non-400. Watch for it.
 
 ## Fix: new surprises "not found" with a manage-link cookie (2026-09-24)
 

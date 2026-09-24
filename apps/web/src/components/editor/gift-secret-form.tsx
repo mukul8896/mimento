@@ -136,7 +136,10 @@ export function GiftSecretForm({
       {state === 'loading' ? <p className="text-sm text-ink-500">Loading…</p> : null}
       {kind === 'VOUCHER_CODE' ? (
         <>
-          <Field label="Voucher code">
+          <Field
+            label="Voucher code"
+            hint="Paste an e-gift card code, e.g. Amazon, Flipkart, Swiggy, Zomato, Myntra or Nykaa. It stays encrypted until they earn it."
+          >
             {(p) => (
               <Input
                 value={values.code ?? ''}

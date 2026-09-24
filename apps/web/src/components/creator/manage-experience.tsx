@@ -8,6 +8,7 @@ import { Alert, Badge, Button, Card, Dialog, Field, Input } from '@momentpath/de
 import { ApiError, browserApi, unwrap } from '@/lib/api/browser';
 import { formatDateTime, STATUS_LABEL, STATUS_TONE } from '@/lib/format';
 import { AccessPanel } from './access-panel';
+import { WhatsAppShare } from './whatsapp-share';
 import { UnlockPanel } from './unlock-panel';
 
 type Detail = Schemas['ExperienceDetailDto_Output'];
@@ -193,6 +194,7 @@ export function ManageExperience({ experience }: { experience: Detail }) {
                 <Button onClick={copy} variant="secondary" className="shrink-0">
                   {copied ? 'Copied!' : 'Copy link'}
                 </Button>
+                <WhatsAppShare link={link} />
               </div>
             ) : (
               <Button onClick={showLink} busy={busy === 'link'} variant="secondary">

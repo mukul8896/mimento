@@ -6,6 +6,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Put,
   Query,
   Req,
 } from '@nestjs/common';
@@ -13,6 +14,8 @@ import { ApiBearerAuth, ApiNoContentResponse, ApiTags } from '@nestjs/swagger';
 import { createZodDto, ZodResponse } from 'nestjs-zod';
 import type { Request } from 'express';
 import {
+  AdminTemplateListResponseSchema,
+  UpdateTemplateRequestSchema,
   AdminExperienceListResponseSchema,
   AdminListQuerySchema,
   AdminReportListResponseSchema,
@@ -25,7 +28,9 @@ import {
 import { requestId } from '../../common/request';
 import { AdminOnly, CurrentPrincipal } from '../identity/decorators';
 import type { Principal } from '../identity/principal';
+import { AuditService } from '../audit/audit.service';
 import { ModerationService } from '../moderation/moderation.service';
+import { TemplatesService } from '../templates/templates.service';
 
 class AdminListQueryDto extends createZodDto(AdminListQuerySchema) {}
 class AdminReportListResponseDto extends createZodDto(AdminReportListResponseSchema) {}
@@ -35,13 +40,47 @@ class ResolveReportRequestDto extends createZodDto(ResolveReportRequestSchema) {
 class TakedownRequestDto extends createZodDto(TakedownRequestSchema) {}
 class AdminContentDto extends createZodDto(PublicExperienceSchema) {}
 class GrantEntitlementRequestDto extends createZodDto(GrantEntitlementRequestSchema) {}
+class AdminTemplateListResponseDto extends createZodDto(AdminTemplateListResponseSchema) {}
+class UpdateTemplateRequestDto extends createZodDto(UpdateTemplateRequestSchema) {}
 
 @ApiTags('admin')
 @ApiBearerAuth()
 @AdminOnly()
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly moderation: ModerationService) {}
+  constructor(
+    private readonly moderation: ModerationService,
+    private readonly templates: TemplatesService,
+    private readonly audit: AuditService,
+  ) {}
+
+  @Get('templates')
+  @ZodResponse({ status: 200, type: AdminTemplateListResponseDto })
+  templateList() {
+    return this.templates.adminList();
+  }
+
+  /** Free or paid (PLUS/PRO), shown or hidden. Existing surprises keep working either way. */
+  @Put('templates/:key')
+  @HttpCode(204)
+  @ApiNoContentResponse()
+  async updateTemplate(
+    @CurrentPrincipal() principal: Principal,
+    @Param('key') key: string,
+    @Body() body: UpdateTemplateRequestDto,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.templates.update(key, body);
+    await this.audit.record({
+      actorType: 'ADMIN',
+      actorId: principal.userId,
+      action: 'template.updated',
+      targetType: 'template',
+      targetId: null,
+      requestId: requestId(req),
+      metadata: { key, tier: body.tier ?? null, isActive: body.isActive ?? null },
+    });
+  }
 
   /**
    * Unlocks a tier for one experience without a payment. This is how upgrades happen until the
