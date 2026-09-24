@@ -181,6 +181,7 @@ export class PaymentsService {
     if (!order) throw Problem.notFound('Order');
 
     let status = order.status;
+    let attemptFailed = false;
     if (status !== 'PAID') {
       const gateway = this.gateways[order.provider];
       if (!gateway) throw Problem.unprocessable('PROVIDER_UNAVAILABLE', 'Payment method removed');
@@ -193,9 +194,10 @@ export class PaymentsService {
       } catch (err) {
         throw this.unavailable(err);
       }
+      attemptFailed = result.state === 'PENDING' && result.attemptFailed === true;
       status = await this.apply(order, gateway, result, null);
     }
-    return { orderId: order.id, status, tier: await this.tierState(exp) };
+    return { orderId: order.id, status, attemptFailed, tier: await this.tierState(exp) };
   }
 
   /**

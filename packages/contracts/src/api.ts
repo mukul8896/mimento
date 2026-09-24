@@ -417,6 +417,8 @@ export const ConfirmCheckoutRequestSchema = z.strictObject({
 export const ConfirmCheckoutResponseSchema = z.object({
   orderId: Uuid,
   status: PaymentOrderStatusSchema,
+  /** The provider declined the buyer's last try; the checkout can be retried. */
+  attemptFailed: z.boolean(),
   tier: TierStateSchema,
 });
 

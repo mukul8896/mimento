@@ -123,6 +123,9 @@ function orderReferenceOf(metadata: Record<string, unknown> | null | undefined):
 
 function toLookup(payment: z.infer<typeof PaymentSchema>): PaymentLookup {
   // A failed attempt leaves the session open for another try, so it is not a closed order.
+  if (payment.status === 'failed' || payment.status === 'cancelled') {
+    return { state: 'PENDING', attemptFailed: true };
+  }
   if (payment.status !== 'succeeded') return { state: 'PENDING' };
   return {
     state: 'PAID',

@@ -5721,6 +5721,9 @@
               "EXPIRED"
             ]
           },
+          "attemptFailed": {
+            "type": "boolean"
+          },
           "tier": {
             "type": "object",
             "properties": {
@@ -5755,6 +5758,7 @@
         "required": [
           "orderId",
           "status",
+          "attemptFailed",
           "tier"
         ],
         "additionalProperties": false

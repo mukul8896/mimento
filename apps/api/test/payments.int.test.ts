@@ -229,6 +229,24 @@ describe('Dodo', () => {
     expect(res.body).toMatchObject({ status: 'PAID', tier: { held: 'PLUS', satisfied: true } });
   });
 
+  it('reports a declined attempt without unlocking or closing the checkout', async () => {
+    const id = await paidDraft();
+    const checkout = await alice.post(`/experiences/${id}/checkout`, { provider: 'DODO' });
+    const declined = fake.failDodo(checkout.body.checkoutUrl.split('/').pop());
+    const res = await alice.post(`/experiences/${id}/checkout/${checkout.body.orderId}/confirm`, {
+      paymentId: declined.payment_id,
+    });
+    expect(res.body).toMatchObject({ status: 'CREATED', attemptFailed: true });
+    expect(res.body.tier).toMatchObject({ held: 'FREE', satisfied: false });
+
+    // The same checkout can still be paid afterwards.
+    const paid = fake.payDodo(checkout.body.checkoutUrl.split('/').pop());
+    const retry = await alice.post(`/experiences/${id}/checkout/${checkout.body.orderId}/confirm`, {
+      paymentId: paid.payment_id,
+    });
+    expect(retry.body).toMatchObject({ status: 'PAID', attemptFailed: false });
+  });
+
   it('will not accept a payment made for a different checkout', async () => {
     const other = await paidDraft();
     const otherCheckout = await alice.post(`/experiences/${other}/checkout`, { provider: 'DODO' });

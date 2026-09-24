@@ -38,7 +38,25 @@ branching → 2d richer experiences. See `docs/phase-status.md`.
 - Tests: 69 unit, 68 integration (15 new payment tests), E2E 46 passed / 1 skipped against
   `next build && next start`.
 
-**Next for 2a:** owner provides Razorpay + Dodo test keys (put straight into `.env` /
+**Deployed 2026-09-24** (commit `a81ceb3`) to wishrevealer.com: payments migration applied via the
+`migrate` container, stack rebuilt, new pages live. `.env.production` has the payment settings as
+blanks with `BILLING_ENABLED=false`, so nothing is charged and no provider is offered yet. Commits in
+this repo use the GitHub no-reply email and carry no tool attribution (owner's request).
+
+**Sandbox verified 2026-09-24** on wishrevealer.com with the owner's test keys:
+
+- Razorpay: ₹99 UPI test payment → signed `payment_link.paid` webhook → PAID, Plus unlocked,
+  published. A second attempt on the same link was refused by Razorpay (links are single-use).
+- Dodo: an Indian billing address made Dodo charge INR (₹234.28 incl. tax) and the 4242 test card
+  was declined; with a US address $1.99 succeeded → signed `payment.succeeded` webhook → PAID,
+  Plus unlocked, published. Dodo **does** copy checkout `metadata.order_id` onto the payment.
+- Found and fixed (local, not yet deployed): after a declined attempt the return page said "will
+  unlock by itself"; the confirm response now has `attemptFailed` from the provider and the page
+  shows "did not go through — try again".
+- `DODO_PRODUCT_PLUS_TO_PRO` was a copy of the Plus product; blanked on the server until a $1.00
+  upgrade product exists.
+
+**Next for 2a (superseded list below kept for history):** owner provides Razorpay + Dodo test keys (put straight into `.env` /
 `.env.production`, never in chat) → run a real sandbox purchase with each → fix any field-name
 differences → deploy to the server with `BILLING_ENABLED=true` and register webhooks. Policy pages
 are drafts and need legal review before live keys. Not covered by E2E: the unlock → provider →

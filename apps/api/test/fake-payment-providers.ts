@@ -125,6 +125,12 @@ export async function startFakeProviders() {
       payments.set(payment.payment_id, payment);
       return payment;
     },
+    /** A declined Dodo attempt: the session stays open, the payment is marked failed. */
+    failDodo(sessionId: string) {
+      const payment = this.payDodo(sessionId);
+      payment.status = 'failed';
+      return payment;
+    },
     razorpayWebhook(event: string, link: Link, eventId: string) {
       const body = Buffer.from(
         JSON.stringify({

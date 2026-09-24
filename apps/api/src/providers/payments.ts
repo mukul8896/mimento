@@ -48,7 +48,8 @@ export type PaymentLookup =
       amountMinor: number | null;
       currency: string | null;
     }
-  | { state: 'PENDING' }
+  /** Not paid yet. `attemptFailed`: the buyer's last try was declined; the checkout is still open. */
+  | { state: 'PENDING'; attemptFailed?: boolean }
   | { state: 'CLOSED' };
 
 export interface WebhookEvent {

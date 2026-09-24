@@ -104,7 +104,10 @@ export class RazorpayGateway implements PaymentGateway {
       { method: 'GET', headers: this.auth },
       LinkStatusSchema,
     );
+    const attempts = link.payments ?? [];
+    const allFailed = attempts.length > 0 && attempts.every((p) => p.status === 'failed');
     return toLookup(link.status, {
+      attemptFailed: allFailed,
       providerOrderId: link.id,
       reference: link.reference_id ?? null,
       paymentId:
@@ -137,6 +140,7 @@ export class RazorpayGateway implements PaymentGateway {
       orderReference: link.reference_id ?? null,
       providerOrderId: link.id,
       result: toLookup(link.status, {
+        attemptFailed: false,
         providerOrderId: link.id,
         reference: link.reference_id ?? null,
         paymentId: body.data.payload?.payment?.entity.id ?? null,
@@ -150,6 +154,7 @@ export class RazorpayGateway implements PaymentGateway {
 function toLookup(
   status: string,
   link: {
+    attemptFailed: boolean;
     providerOrderId: string;
     reference: string | null;
     paymentId: string | null;
@@ -168,5 +173,5 @@ function toLookup(
     };
   }
   if (status === 'expired' || status === 'cancelled') return { state: 'CLOSED' };
-  return { state: 'PENDING' };
+  return { state: 'PENDING', attemptFailed: link.attemptFailed };
 }

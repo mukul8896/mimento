@@ -1547,6 +1547,7 @@ export interface components {
             orderId: string;
             /** @enum {string} */
             status: "CREATED" | "PAID" | "FAILED" | "EXPIRED";
+            attemptFailed: boolean;
             tier: {
                 /** @enum {string} */
                 required: "FREE" | "PLUS" | "PRO";

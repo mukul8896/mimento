@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Card, Spinner } from '@momentpath/design-system';
 import { ApiError, browserApi, unwrap } from '@/lib/api/browser';
 
-type State = 'checking' | 'paid' | 'pending' | 'failed' | 'error';
+type State = 'checking' | 'paid' | 'declined' | 'pending' | 'failed' | 'error';
 
 /** UPI approvals and webhooks can lag the redirect by a few seconds, so keep asking briefly. */
 const ATTEMPTS = 8;
@@ -44,6 +44,7 @@ export function CheckoutReturn({
         if (cancelled) return;
         if (res.status === 'PAID') return setState('paid');
         if (res.status === 'FAILED' || res.status === 'EXPIRED') return setState('failed');
+        if (res.attemptFailed) return setState('declined');
         if (attempt + 1 >= ATTEMPTS) return setState('pending');
         timer = setTimeout(() => void check(attempt + 1), INTERVAL_MS);
       } catch (err) {
@@ -80,6 +81,19 @@ export function CheckoutReturn({
           <Alert tone="success">Payment received — your surprise is unlocked.</Alert>
           <p className="text-sm text-ink-600">You can publish it and share the link now.</p>
           {back}
+        </>
+      ) : state === 'declined' ? (
+        <>
+          <Alert tone="warning">
+            This payment did not go through, so nothing was charged and nothing was unlocked. You
+            can try again with another card or payment method.
+          </Alert>
+          <Link
+            href={`/experiences/${experienceId}#unlock`}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-brand-600 px-4 text-sm font-medium text-white sm:w-auto"
+          >
+            Try again
+          </Link>
         </>
       ) : state === 'pending' ? (
         <>
