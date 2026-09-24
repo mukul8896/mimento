@@ -41,6 +41,7 @@ export async function createTestContext(
     RATE_LIMIT_DISABLED: 'true',
     OUTBOX_POLL_MS: '0',
     MEDIA_PIPELINE_MS: '0',
+    RETENTION_SWEEP_MS: '0',
     PAYMENTS_RECONCILE_MS: '0',
     ...overrides,
   });

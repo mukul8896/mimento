@@ -84,6 +84,14 @@ export const EnvSchema = z
     /** How often the media pipeline looks for new uploads to scan and resize. 0 disables. */
     MEDIA_PIPELINE_MS: z.coerce.number().int().min(0).default(3000),
 
+    /**
+     * Surprises nobody (creator or recipient) has used for this many days are deleted, and so are
+     * owners with nothing left who have not been back for as long. 0 turns retention off.
+     */
+    RETENTION_DAYS: z.coerce.number().int().min(0).max(3650).default(365),
+    /** How often the worker looks for surprises past retention. 0 disables the sweep. */
+    RETENTION_SWEEP_MS: z.coerce.number().int().min(0).default(3_600_000),
+
     RATE_LIMIT_DISABLED: bool.default(false),
     OUTBOX_POLL_MS: z.coerce.number().int().min(0).default(5000),
   })

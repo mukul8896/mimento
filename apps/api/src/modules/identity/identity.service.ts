@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { generateToken, isWellFormedToken, safeEqual, sha256 } from '../../common/crypto';
 import { APP_ENV, type AppEnv } from '../../config/env';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RetentionService } from '../experiences/retention.service';
 import type { Principal } from './principal';
 
 /** The single operator identity behind ADMIN_TOKEN. Not a login; there is no password. */
@@ -19,6 +20,7 @@ export class IdentityService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(APP_ENV) private readonly env: AppEnv,
+    private readonly retention: RetentionService,
   ) {}
 
   /**
@@ -44,6 +46,7 @@ export class IdentityService {
       where: { ownerTokenHash: sha256(token) },
     });
     if (!profile || profile.status !== 'ACTIVE') return null;
+    await this.retention.touchOwner(profile.id, profile.lastSeenAt);
     return { userId: profile.id, subject: profile.subject, isAdmin: false };
   }
 
@@ -63,6 +66,7 @@ export class IdentityService {
     });
     if (!experience || experience.status === 'DELETED') return null;
     if (experience.owner.status !== 'ACTIVE') return null;
+    await this.retention.touchExperience(experience.id);
     return {
       userId: experience.owner.id,
       subject: experience.owner.subject,

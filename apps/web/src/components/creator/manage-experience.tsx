@@ -6,7 +6,7 @@ import { useState } from 'react';
 import type { Schemas } from '@momentpath/api-client';
 import { Alert, Badge, Button, Card, Dialog, Field, Input } from '@momentpath/design-system';
 import { ApiError, browserApi, unwrap } from '@/lib/api/browser';
-import { formatDateTime, STATUS_LABEL, STATUS_TONE } from '@/lib/format';
+import { formatDate, formatDateTime, STATUS_LABEL, STATUS_TONE } from '@/lib/format';
 import { AccessPanel } from './access-panel';
 import { WhatsAppShare } from './whatsapp-share';
 import { UnlockPanel } from './unlock-panel';
@@ -217,7 +217,7 @@ export function ManageExperience({ experience }: { experience: Detail }) {
 
       <Card>
         <h2 className="font-semibold">Availability</h2>
-        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <dt className="text-ink-500">Published</dt>
             <dd>{formatDateTime(experience.publishedAt)}</dd>
@@ -227,12 +227,24 @@ export function ManageExperience({ experience }: { experience: Detail }) {
             <dd>{experience.expiresAt ? formatDateTime(experience.expiresAt) : 'Never'}</dd>
           </div>
           <div>
+            <dt className="text-ink-500">Kept until</dt>
+            <dd data-testid="kept-until">
+              {experience.keptUntil ? formatDate(experience.keptUntil) : 'Always'}
+            </dd>
+          </div>
+          <div>
             <dt className="text-ink-500">Opened / completed</dt>
             <dd>
               {experience.stats.started} / {experience.stats.completed}
             </dd>
           </div>
         </dl>
+        {experience.keptUntil ? (
+          <p className="mt-3 text-xs text-ink-500">
+            Surprises nobody has used for a year are deleted. Every time you open your dashboard, or
+            they open the link, it is kept for another year.
+          </p>
+        ) : null}
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           {experience.status === 'PUBLISHED' ? (
             <Button variant="secondary" onClick={() => setConfirm('disable')}>

@@ -1,6 +1,6 @@
 # INSTRUCTION.md — current application state
 
-_Last updated: 2026-09-24 (Phase 2 live; music, sound effects and celebrations in the player)._ Update this file at the end of every session.
+_Last updated: 2026-09-25 (Phase 2 live; 1-year retention; passkeys and email sign-in planned)._ Update this file at the end of every session.
 
 ## Status snapshot
 
@@ -17,6 +17,31 @@ stages 2 and 3 are not started.**
 | Docker Compose, Dockerfiles                                                             | **Verified 2026-09-23** — services healthy, both images build, API + web serve                     |
 | GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
 | Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
+
+## Retention: activity tracking and 1-year cleanup (2026-09-25)
+
+Owner decision: **one year**. Without accounts nobody tells us they have left, so activity decides.
+
+- **Schema** (migration `20260925090000_activity_and_retention`): `UserProfile.lastSeenAt`,
+  `Experience.lastActivityAt`, `Experience.retentionWarnedAt` (for the email reminder, slice 3).
+  Backfilled from `updatedAt` and the last recipient open.
+- **What counts as use** (recorded at most every 12 h): any request with the owner cookie
+  (`IdentityService.resolveOwner` → `RetentionService.touchOwner`, which also refreshes _all_ that
+  owner's surprises); a manage link (that surprise); a recipient opening the link
+  (`countOpen`). Activity clears `retentionWarnedAt`.
+- **Sweep** (`apps/api/src/modules/experiences/retention.service.ts`, worker only, hourly —
+  `RETENTION_SWEEP_MS`): surprises unused for `RETENTION_DAYS` (default 365, 0 = off) are purged
+  through the normal `purge` (audit actor `SYSTEM`, media removed by the outbox); then owners with
+  nothing left and no visit for as long become `DELETED` with their token hash cleared
+  (`account.expired`). The operator profile is never touched.
+- **Web**: summaries carry `keptUntil`; the manage page shows "Kept until"; the dashboard warns in
+  the last 30 days. A creator whose key stopped working is sent to `/start-over`, which clears the
+  cookies only after the API confirms a 401 (so it cannot sign anyone out), then a fresh owner is
+  minted. Privacy policy updated.
+- **Tests**: `retention.int.test.ts` (activity bumps, sweep of surprises then owners, 364-day
+  surprise kept); E2E `recovery.spec.ts` (dead key replaced, kept-until shown).
+- **Next slices**: passkeys (SimpleWebAuthn), then optional email magic link plus the "about to be
+  deleted" reminder 14 days before `keptUntil` (needs SMTP credentials).
 
 ## Music, sound effects and celebrations (2026-09-24)
 

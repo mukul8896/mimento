@@ -1322,6 +1322,7 @@ export interface components {
                 updatedAt: string;
                 publishedAt: string | null;
                 expiresAt: string | null;
+                keptUntil: string | null;
                 stats: {
                     started: number;
                     completed: number;
@@ -1350,6 +1351,7 @@ export interface components {
             updatedAt: string;
             publishedAt: string | null;
             expiresAt: string | null;
+            keptUntil: string | null;
             stats: {
                 started: number;
                 completed: number;

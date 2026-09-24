@@ -115,6 +115,8 @@ export const ExperienceSummarySchema = z.object({
   updatedAt: IsoDateTime,
   publishedAt: IsoDateTime.nullable(),
   expiresAt: IsoDateTime.nullable(),
+  /** Deleted after this date unless the creator or a recipient uses it (null: kept forever). */
+  keptUntil: IsoDateTime.nullable(),
   stats: ExperienceStatsSchema,
 });
 export type ExperienceSummary = z.infer<typeof ExperienceSummarySchema>;

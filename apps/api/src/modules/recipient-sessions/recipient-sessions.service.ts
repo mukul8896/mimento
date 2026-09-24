@@ -102,6 +102,10 @@ export class RecipientSessionsService {
       INSERT INTO "ExperienceDailyOpen" ("experienceId", "day", "opens")
       VALUES (${experienceId}::uuid, (now() AT TIME ZONE 'UTC')::date, 1)
       ON CONFLICT ("experienceId", "day") DO UPDATE SET "opens" = "ExperienceDailyOpen"."opens" + 1`;
+    // Being opened keeps a surprise alive (retention), recorded at most twice a day.
+    await this.prisma.$executeRaw`
+      UPDATE "Experience" SET "lastActivityAt" = now(), "retentionWarnedAt" = NULL
+      WHERE "id" = ${experienceId}::uuid AND "lastActivityAt" < now() - interval '12 hours'`;
   }
 
   /** Resolves a share token to a publicly available experience, failing closed and neutrally. */

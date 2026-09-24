@@ -90,3 +90,35 @@ test('an invalid recovery link is refused rather than silently ignored', async (
   await expect(page.getByRole('main').getByRole('alert')).toContainText('not valid');
   await fresh.close();
 });
+
+test('a saved key that no longer works is replaced instead of locking the creator out', async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  // Well-formed, but unknown to the API — like a key that expired after a year unused.
+  await context.addCookies([
+    {
+      name: 'mp_owner',
+      value: 'x'.repeat(43),
+      url: process.env.E2E_BASE_URL ?? 'http://localhost:3000',
+    },
+  ]);
+  const page = await context.newPage();
+  await page.goto('/dashboard');
+  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page.getByRole('link', { name: 'New experience' })).toBeVisible();
+  const owner = (await context.cookies()).find((c) => c.name === 'mp_owner');
+  expect(owner?.value).not.toBe('x'.repeat(43));
+  await context.close();
+});
+
+test('the manage page says how long a surprise is kept', async ({ browser }) => {
+  const api = await creatorApi('bob');
+  const { id } = await createPublished(api, 'date-invitation');
+  const context = await browser.newContext({ storageState: authFile('bob') });
+  const page = await context.newPage();
+  await page.goto(`/experiences/${id}`);
+  const year = String(new Date().getFullYear() + 1);
+  await expect(page.getByTestId('kept-until')).toContainText(year);
+  await context.close();
+});

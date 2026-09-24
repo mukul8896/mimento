@@ -33,3 +33,8 @@ export function formatDateTime(iso: string | null | undefined): string {
     new Date(iso),
   );
 }
+
+/** True when a surprise will be deleted for lack of use within the next 30 days. */
+export function deletedSoon(keptUntil: string | null): boolean {
+  return keptUntil !== null && new Date(keptUntil).getTime() - Date.now() < 30 * 24 * 3600 * 1000;
+}

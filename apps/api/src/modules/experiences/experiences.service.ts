@@ -13,6 +13,7 @@ import {
   type UpdateAccessRequest,
   type UpdateDraftRequest,
 } from '@momentpath/contracts';
+import { RetentionService } from './retention.service';
 import { generateToken, KEYRING, sha256, type Keyring } from '../../common/crypto';
 import { hashPin } from '../../common/pin';
 import { requireOwnedExperience } from '../../common/ownership';
@@ -49,6 +50,7 @@ export class ExperiencesService {
     private readonly audit: AuditService,
     private readonly entitlements: EntitlementsService,
     @Inject(KEYRING) private readonly keyring: Keyring,
+    private readonly retention: RetentionService,
   ) {}
 
   /**
@@ -97,6 +99,7 @@ export class ExperiencesService {
       updatedAt: exp.updatedAt.toISOString(),
       publishedAt: exp.publishedAt?.toISOString() ?? null,
       expiresAt: exp.expiresAt?.toISOString() ?? null,
+      keptUntil: this.retention.keptUntil(exp.lastActivityAt)?.toISOString() ?? null,
       stats,
     };
   }

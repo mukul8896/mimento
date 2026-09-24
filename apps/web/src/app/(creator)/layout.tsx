@@ -7,8 +7,10 @@ export const dynamic = 'force-dynamic';
 export default async function CreatorLayout({ children }: { children: React.ReactNode }) {
   const api = await serverApi();
   const { data: me, response } = await api.GET('/api/v1/me');
-  // No sign-in to send anyone to: the proxy mints an owner before this renders.
-  if (response.status === 401 || !me) redirect('/');
+  // No sign-in to send anyone to: the proxy mints an owner before this renders. A saved key that
+  // no longer works (expired after a year unused) is cleared, and a fresh one is minted.
+  if (response.status === 401) redirect('/start-over');
+  if (!me) redirect('/');
 
   return (
     <div className="min-h-dvh">

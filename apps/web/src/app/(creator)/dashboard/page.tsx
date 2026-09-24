@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Badge } from '@momentpath/design-system';
 import { serverApi } from '@/lib/api/server';
-import { formatDate, STATUS_LABEL, STATUS_TONE } from '@/lib/format';
+import { deletedSoon, formatDate, STATUS_LABEL, STATUS_TONE } from '@/lib/format';
 
 export const metadata = { title: 'Dashboard' };
 
@@ -99,6 +99,12 @@ export default async function Dashboard({
                   </div>
                 </dl>
                 <p className="mt-3 text-xs text-ink-500">Updated {formatDate(e.updatedAt)}</p>
+                {deletedSoon(e.keptUntil) ? (
+                  <p className="mt-1 text-xs font-medium text-amber-700">
+                    Unused for almost a year — deleted on {formatDate(e.keptUntil)} unless it is
+                    opened
+                  </p>
+                ) : null}
               </Link>
             </li>
           ))}
