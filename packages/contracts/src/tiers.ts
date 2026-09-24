@@ -20,6 +20,8 @@ export interface TierCheckInput {
   templateStepTypes: readonly string[] | null;
   /** Step types in the draft as it stands. */
   stepTypes: readonly string[];
+  /** Whether any step branches (see flow.ts). Templates are linear, so branching is custom. */
+  hasRouting?: boolean;
 }
 
 /**
@@ -33,6 +35,7 @@ export interface TierCheckInput {
  */
 export function requiredTier(input: TierCheckInput): Tier {
   if (input.templateTier === null || input.templateStepTypes === null) return 'PRO';
+  if (input.hasRouting) return 'PRO';
   const sameShape =
     input.templateStepTypes.length === input.stepTypes.length &&
     input.templateStepTypes.every((type, i) => type === input.stepTypes[i]);

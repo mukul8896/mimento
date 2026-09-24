@@ -84,4 +84,37 @@ describe('normalizeRichText', () => {
       ],
     });
   });
+
+  it('sets and clears routing, and drops routes to a deleted step', () => {
+    let s = editorReducer(empty, { type: 'add', stepType: 'YES_NO_CHOICE', key: key(1) });
+    s = editorReducer(s, { type: 'add', stepType: 'MESSAGE', key: key(2) });
+    s = editorReducer(s, { type: 'add', stepType: 'MESSAGE', key: key(3) });
+    s = editorReducer(s, {
+      type: 'route',
+      key: key(1),
+      next: {
+        rules: [
+          { when: { kind: 'ANSWER', equals: 'NO' }, goto: key(3) },
+          { when: { kind: 'COMPLETED', stepKey: key(2) }, goto: 'END' },
+        ],
+        otherwise: key(2),
+      },
+    });
+    expect(s.steps[0]!.next?.rules).toHaveLength(2);
+    expect(DraftStepSchema.safeParse(s.steps[0]).success).toBe(true);
+
+    // Deleting step 2 removes the rule about it and the fallback that pointed at it.
+    s = editorReducer(s, { type: 'remove', key: key(2) });
+    expect(s.steps[0]!.next).toEqual({
+      rules: [{ when: { kind: 'ANSWER', equals: 'NO' }, goto: key(3) }],
+      otherwise: null,
+    });
+    // Deleting the last target leaves no routing at all.
+    s = editorReducer(s, { type: 'remove', key: key(3) });
+    expect('next' in s.steps[0]!).toBe(false);
+
+    // An empty routing is stored as none.
+    s = editorReducer(s, { type: 'route', key: key(1), next: { rules: [], otherwise: null } });
+    expect('next' in s.steps[0]!).toBe(false);
+  });
 });

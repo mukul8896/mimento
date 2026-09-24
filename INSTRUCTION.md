@@ -18,6 +18,32 @@ stages 2 and 3 are not started.**
 | GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
 | Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
 
+## Phase 2c — branching and version history (2026-09-24)
+
+- **Model** (`packages/contracts/src/flow.ts`): steps stay an ordered list; each may carry
+  `next: { rules: [{ when, goto }], otherwise }`. Conditions: `ANSWER` (this step's option id or
+  YES/NO/MAYBE), `SCORE_AT_LEAST` (correct quiz answers on the path), `DATE_ON_OR_AFTER` (UTC date
+  when reached), `COMPLETED` (another step on the path). `goto` is a step key or `END`;
+  `otherwise: null` = next in the list. Stored in the new `Step.routing` JSONB column
+  (migration `20260924170000_step_routing`).
+- **One path walker** (`walkPath`) is used by the API (which step may be answered next; the gift
+  unlocks only when it is on the recipient's own path) and by the editor preview. Routing is
+  stripped from recipient payloads (`publicStep`) because answer routes could reveal which answer
+  leads to the surprise; the player's progress bar now counts completed steps.
+- **Publish checks** (`flowIssues`): dangling/self routes, answer values a step cannot produce,
+  loops, unreachable steps, unreachable final surprise. The final surprise must stay last and
+  always ends the experience.
+- **Tier:** any routing makes a draft a custom build (PRO), like changing a template's structure.
+- **Editor:** "What happens next" under every step form (per-answer targets, extra conditions,
+  fallback); "Flow" view with `@xyflow/react` 12.12.0 (mobile tab, desktop toggle; tap to edit,
+  drag to set the fallback). React Flow injects no `<style>`; its CSS is imported statically.
+  Deleting a step drops routes to it.
+- **History:** `GET /experiences/:id/versions`, `POST …/versions/:number/restore` (audit
+  `draft.restored`), editor "History" dialog. Restore re-encrypts gift secrets for the draft.
+- Test hygiene: integration files share one database and run in parallel, so tests must not
+  drain global queues (`outbox.processDue`, `MediaPipeline.processPending` — the latter takes an
+  `experienceId` scope for this reason).
+
 ## Phase 2b — media worker and malware scanning (2026-09-24)
 
 Owner decisions for the rest of Phase 2 (2026-09-24): **no email** (notifications and recipient

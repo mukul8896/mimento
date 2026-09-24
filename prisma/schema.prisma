@@ -214,6 +214,8 @@ model Step {
   position  Int
   type      StepType
   config    Json
+  /// Branching after this step (contracts/flow.ts StepRouting); null means "next in order".
+  routing   Json?
   createdAt DateTime          @default(now()) @db.Timestamptz(3)
   responses Response[]
 

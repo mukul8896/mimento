@@ -128,6 +128,28 @@ export class GiftsService {
     }
   }
 
+  /**
+   * Restoring a published version into the draft: the draft's secrets become that version's,
+   * re-encrypted for the draft (AAD is version-bound, so ciphertext is never copied as-is).
+   */
+  async restoreIntoDraft(tx: Tx, fromVersionId: string, draftVersionId: string): Promise<void> {
+    await tx.gift.deleteMany({ where: { versionId: draftVersionId } });
+    const gifts = await tx.gift.findMany({ where: { versionId: fromVersionId } });
+    for (const gift of gifts) {
+      const secret = this.decrypt(gift);
+      await tx.gift.create({
+        data: {
+          versionId: draftVersionId,
+          stepKey: gift.stepKey,
+          kind: gift.kind,
+          payloadEnc: this.encrypt(secret, draftVersionId, gift.stepKey),
+          mediaId: gift.mediaId,
+          oneTimeReveal: gift.oneTimeReveal,
+        },
+      });
+    }
+  }
+
   /** Converts a stored secret into what the recipient sees; QR media becomes a short-lived URL. */
   async toRevealed(secret: GiftSecret, experienceId: string): Promise<RevealedGift> {
     switch (secret.kind) {

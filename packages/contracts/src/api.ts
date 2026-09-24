@@ -433,3 +433,19 @@ export const PricingResponseSchema = z.object({
     }),
   ),
 });
+
+// ---------------------------------------------------------------------------------------
+// Version history (Phase 2c): published versions can be restored into the draft.
+export const VersionSummarySchema = z.object({
+  number: z.number().int(),
+  title: z.string().max(2000),
+  publishedAt: IsoDateTime,
+  stepCount: z.number().int(),
+  /** The version recipients currently get. */
+  isActive: z.boolean(),
+});
+export const VersionListResponseSchema = z.object({ items: z.array(VersionSummarySchema) });
+export const RestoreVersionResponseSchema = z.object({
+  revision: z.number().int(),
+  restoredFrom: z.number().int(),
+});

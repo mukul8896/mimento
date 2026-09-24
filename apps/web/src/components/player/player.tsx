@@ -94,7 +94,8 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
   const theme = state?.experience.theme ?? initialTheme;
   const steps: DraftStep[] = useMemo(() => state?.experience.steps ?? [], [state]);
   const current = steps.find((s) => s.key === viewing) ?? null;
-  const index = current ? steps.indexOf(current) : -1;
+  // With branching the list order is not the recipient's order, so count steps they have done.
+  const position = Math.min((state?.progress.completedStepKeys.length ?? 0) + 1, steps.length);
   const finished = state?.progress.completed === true && current?.type !== 'GIFT_REVEAL';
 
   const submit = useCallback(
@@ -169,14 +170,14 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
         <div className="min-w-0 flex-1">
           {state && !closed && steps.length > 0 ? (
             <div
-              aria-label={`Step ${Math.min(index + 1, steps.length)} of ${steps.length}`}
+              aria-label={`Step ${position} of ${steps.length}`}
               role="img"
               className="flex max-w-60 gap-1"
             >
               {steps.map((s, i) => (
                 <span
                   key={s.key}
-                  className={`h-1.5 flex-1 rounded-full ${i <= index || finished ? 'bg-[var(--mp-accent)]' : 'bg-current opacity-15'}`}
+                  className={`h-1.5 flex-1 rounded-full ${i < position || finished ? 'bg-[var(--mp-accent)]' : 'bg-current opacity-15'}`}
                 />
               ))}
             </div>
@@ -244,7 +245,7 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
           </div>
         ) : (
           <>
-            {index === 0 ? (
+            {position === 1 ? (
               <p className="mb-4 rounded-2xl bg-black/5 px-3 py-2 text-center text-sm">
                 {state.experience.responsesVisibleToCreator
                   ? 'Your answers will be shared with the person who sent this.'
@@ -255,7 +256,7 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
             <AnimatePresence mode="wait" initial={false}>
               <motion.section
                 key={current.key}
-                aria-label={`Step ${index + 1} of ${steps.length}`}
+                aria-label={`Step ${position} of ${steps.length}`}
                 variants={variants}
                 initial="initial"
                 animate="animate"

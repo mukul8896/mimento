@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { StepRoutingSchema } from './flow';
 import { EMPTY_RICH_TEXT, RichTextDocSchema } from './rich-text';
 
 /**
@@ -150,29 +151,46 @@ export const StepConfigSchemas = {
 
 export const StepKeySchema = z.uuid();
 
+/** Optional branching after the step (see flow.ts); absent means "continue to the next step". */
+const Next = StepRoutingSchema.optional();
+
 export const DraftStepSchema = z
   .discriminatedUnion('type', [
-    z.strictObject({ key: StepKeySchema, type: z.literal('MESSAGE'), config: MessageConfigSchema }),
-    z.strictObject({ key: StepKeySchema, type: z.literal('IMAGE'), config: ImageConfigSchema }),
+    z.strictObject({
+      key: StepKeySchema,
+      type: z.literal('MESSAGE'),
+      config: MessageConfigSchema,
+      next: Next,
+    }),
+    z.strictObject({
+      key: StepKeySchema,
+      type: z.literal('IMAGE'),
+      config: ImageConfigSchema,
+      next: Next,
+    }),
     z.strictObject({
       key: StepKeySchema,
       type: z.literal('MULTIPLE_CHOICE'),
       config: MultipleChoiceConfigSchema,
+      next: Next,
     }),
     z.strictObject({
       key: StepKeySchema,
       type: z.literal('YES_NO_CHOICE'),
       config: YesNoConfigSchema,
+      next: Next,
     }),
     z.strictObject({
       key: StepKeySchema,
       type: z.literal('SCRATCH_REVEAL'),
       config: ScratchRevealConfigSchema,
+      next: Next,
     }),
     z.strictObject({
       key: StepKeySchema,
       type: z.literal('GIFT_REVEAL'),
       config: GiftRevealConfigSchema,
+      next: Next,
     }),
   ])
   .meta({ id: 'Step' });

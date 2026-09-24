@@ -76,9 +76,11 @@ export class MediaPipeline implements OnApplicationBootstrap, OnModuleDestroy {
 
   /**
    * Processes every upload waiting for the pipeline, one per transaction so a slow scan never
-   * holds more than one row. Public for tests and operators.
+   * holds more than one row. Public for tests and operators; `experienceId` limits it to one
+   * experience (tests share a database and must not process each other's uploads).
    */
-  async processPending(): Promise<Record<PipelineOutcome, number>> {
+  async processPending(experienceId?: string): Promise<Record<PipelineOutcome, number>> {
+    const scope = experienceId ?? null;
     const totals: Record<PipelineOutcome, number> = {
       clean: 0,
       infected: 0,
@@ -94,6 +96,7 @@ export class MediaPipeline implements OnApplicationBootstrap, OnModuleDestroy {
             SELECT * FROM "MediaAsset"
             WHERE "status" = 'READY' AND "processedAt" IS NULL
               AND NOT ("id" = ANY(${retry}::uuid[]))
+              AND (${scope}::uuid IS NULL OR "experienceId" = ${scope}::uuid)
             ORDER BY "createdAt" ASC
             LIMIT 1
             FOR UPDATE SKIP LOCKED`;

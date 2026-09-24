@@ -20,7 +20,7 @@ import type { Principal } from '../identity/principal';
 import { MediaService } from '../media/media.service';
 import { TemplatesService } from '../templates/templates.service';
 import { effectiveStatus } from './lifecycle';
-import { toDraftSteps } from './step-mapping';
+import { stepRow, toDraftSteps } from './step-mapping';
 
 type ListFilter = 'DRAFT' | 'PUBLISHED' | 'INACTIVE' | undefined;
 
@@ -188,13 +188,7 @@ export class ExperiencesService {
   private async writeSteps(tx: Tx, versionId: string, steps: DraftStep[]): Promise<void> {
     if (steps.length === 0) return;
     await tx.step.createMany({
-      data: steps.map((s, position) => ({
-        versionId,
-        key: s.key,
-        position,
-        type: s.type,
-        config: s.config as Prisma.InputJsonValue,
-      })),
+      data: steps.map((s, position) => ({ versionId, ...stepRow(s, position) })),
     });
   }
 
@@ -251,6 +245,77 @@ export class ExperiencesService {
       media: await this.media.ownerMedia(exp.id),
       updatedAt: draft.updatedAt.toISOString(),
     };
+  }
+
+  /** Published versions, newest first, for the editor's history. */
+  async versions(principal: Principal, experienceId: string) {
+    const exp = await requireOwnedExperience(this.prisma, principal, experienceId);
+    const versions = await this.prisma.experienceVersion.findMany({
+      where: { experienceId: exp.id, state: 'PUBLISHED' },
+      orderBy: { number: 'desc' },
+      include: { _count: { select: { steps: true } } },
+    });
+    return {
+      items: versions.map((v) => ({
+        number: v.number,
+        title: v.title,
+        publishedAt: (v.publishedAt ?? v.createdAt).toISOString(),
+        stepCount: v._count.steps,
+        isActive: v.id === exp.activeVersionId,
+      })),
+    };
+  }
+
+  /**
+   * Replaces the draft with a published version: title, theme, settings, steps (with routing)
+   * and gift secrets. Published versions are untouched; recipients see nothing until the
+   * creator publishes again. The draft revision moves on, so an open editor gets a conflict
+   * instead of overwriting the restore.
+   */
+  async restoreVersion(
+    principal: Principal,
+    experienceId: string,
+    number: number,
+    requestId: string | null,
+  ) {
+    const exp = await requireOwnedExperience(this.prisma, principal, experienceId);
+    return this.prisma.$transaction(async (tx) => {
+      const source = await tx.experienceVersion.findFirst({
+        where: { experienceId: exp.id, state: 'PUBLISHED', number },
+        include: { steps: true },
+      });
+      if (!source) throw Problem.notFound('Version');
+      const draft = await this.draftVersion(exp.id, tx);
+      const saved = await tx.experienceVersion.update({
+        where: { id: draft.id },
+        data: {
+          revision: { increment: 1 },
+          title: source.title,
+          theme: source.theme as Prisma.InputJsonValue,
+          responseVisibility: source.responseVisibility,
+        },
+      });
+      await tx.step.deleteMany({ where: { versionId: draft.id } });
+      await this.writeSteps(tx, draft.id, toDraftSteps(source.steps));
+      await this.gifts.restoreIntoDraft(tx, source.id, draft.id);
+      await tx.experience.update({
+        where: { id: exp.id },
+        data: { title: source.title.trim() || exp.title },
+      });
+      await this.audit.record(
+        {
+          actorType: 'USER',
+          actorId: principal.userId,
+          action: 'draft.restored',
+          targetType: 'experience',
+          targetId: exp.id,
+          requestId,
+          metadata: { fromVersion: number },
+        },
+        tx,
+      );
+      return { revision: saved.revision, restoredFrom: number };
+    });
   }
 
   /**

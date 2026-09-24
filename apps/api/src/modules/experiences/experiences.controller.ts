@@ -6,6 +6,7 @@ import {
   Header,
   HttpCode,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
   Post,
   Put,
@@ -26,9 +27,11 @@ import {
   ExperienceListQueryDto,
   ExperienceListResponseDto,
   ManageLinkResponseDto,
+  RestoreVersionResponseDto,
   SetExpiryRequestDto,
   UpdateDraftRequestDto,
   UpdateDraftResponseDto,
+  VersionListResponseDto,
 } from './dto';
 import { ExperienceLifecycleService } from './experience-lifecycle.service';
 import { ExperiencesService } from './experiences.service';
@@ -69,6 +72,24 @@ export class ExperiencesController {
   @ZodResponse({ status: 200, type: ExperienceDetailDto })
   detail(@CurrentPrincipal() principal: Principal, @Param('id', ParseUUIDPipe) id: string) {
     return this.experiences.detail(principal, id);
+  }
+
+  @Get(':id/versions')
+  @ZodResponse({ status: 200, type: VersionListResponseDto })
+  versions(@CurrentPrincipal() principal: Principal, @Param('id', ParseUUIDPipe) id: string) {
+    return this.experiences.versions(principal, id);
+  }
+
+  @Post(':id/versions/:number/restore')
+  @HttpCode(200)
+  @ZodResponse({ status: 200, type: RestoreVersionResponseDto })
+  restore(
+    @CurrentPrincipal() principal: Principal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('number', ParseIntPipe) number: number,
+    @Req() req: Request,
+  ) {
+    return this.experiences.restoreVersion(principal, id, number, requestId(req));
   }
 
   @Get(':id/draft')

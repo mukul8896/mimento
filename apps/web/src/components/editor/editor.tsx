@@ -5,6 +5,8 @@ import { useCallback, useMemo, useReducer, useState } from 'react';
 import { STEP_TYPES, type DraftDocument, type StepType } from '@momentpath/contracts';
 import { Badge, Button, cx, Input } from '@momentpath/design-system';
 import type { MediaItem } from './media-upload';
+import { FlowView } from './flow-view';
+import { HistoryDialog } from './history-dialog';
 import { PreviewPane } from './preview-pane';
 import { PublishDialog } from './publish-dialog';
 import {
@@ -15,11 +17,12 @@ import {
   STEP_TYPE_LABEL,
   stepSummary,
 } from './reducer';
+import { RouteEditor } from './route-editor';
 import { StepForm, type StepFormContext } from './step-forms';
 import { ThemePanel } from './theme-panel';
 import { useAutosave, type SaveStatus } from './use-autosave';
 
-type MobileView = 'steps' | 'edit' | 'style' | 'preview';
+type MobileView = 'steps' | 'flow' | 'edit' | 'style' | 'preview';
 
 const STATUS_TEXT: Record<SaveStatus, string> = {
   saved: 'All changes saved',
@@ -45,6 +48,8 @@ export function Editor({ draft }: { draft: DraftDocument }) {
   const [adding, setAdding] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+  const [flowOpen, setFlowOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const content = useMemo(
     () => ({
@@ -80,6 +85,7 @@ export function Editor({ draft }: { draft: DraftDocument }) {
 
   const tabs: { id: MobileView; label: string }[] = [
     { id: 'steps', label: 'Steps' },
+    { id: 'flow', label: 'Flow' },
     { id: 'edit', label: 'Edit' },
     { id: 'style', label: 'Style' },
     { id: 'preview', label: 'Preview' },
@@ -113,9 +119,20 @@ export function Editor({ draft }: { draft: DraftDocument }) {
             {STATUS_TEXT[status]}
           </span>
           <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto"
+            onClick={async () => {
+              await flush();
+              setHistoryOpen(true);
+            }}
+            data-testid="open-history"
+          >
+            History
+          </Button>
+          <Button
             onClick={() => setPublishing(true)}
             disabled={status === 'conflict'}
-            className="ml-auto"
             data-testid="publish"
           >
             Publish
@@ -132,6 +149,51 @@ export function Editor({ draft }: { draft: DraftDocument }) {
           </p>
         ) : null}
       </div>
+
+      <div className="mt-4 hidden justify-end lg:flex">
+        <Button
+          size="sm"
+          variant="secondary"
+          aria-pressed={flowOpen}
+          onClick={() => setFlowOpen((o) => !o)}
+          data-testid="toggle-flow"
+        >
+          {flowOpen ? 'Hide flow' : 'Show flow'}
+        </Button>
+      </div>
+
+      {/* Flow: the whole surprise as a graph (mobile tab, desktop toggle) */}
+      <section
+        aria-label="Flow"
+        className={cx(
+          view === 'flow' ? 'block' : 'hidden',
+          flowOpen ? 'lg:block' : 'lg:hidden',
+          'mt-4',
+        )}
+      >
+        <p className="mb-2 text-sm text-ink-600">
+          Tap a step to edit it. On a computer, drag from one step to another to choose where it
+          leads.
+        </p>
+        {view === 'flow' || flowOpen ? (
+          <FlowView
+            steps={state.steps}
+            selectedKey={state.selectedKey}
+            onSelect={(key) => {
+              dispatch({ type: 'select', key });
+              if (view === 'flow') setView('edit');
+            }}
+            onConnect={(source, target) => {
+              const step = state.steps.find((s) => s.key === source);
+              dispatch({
+                type: 'route',
+                key: source,
+                next: { rules: step?.next?.rules ?? [], otherwise: target },
+              });
+            }}
+          />
+        ) : null}
+      </section>
 
       <div className="mt-4 grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)_24rem]">
         {/* Steps */}
@@ -157,6 +219,9 @@ export function Editor({ draft }: { draft: DraftDocument }) {
                     {i + 1}. {STEP_TYPE_LABEL[step.type]}
                   </span>
                   <span className="block truncate text-sm font-medium">{stepSummary(step)}</span>
+                  {step.next ? (
+                    <span className="mt-1 inline-block text-xs text-brand-700">↳ branches</span>
+                  ) : null}
                 </button>
                 <div className="mt-2 flex flex-wrap gap-1">
                   <Button
@@ -263,6 +328,13 @@ export function Editor({ draft }: { draft: DraftDocument }) {
                   ctx={ctx}
                   onChange={(config) => dispatch({ type: 'update', key: selected.key, config })}
                 />
+                <div className="mt-6 border-t border-ink-100 pt-6">
+                  <RouteEditor
+                    step={selected}
+                    steps={state.steps}
+                    onChange={(next) => dispatch({ type: 'route', key: selected.key, next })}
+                  />
+                </div>
               </>
             ) : (
               <p className="text-sm text-ink-600">Select a step to edit it.</p>
@@ -313,7 +385,7 @@ export function Editor({ draft }: { draft: DraftDocument }) {
 
       <nav
         aria-label="Editor sections"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-ink-100 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-ink-100 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
       >
         {tabs.map((t) => (
           <button
@@ -331,6 +403,11 @@ export function Editor({ draft }: { draft: DraftDocument }) {
         ))}
       </nav>
 
+      <HistoryDialog
+        experienceId={draft.experienceId}
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+      />
       <PublishDialog
         experienceId={draft.experienceId}
         open={publishing}

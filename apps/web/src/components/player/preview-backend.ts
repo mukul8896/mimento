@@ -1,5 +1,7 @@
 import {
   checkAnswer,
+  flowSteps,
+  walkPath,
   type Answer,
   type DraftStep,
   type PublicExperience,
@@ -7,29 +9,30 @@ import {
 } from '@momentpath/contracts';
 import { PlayerError, type PlayerBackend, type PlayerState } from './backend';
 
-function progressOf(steps: DraftStep[], completed: Set<string>): SessionProgress {
-  const next = steps.find((s) => !completed.has(s.key)) ?? null;
+/** Same path walk as the API (contracts/flow.ts), so the preview follows branches faithfully. */
+function progressOf(steps: DraftStep[], answers: ReadonlyMap<string, Answer>): SessionProgress {
+  const walk = walkPath(flowSteps(steps), answers);
   const gift = steps.find((s) => s.type === 'GIFT_REVEAL');
   return {
-    completedStepKeys: steps.filter((s) => completed.has(s.key)).map((s) => s.key),
-    nextStepKey: next?.key ?? null,
-    completed: next === null && steps.length > 0,
-    giftRevealed: gift ? completed.has(gift.key) : false,
+    completedStepKeys: walk.path.filter((key) => answers.has(key)),
+    nextStepKey: walk.nextStepKey,
+    completed: walk.finished && steps.length > 0,
+    giftRevealed: gift ? answers.has(gift.key) : false,
   };
 }
 
 /** Local, in-memory backend for the editor preview. Nothing is sent or recorded. */
 export class PreviewBackend implements PlayerBackend {
   readonly mode = 'preview' as const;
-  private completed = new Set<string>();
+  private answers = new Map<string, Answer>();
 
   constructor(private readonly experience: PublicExperience) {}
 
   async load(): Promise<PlayerState> {
-    this.completed = new Set();
+    this.answers = new Map();
     return {
       experience: this.experience,
-      progress: progressOf(this.experience.steps, this.completed),
+      progress: progressOf(this.experience.steps, this.answers),
     };
   }
 
@@ -39,21 +42,21 @@ export class PreviewBackend implements PlayerBackend {
     const check = checkAnswer(step, answer);
     if (!check.ok) {
       if (check.reason === 'INCORRECT')
-        return { progress: progressOf(this.experience.steps, this.completed), correct: false };
+        return { progress: progressOf(this.experience.steps, this.answers), correct: false };
       throw new PlayerError('INVALID_ANSWER', 'That answer is not allowed here');
     }
-    this.completed.add(stepKey);
-    return { progress: progressOf(this.experience.steps, this.completed), correct: check.correct };
+    this.answers.set(stepKey, answer);
+    return { progress: progressOf(this.experience.steps, this.answers), correct: check.correct };
   }
 
   async reveal(stepKey: string) {
-    this.completed.add(stepKey);
+    this.answers.set(stepKey, { kind: 'ACK' });
     return {
       gift: {
         kind: 'PHYSICAL_MESSAGE' as const,
         message: 'Preview: your surprise details will appear here for the recipient.',
       },
-      progress: progressOf(this.experience.steps, this.completed),
+      progress: progressOf(this.experience.steps, this.answers),
     };
   }
 

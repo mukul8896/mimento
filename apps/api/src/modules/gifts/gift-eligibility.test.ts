@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { giftEligibility, type EligibilityInput } from './gift-eligibility';
 
 const base = (over: Partial<EligibilityInput> = {}): EligibilityInput => ({
-  orderedStepKeys: ['a', 'b', 'gift'],
   giftStepKey: 'gift',
-  completedStepKeys: new Set(['a', 'b']),
+  path: ['a', 'b', 'gift'],
   isGiftStep: true,
   gift: { oneTimeReveal: false, revealedAt: null, revealedBySessionId: null },
   sessionId: 's1',
@@ -12,15 +11,15 @@ const base = (over: Partial<EligibilityInput> = {}): EligibilityInput => ({
 });
 
 describe('giftEligibility', () => {
-  it('allows the reveal once every earlier step is complete', () => {
+  it('allows the reveal once the gift is on the path (every earlier step answered)', () => {
     expect(giftEligibility(base())).toEqual({ ok: true });
   });
-  it('denies when any earlier step is incomplete', () => {
-    expect(giftEligibility(base({ completedStepKeys: new Set(['a']) }))).toEqual({
+  it('denies while an earlier step on the path is unanswered, or on a branch without the gift', () => {
+    expect(giftEligibility(base({ path: ['a', 'b'] }))).toEqual({
       ok: false,
       reason: 'STEPS_INCOMPLETE',
     });
-    expect(giftEligibility(base({ completedStepKeys: new Set() }))).toEqual({
+    expect(giftEligibility(base({ path: ['a'] }))).toEqual({
       ok: false,
       reason: 'STEPS_INCOMPLETE',
     });

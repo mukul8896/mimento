@@ -6,9 +6,11 @@ import {
   ExperienceListQuerySchema,
   ExperienceListResponseSchema,
   ManageLinkResponseSchema,
+  RestoreVersionResponseSchema,
   SetExpiryRequestSchema,
   UpdateDraftRequestSchema,
   UpdateDraftResponseSchema,
+  VersionListResponseSchema,
 } from '@momentpath/contracts';
 
 export class CreateExperienceRequestDto extends createZodDto(CreateExperienceRequestSchema) {}
@@ -21,3 +23,5 @@ export class UpdateDraftResponseDto extends createZodDto(UpdateDraftResponseSche
 export class SetExpiryRequestDto extends createZodDto(SetExpiryRequestSchema) {}
 
 export class ManageLinkResponseDto extends createZodDto(ManageLinkResponseSchema) {}
+export class VersionListResponseDto extends createZodDto(VersionListResponseSchema) {}
+export class RestoreVersionResponseDto extends createZodDto(RestoreVersionResponseSchema) {}

@@ -1,8 +1,7 @@
 export interface EligibilityInput {
-  /** Published step keys in order. */
-  orderedStepKeys: string[];
   giftStepKey: string;
-  completedStepKeys: ReadonlySet<string>;
+  /** The recipient's path so far (contracts walkPath): every key before the last is answered. */
+  path: readonly string[];
   isGiftStep: boolean;
   gift: {
     oneTimeReveal: boolean;
@@ -17,19 +16,15 @@ export type Eligibility =
   | { ok: false; reason: 'NOT_A_GIFT_STEP' | 'NO_GIFT' | 'STEPS_INCOMPLETE' | 'ALREADY_REVEALED' };
 
 /**
- * The single rule deciding whether a recipient session may receive the gift secret:
- * every step before the gift step must be completed by this session, and a one-time gift
- * may only be revealed to the session that revealed it first (so a refresh still works).
+ * The single rule deciding whether a recipient session may receive the gift secret: the gift
+ * step must be on this session's own path, which means every step before it on that path is
+ * answered (branches not taken are not required). A one-time gift may only be revealed to the
+ * session that revealed it first, so a refresh still works.
  */
 export function giftEligibility(input: EligibilityInput): Eligibility {
   if (!input.isGiftStep) return { ok: false, reason: 'NOT_A_GIFT_STEP' };
   if (!input.gift) return { ok: false, reason: 'NO_GIFT' };
-  const index = input.orderedStepKeys.indexOf(input.giftStepKey);
-  if (index < 0) return { ok: false, reason: 'NOT_A_GIFT_STEP' };
-  const required = input.orderedStepKeys.slice(0, index);
-  if (!required.every((key) => input.completedStepKeys.has(key))) {
-    return { ok: false, reason: 'STEPS_INCOMPLETE' };
-  }
+  if (!input.path.includes(input.giftStepKey)) return { ok: false, reason: 'STEPS_INCOMPLETE' };
   if (
     input.gift.oneTimeReveal &&
     input.gift.revealedAt !== null &&

@@ -6,7 +6,7 @@ import { Problem } from '../../common/problem';
 import { PrismaService, type Tx } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { transition } from '../experiences/lifecycle';
-import { toDraftSteps } from '../experiences/step-mapping';
+import { stepRow, toDraftSteps } from '../experiences/step-mapping';
 import { GiftsService } from '../gifts/gifts.service';
 import type { Principal } from '../identity/principal';
 import { OutboxService } from '../outbox/outbox.service';
@@ -88,10 +88,7 @@ export class PublishingService {
         await tx.step.createMany({
           data: draft.parsedSteps.map((s, position) => ({
             versionId: version.id,
-            key: s.key,
-            position,
-            type: s.type,
-            config: s.config as Prisma.InputJsonValue,
+            ...stepRow(s, position),
           })),
         });
         const oneTime = new Map(

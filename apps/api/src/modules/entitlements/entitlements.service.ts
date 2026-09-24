@@ -1,5 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  flowSteps,
+  hasRouting,
   requiredTier,
   stepTypesOf,
   tierAtLeast,
@@ -44,6 +46,7 @@ export class EntitlementsService {
       templateTier: template ? template.tier : null,
       templateStepTypes: templateSteps ? stepTypesOf(templateSteps) : null,
       stepTypes: stepTypesOf(steps),
+      hasRouting: hasRouting(flowSteps(steps)),
     });
 
     const entitlement = await client.entitlement.findUnique({

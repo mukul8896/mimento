@@ -3,6 +3,7 @@ import {
   MAX_STEPS,
   type DraftStep,
   type ExperienceSettings,
+  type StepRouting,
   type StepType,
   type Theme,
 } from '@momentpath/contracts';
@@ -22,6 +23,7 @@ export type EditorAction =
   | { type: 'select'; key: string | null }
   | { type: 'add'; stepType: StepType; key: string }
   | { type: 'update'; key: string; config: DraftStep['config'] }
+  | { type: 'route'; key: string; next: StepRouting | undefined }
   | { type: 'duplicate'; key: string; newKey: string }
   | { type: 'move'; key: string; direction: -1 | 1 }
   | { type: 'remove'; key: string };
@@ -70,6 +72,15 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
           s.key === action.key ? ({ ...s, config: action.config } as DraftStep) : s,
         ),
       };
+    case 'route':
+      return {
+        ...state,
+        steps: state.steps.map((s) => {
+          if (s.key !== action.key) return s;
+          const { next: _old, ...rest } = s;
+          return (isEmptyRouting(action.next) ? rest : { ...rest, next: action.next }) as DraftStep;
+        }),
+      };
     case 'duplicate': {
       const index = state.steps.findIndex((s) => s.key === action.key);
       const original = state.steps[index];
@@ -94,7 +105,9 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     case 'remove': {
       const index = state.steps.findIndex((s) => s.key === action.key);
       if (index < 0) return state;
-      const steps = state.steps.filter((s) => s.key !== action.key);
+      const steps = state.steps
+        .filter((s) => s.key !== action.key)
+        .map((s) => withoutRoutesTo(s, action.key));
       const selectedKey =
         state.selectedKey === action.key
           ? (steps[Math.min(index, steps.length - 1)]?.key ?? null)
@@ -102,6 +115,22 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, steps, selectedKey };
     }
   }
+}
+
+function isEmptyRouting(next: StepRouting | undefined): boolean {
+  return !next || (next.rules.length === 0 && next.otherwise === null);
+}
+
+/** After a step is deleted, routes to it fall back to "next step" instead of dangling. */
+function withoutRoutesTo(step: DraftStep, removed: string): DraftStep {
+  if (!step.next) return step;
+  const rules = step.next.rules.filter(
+    (r) => r.goto !== removed && !(r.when.kind === 'COMPLETED' && r.when.stepKey === removed),
+  );
+  const otherwise = step.next.otherwise === removed ? null : step.next.otherwise;
+  const { next: _old, ...rest } = step;
+  const next = { rules, otherwise };
+  return (isEmptyRouting(next) ? rest : { ...rest, next }) as DraftStep;
 }
 
 export const STEP_TYPE_LABEL: Record<StepType, string> = {

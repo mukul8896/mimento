@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import {
+  AnswerSchema,
   checkAnswer,
+  flowSteps,
   referencedMediaIds,
+  walkPath,
   ThemeSchema,
   type Answer,
   type DraftStep,
@@ -46,10 +49,11 @@ export class RecipientSessionsService {
     return { ...version, parsedSteps: toDraftSteps(version.steps) };
   }
 
+  /** What the recipient's browser gets, plus the full steps (with routing) for progress. */
   private async publicExperience(exp: Experience, versionId: string) {
     const version = await this.version(versionId);
     const mediaIds = version.parsedSteps.flatMap(referencedMediaIds);
-    return {
+    const experience = {
       title: version.title,
       theme: ThemeSchema.parse(version.theme),
       versionNumber: version.number,
@@ -57,14 +61,19 @@ export class RecipientSessionsService {
       steps: version.parsedSteps.map(publicStep),
       media: await this.media.publicMedia(mediaIds, exp.id, RECIPIENT_MEDIA_URL_TTL_SECONDS),
     };
+    return { experience, steps: version.parsedSteps };
   }
 
-  private async completedKeys(sessionId: string): Promise<Set<string>> {
-    const responses = await this.prisma.response.findMany({
+  /** This session's answers by step key; they decide the path through any branching. */
+  private async answersOf(
+    sessionId: string,
+    client: PrismaService | Tx = this.prisma,
+  ): Promise<Map<string, Answer>> {
+    const responses = await client.response.findMany({
       where: { sessionId },
-      select: { stepKey: true },
+      select: { stepKey: true, answer: true },
     });
-    return new Set(responses.map((r) => r.stepKey));
+    return new Map(responses.map((r) => [r.stepKey, AnswerSchema.parse(r.answer)]));
   }
 
   async meta(token: string) {
@@ -92,8 +101,8 @@ export class RecipientSessionsService {
         expiresAt: new Date(Date.now() + SESSION_RETENTION_DAYS * 24 * 3600 * 1000),
       },
     });
-    const experience = await this.publicExperience(exp, versionId);
-    return { sessionToken, experience, progress: computeProgress(experience.steps, new Set()) };
+    const { experience, steps } = await this.publicExperience(exp, versionId);
+    return { sessionToken, experience, progress: computeProgress(steps, new Map()) };
   }
 
   private async session(
@@ -115,12 +124,12 @@ export class RecipientSessionsService {
   async resume(token: string, sessionToken: string | undefined) {
     const exp = await this.resolve(token);
     const session = await this.session(exp, sessionToken);
-    const experience = await this.publicExperience(exp, session.versionId);
-    const completed = await this.completedKeys(session.id);
+    const { experience, steps } = await this.publicExperience(exp, session.versionId);
+    const answers = await this.answersOf(session.id);
     return {
       sessionToken: sessionToken!,
       experience,
-      progress: computeProgress(experience.steps, completed),
+      progress: computeProgress(steps, answers),
     };
   }
 
@@ -129,14 +138,14 @@ export class RecipientSessionsService {
     const session = await this.session(exp, sessionToken);
     const version = await this.version(session.versionId);
     const steps = version.parsedSteps;
-    const completed = await this.completedKeys(session.id);
+    const answers = await this.answersOf(session.id);
 
     const step = steps.find((s) => s.key === stepKey);
     if (!step) throw Problem.badRequest('UNKNOWN_STEP', 'Unknown step');
-    if (completed.has(stepKey))
-      return { progress: computeProgress(steps, completed), correct: null };
+    if (answers.has(stepKey)) return { progress: computeProgress(steps, answers), correct: null };
 
-    const progress = computeProgress(steps, completed);
+    // Only the step the recipient's own path has reached may be answered.
+    const progress = computeProgress(steps, answers);
     if (progress.nextStepKey !== stepKey) {
       throw Problem.conflict('STEP_OUT_OF_ORDER', 'Complete the earlier steps first');
     }
@@ -151,15 +160,15 @@ export class RecipientSessionsService {
         data: [{ sessionId: session.id, stepId: stepRow.id, stepKey, answer }],
         skipDuplicates: true,
       });
-      completed.add(stepKey);
-      if (computeProgress(steps, completed).completed) {
+      answers.set(stepKey, answer);
+      if (computeProgress(steps, answers).completed) {
         await tx.recipientSession.update({
           where: { id: session.id },
           data: { completedAt: new Date() },
         });
       }
     });
-    return { progress: computeProgress(steps, completed), correct: result.correct };
+    return { progress: computeProgress(steps, answers), correct: result.correct };
   }
 
   /** Closing records no answer of any kind; it only marks that the recipient left. */
@@ -189,18 +198,10 @@ export class RecipientSessionsService {
       const [gift] = await tx.$queryRaw<{ id: string }[]>`
         SELECT "id" FROM "Gift" WHERE "versionId" = ${version.id}::uuid AND "stepKey" = ${stepKey}::uuid FOR UPDATE`;
       const giftRow = gift ? await tx.gift.findUniqueOrThrow({ where: { id: gift.id } }) : null;
-      const completed = new Set(
-        (
-          await tx.response.findMany({
-            where: { sessionId: session.id },
-            select: { stepKey: true },
-          })
-        ).map((r) => r.stepKey),
-      );
+      const answers = await this.answersOf(session.id, tx);
       const eligibility = giftEligibility({
-        orderedStepKeys: steps.map((s) => s.key),
         giftStepKey: stepKey,
-        completedStepKeys: completed,
+        path: walkPath(flowSteps(steps), answers).path,
         isGiftStep: step?.type === 'GIFT_REVEAL',
         gift: giftRow,
         sessionId: session.id,
@@ -235,19 +236,19 @@ export class RecipientSessionsService {
         data: [{ sessionId: session.id, stepId: stepRow.id, stepKey, answer: { kind: 'ACK' } }],
         skipDuplicates: true,
       });
-      completed.add(stepKey);
-      if (computeProgress(steps, completed).completed && !session.completedAt) {
+      answers.set(stepKey, { kind: 'ACK' });
+      if (computeProgress(steps, answers).completed && !session.completedAt) {
         await tx.recipientSession.update({
           where: { id: session.id },
           data: { completedAt: new Date() },
         });
       }
-      return { secret: this.gifts.decrypt(giftRow!), completed };
+      return { secret: this.gifts.decrypt(giftRow!), answers };
     });
 
     return {
       gift: await this.gifts.toRevealed(secret.secret, exp.id),
-      progress: computeProgress(steps, secret.completed),
+      progress: computeProgress(steps, secret.answers),
     };
   }
 

@@ -54,7 +54,7 @@ describe('media pipeline', () => {
     expect(await asset(mediaId)).toMatchObject({ scanStatus: 'NOT_SCANNED', processedAt: null });
 
     const before = clamd.scanned;
-    const totals = await pipeline.processPending();
+    const totals = await pipeline.processPending(experienceId);
     expect(totals.clean).toBeGreaterThanOrEqual(1);
     expect(clamd.scanned).toBeGreaterThan(before);
 
@@ -79,8 +79,8 @@ describe('media pipeline', () => {
     })
       .png()
       .toBuffer();
-    const { mediaId } = await uploaded(big);
-    await pipeline.processPending();
+    const { experienceId, mediaId } = await uploaded(big);
+    await pipeline.processPending(experienceId);
     const done = await asset(mediaId);
     const display = await sharp(path.join(ctx.env.STORAGE_FS_ROOT, done.displayKey!)).metadata();
     expect(display).toMatchObject({ width: 1600, height: 800 });
@@ -107,7 +107,7 @@ describe('media pipeline', () => {
     expect(saved.status, JSON.stringify(saved.body)).toBe(200);
 
     clamd.infect(true);
-    await pipeline.processPending();
+    await pipeline.processPending(experienceId);
 
     const done = await asset(mediaId);
     expect(done).toMatchObject({ scanStatus: 'INFECTED', status: 'REJECTED', displayKey: null });
@@ -122,25 +122,30 @@ describe('media pipeline', () => {
   });
 
   it('leaves uploads unscanned and retries later when clamd is unavailable', async () => {
-    const { mediaId } = await uploaded();
+    const { experienceId, mediaId } = await uploaded();
     clamd.setDown(true);
-    const first = await pipeline.processPending();
+    const first = await pipeline.processPending(experienceId);
     expect(first.retry).toBeGreaterThanOrEqual(1);
     expect(await asset(mediaId)).toMatchObject({ scanStatus: 'NOT_SCANNED', processedAt: null });
 
     clamd.setDown(false);
-    await pipeline.processPending();
+    await pipeline.processPending(experienceId);
     expect(await asset(mediaId)).toMatchObject({ scanStatus: 'CLEAN' });
   });
 
   it('deletes the processed copies together with the original', async () => {
     const { experienceId, mediaId } = await uploaded();
-    await pipeline.processPending();
+    await pipeline.processPending(experienceId);
     const done = await asset(mediaId);
     expect((await alice.del(`/experiences/${experienceId}`)).status).toBe(204);
-    await ctx.outbox.processDue();
-    for (const key of [done.storageKey, done.displayKey!, done.thumbKey!]) {
-      expect(onDisk(key)).toBe(false);
-    }
+    // Inspect this deletion's own outbox job. Processing the whole outbox here would race other
+    // test files that share the database and check their own jobs.
+    const jobs = await ctx.prisma.outboxEvent.findMany({ where: { type: 'storage.delete' } });
+    const job = jobs.find((j) =>
+      ((j.payload as { keys: string[] }).keys ?? []).includes(done.storageKey),
+    );
+    expect((job?.payload as { keys: string[] }).keys.sort()).toEqual(
+      [done.storageKey, done.displayKey!, done.thumbKey!].sort(),
+    );
   });
 });

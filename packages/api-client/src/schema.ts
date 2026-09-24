@@ -148,6 +148,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/experiences/{id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExperiencesController_versions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/experiences/{id}/versions/{number}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ExperiencesController_restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/experiences/{id}/draft": {
         parameters: {
             query?: never;
@@ -784,6 +816,20 @@ export interface components {
         ManageLinkResponseDto_Output: {
             manageToken: string;
         };
+        VersionListResponseDto_Output: {
+            items: {
+                number: number;
+                title: string;
+                /** Format: date-time */
+                publishedAt: string;
+                stepCount: number;
+                isActive: boolean;
+            }[];
+        };
+        RestoreVersionResponseDto_Output: {
+            revision: number;
+            restoredFrom: number;
+        };
         Theme_Output: {
             palette: {
                 background: string;
@@ -821,6 +867,7 @@ export interface components {
                 /** @default Continue */
                 buttonLabel: string;
             };
+            next?: components["schemas"]["StepRouting_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -836,6 +883,7 @@ export interface components {
                 /** @default Continue */
                 buttonLabel: string;
             };
+            next?: components["schemas"]["StepRouting_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -855,6 +903,7 @@ export interface components {
                 /** @default Not quite — try again! */
                 wrongAnswerMessage: string;
             };
+            next?: components["schemas"]["StepRouting_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -894,6 +943,7 @@ export interface components {
                 /** @default Nice try! */
                 evasiveMessage: string;
             };
+            next?: components["schemas"]["StepRouting_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -913,6 +963,7 @@ export interface components {
                 /** @default Continue */
                 buttonLabel: string;
             };
+            next?: components["schemas"]["StepRouting_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -942,6 +993,7 @@ export interface components {
                 /** @default false */
                 oneTimeReveal: boolean;
             };
+            next?: components["schemas"]["StepRouting_Output"];
         };
         RichTextDoc_Output: {
             /** @constant */
@@ -1003,6 +1055,33 @@ export interface components {
                     }[];
                 }[];
             })[];
+        };
+        StepRouting_Output: {
+            /** @default [] */
+            rules: {
+                when: {
+                    /** @constant */
+                    kind: "ANSWER";
+                    equals: string;
+                } | {
+                    /** @constant */
+                    kind: "SCORE_AT_LEAST";
+                    value: number;
+                } | {
+                    /** @constant */
+                    kind: "DATE_ON_OR_AFTER";
+                    /** Format: date */
+                    date: string;
+                } | {
+                    /** @constant */
+                    kind: "COMPLETED";
+                    /** Format: uuid */
+                    stepKey: string;
+                };
+                goto: string | "END";
+            }[];
+            /** @default null */
+            otherwise: (string | "END") | null;
         };
         DraftDocumentDto_Output: {
             /** Format: uuid */
@@ -1067,6 +1146,7 @@ export interface components {
                 /** @default Continue */
                 buttonLabel: string;
             };
+            next?: components["schemas"]["StepRouting"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1082,6 +1162,7 @@ export interface components {
                 /** @default Continue */
                 buttonLabel: string;
             };
+            next?: components["schemas"]["StepRouting"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1101,6 +1182,7 @@ export interface components {
                 /** @default Not quite — try again! */
                 wrongAnswerMessage: string;
             };
+            next?: components["schemas"]["StepRouting"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1140,6 +1222,7 @@ export interface components {
                 /** @default Nice try! */
                 evasiveMessage: string;
             };
+            next?: components["schemas"]["StepRouting"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1159,6 +1242,7 @@ export interface components {
                 /** @default Continue */
                 buttonLabel: string;
             };
+            next?: components["schemas"]["StepRouting"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1188,6 +1272,7 @@ export interface components {
                 /** @default false */
                 oneTimeReveal: boolean;
             };
+            next?: components["schemas"]["StepRouting"];
         };
         RichTextDoc: {
             /** @constant */
@@ -1249,6 +1334,33 @@ export interface components {
                     }[];
                 }[];
             })[];
+        };
+        StepRouting: {
+            /** @default [] */
+            rules: {
+                when: {
+                    /** @constant */
+                    kind: "ANSWER";
+                    equals: string;
+                } | {
+                    /** @constant */
+                    kind: "SCORE_AT_LEAST";
+                    value: number;
+                } | {
+                    /** @constant */
+                    kind: "DATE_ON_OR_AFTER";
+                    /** Format: date */
+                    date: string;
+                } | {
+                    /** @constant */
+                    kind: "COMPLETED";
+                    /** Format: uuid */
+                    stepKey: string;
+                };
+                goto: string | "END";
+            }[];
+            /** @default null */
+            otherwise: (string | "END") | null;
         };
         UpdateDraftRequestDto: {
             revision: number;
@@ -1850,6 +1962,49 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ExperiencesController_versions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionListResponseDto_Output"];
+                };
+            };
+        };
+    };
+    ExperiencesController_restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                number: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreVersionResponseDto_Output"];
+                };
             };
         };
     };
