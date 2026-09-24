@@ -10,8 +10,8 @@ export default function PrivacyPage() {
   return (
     <SiteShell title="Privacy policy" updated="24 September 2026">
       <p>
-        MomentPath is run by {OPERATOR_NAME}. We collect as little as we can: there are no accounts,
-        so we never ask for your name, email or phone number to build or open a surprise.
+        Wish Revealer is run by {OPERATOR_NAME}. We collect as little as we can: there are no
+        accounts, so we never ask for your name, email or phone number to build or open a surprise.
       </p>
       <PolicySection title="What we store">
         <ul className="list-disc space-y-1 pl-5">

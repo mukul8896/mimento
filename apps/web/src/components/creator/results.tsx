@@ -28,7 +28,7 @@ export function Results({ results }: { results: ResultsData }) {
         Opens count every visit, including yours.
       </p>
       <p className="mt-3 text-xs text-ink-500">
-        Leaving early or closing the page never counts as an answer. MomentPath does not collect
+        Leaving early or closing the page never counts as an answer. Wish Revealer does not collect
         recipients’ IP addresses, locations or devices.
       </p>
 

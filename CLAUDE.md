@@ -1,4 +1,4 @@
-# CLAUDE.md — MomentPath (working name)
+# CLAUDE.md — Wish Revealer (wishrevealer.com)
 
 Context for AI coding sessions. **Read `INSTRUCTION.md` first** for the current state (done, next,
 blocked) and update it before you finish. `docs/phase-status.md` is the formal checklist.

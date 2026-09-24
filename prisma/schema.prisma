@@ -1,4 +1,4 @@
-// MomentPath Phase 1 data model.
+// Wish Revealer data model.
 // Ownership, lifecycle and access control are relational columns with foreign keys.
 // Step configuration and themes are JSONB, always validated by @momentpath/contracts.
 

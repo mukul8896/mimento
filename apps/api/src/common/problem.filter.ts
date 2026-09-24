@@ -49,7 +49,7 @@ export class ProblemFilter implements ExceptionFilter {
 
   private toProblem(exception: unknown, requestId: string): ProblemBody {
     const base = (status: number, code: string, title: string): ProblemBody => ({
-      type: `https://momentpath.dev/problems/${code.toLowerCase().replace(/_/g, '-')}`,
+      type: `https://wishrevealer.com/problems/${code.toLowerCase().replace(/_/g, '-')}`,
       title,
       status,
       code,

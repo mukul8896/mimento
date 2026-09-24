@@ -12,7 +12,7 @@ const Schema = z.object({
   /** The person or business that runs the site, as registered with the payment providers. */
   OPERATOR_NAME: z.preprocess(
     (v) => (v === '' ? undefined : v),
-    z.string().min(1).max(120).default('MomentPath'),
+    z.string().min(1).max(120).default('Wish Revealer'),
   ),
 });
 

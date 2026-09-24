@@ -25,7 +25,7 @@ const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 function problem(status: number, code: string, title: string) {
   return NextResponse.json(
     {
-      type: `https://momentpath.dev/problems/${code.toLowerCase()}`,
+      type: `https://wishrevealer.com/problems/${code.toLowerCase()}`,
       title,
       status,
       code,

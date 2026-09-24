@@ -9,9 +9,9 @@ export default function ContactPage() {
   return (
     <SiteShell title="Contact us">
       <p>
-        MomentPath is run by {OPERATOR_NAME}. For help with a payment, a refund, a surprise you made
-        or anything else, email <SupportEmail email={SUPPORT_EMAIL} />. We reply within 3 working
-        days.
+        Wish Revealer is run by {OPERATOR_NAME}. For help with a payment, a refund, a surprise you
+        made or anything else, email <SupportEmail email={SUPPORT_EMAIL} />. We reply within 3
+        working days.
       </p>
       <PolicySection title="Reporting a surprise">
         <p>

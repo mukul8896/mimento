@@ -1,4 +1,4 @@
-# MomentPath (working name)
+# Wish Revealer
 
 A no-code builder for private, interactive surprise pages. Creators build a linear sequence of
 messages, photos, questions, a playful Yes/No, scratch cards and a final surprise, publish it to an

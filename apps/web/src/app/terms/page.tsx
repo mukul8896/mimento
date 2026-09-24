@@ -10,15 +10,15 @@ export default function TermsPage() {
   return (
     <SiteShell title="Terms of service" updated="24 September 2026">
       <p>
-        These terms apply when you create or open a surprise on MomentPath, a service run by{' '}
+        These terms apply when you create or open a surprise on Wish Revealer, a service run by{' '}
         {OPERATOR_NAME}. By using it you agree to them.
       </p>
       <PolicySection title="The service">
         <p>
-          MomentPath lets you build an interactive surprise and share it with a private link. You do
-          not need an account: this browser, and the manage and recovery links we give you, are how
-          you get back to what you made. Keep those links safe — we cannot recover access without
-          them.
+          Wish Revealer lets you build an interactive surprise and share it with a private link. You
+          do not need an account: this browser, and the manage and recovery links we give you, are
+          how you get back to what you made. Keep those links safe — we cannot recover access
+          without them.
         </p>
       </PolicySection>
       <PolicySection title="What you may not create">
@@ -58,8 +58,8 @@ export default function TermsPage() {
       </PolicySection>
       <PolicySection title="Availability and liability">
         <p>
-          We work to keep MomentPath running and your content safe, but the service is provided as
-          it is, without guarantees that it will always be available or error-free. To the extent
+          We work to keep Wish Revealer running and your content safe, but the service is provided
+          as it is, without guarantees that it will always be available or error-free. To the extent
           the law allows, our liability for any claim is limited to what you paid us for the
           surprise concerned.
         </p>

@@ -4,7 +4,7 @@ import { CspNonce } from '@/components/csp-nonce';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: { default: 'MomentPath', template: '%s · MomentPath' },
+  title: { default: 'Wish Revealer', template: '%s · Wish Revealer' },
   description: 'Build a private, interactive surprise and share it with one link.',
 };
 

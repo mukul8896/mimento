@@ -1,7 +1,7 @@
 # Interactive Surprise Builder — Product Requirements, Architecture, and AI Build Prompt
 
 **Prepared:** 22 September 2026  
-**Working product name:** MomentPath (placeholder; verify domain and trademark before use)
+**Product name:** Wish Revealer (wishrevealer.com; chosen 2026-09-24). Code packages keep the `@momentpath/*` working name.
 
 ## How to use this document
 

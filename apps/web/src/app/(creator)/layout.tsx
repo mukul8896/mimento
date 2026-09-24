@@ -15,7 +15,7 @@ export default async function CreatorLayout({ children }: { children: React.Reac
       <header className="sticky top-0 z-30 border-b border-ink-100 bg-white/90 backdrop-blur pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
           <Link href="/dashboard" className="shrink-0 font-semibold text-brand-700">
-            MomentPath
+            Wish Revealer
           </Link>
           <nav
             aria-label="Main"

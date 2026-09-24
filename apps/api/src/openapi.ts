@@ -4,7 +4,7 @@ import { cleanupOpenApiDoc } from 'nestjs-zod';
 
 export function buildOpenApi(app: INestApplication): OpenAPIObject {
   const config = new DocumentBuilder()
-    .setTitle('MomentPath API')
+    .setTitle('Wish Revealer API')
     .setDescription('Phase 1 REST API. Errors use application/problem+json with a requestId.')
     .setVersion('1.0.0')
     .setOpenAPIVersion('3.1.0')

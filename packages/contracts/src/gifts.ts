@@ -4,7 +4,7 @@ import { GiftKind } from './steps';
 /**
  * Gift secrets are what the recipient finally receives. They are encrypted at rest with
  * AES-256-GCM and never appear in list endpoints, draft payloads, logs or initial HTML.
- * Phase 1 gifts are always externally obtained: MomentPath issues no stored value.
+ * Phase 1 gifts are always externally obtained: Wish Revealer issues no stored value.
  */
 
 const httpsUrl = z.url({ protocol: /^https$/, message: 'Use a secure https:// link' }).max(2000);

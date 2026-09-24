@@ -18,6 +18,16 @@ stages 2 and 3 are not started.**
 | GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
 | Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
 
+## Rebrand to Wish Revealer (2026-09-24)
+
+- Every user-visible "MomentPath" is now **Wish Revealer** (header, titles, footer, policies,
+  report dialog, results, API docs title, problem `type` URLs → `https://wishrevealer.com/problems/…`).
+- **Deliberately unchanged:** the HKDF label `momentpath:<purpose>` in `common/crypto.ts` (changing
+  it would make every stored gift code and share/manage link undecryptable — there is a comment),
+  `@momentpath/*` package names, DB/bucket/compose names, and internal keys (`mp:` prefixes).
+- Open item: `access.int.test.ts > scheduled gift reveal` failed once in a full run right after
+  the unit tests and passed in 16 later runs; cause not found. Watch for it in CI.
+
 ## Phase 2d-2 — scheduling, PIN, short links, analytics (2026-09-24)
 
 - Migration `20260924210000_access_and_analytics`: `Experience.opensAt`, `pinHash`, `pinFailures`,

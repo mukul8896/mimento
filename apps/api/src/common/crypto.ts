@@ -63,6 +63,8 @@ export class Keyring {
   private subKey(keyId: string, purpose: EncryptionPurpose): Buffer {
     const master = this.masters.get(keyId);
     if (!master) throw new Error('Unknown encryption key id');
+    // The HKDF label keeps the working name on purpose: changing it would make every stored
+    // ciphertext (gift codes, share and manage links) undecryptable.
     return Buffer.from(hkdfSync('sha256', master, Buffer.alloc(0), `momentpath:${purpose}`, 32));
   }
 

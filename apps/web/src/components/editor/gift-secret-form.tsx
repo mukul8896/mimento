@@ -129,8 +129,8 @@ export function GiftSecretForm({
           Surprise details (private)
         </h3>
         <p className="text-xs text-ink-600">
-          Encrypted and only shown to the recipient after they finish every earlier step. MomentPath
-          does not sell or check vouchers — use one you obtained elsewhere.
+          Encrypted and only shown to the recipient after they finish every earlier step. Wish
+          Revealer does not sell or check vouchers — use one you obtained elsewhere.
         </p>
       </div>
       {state === 'loading' ? <p className="text-sm text-ink-500">Loading…</p> : null}

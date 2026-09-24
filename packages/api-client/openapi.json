@@ -1717,7 +1717,7 @@
     }
   },
   "info": {
-    "title": "MomentPath API",
+    "title": "Wish Revealer API",
     "description": "Phase 1 REST API. Errors use application/problem+json with a requestId.",
     "version": "1.0.0",
     "contact": {}

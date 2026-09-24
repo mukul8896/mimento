@@ -34,7 +34,7 @@ export function ReportDialog({
         if (!o) setState('idle');
       }}
       title="Report this page"
-      description="Reports go to the MomentPath team, not to the person who sent this. You stay anonymous."
+      description="Reports go to the Wish Revealer team, not to the person who sent this. You stay anonymous."
       footer={
         state === 'sent' ? (
           <Button onClick={() => onOpenChange(false)}>Done</Button>

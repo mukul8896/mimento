@@ -321,7 +321,7 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
       </main>
 
       <footer className="flex items-center justify-between gap-2 px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-xs opacity-70">
-        <span>Made with MomentPath</span>
+        <span>Made with Wish Revealer</span>
         {backend.mode === 'live' && error?.code !== 'EXPERIENCE_UNAVAILABLE' ? (
           <button type="button" className="min-h-9 underline" onClick={() => setReporting(true)}>
             Report
