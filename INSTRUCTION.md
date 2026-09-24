@@ -18,6 +18,33 @@ stages 2 and 3 are not started.**
 | GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
 | Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
 
+## Passkeys: an optional way back in (2026-09-25)
+
+Still no accounts. A passkey is bound to the anonymous owner; the private key stays in the
+creator's device / password manager (iCloud Keychain, Google Password Manager, Windows Hello) and
+we store only its public key.
+
+- **Schema** (migration `20260925120000_passkeys`): `Passkey`, `OwnerKey` (extra per-device owner
+  tokens, hashed, so signing in on a new device never signs the old one out) and
+  `WebAuthnChallenge` (5-minute, one-time; expired rows swept by outbox housekeeping).
+- **API** (`modules/identity/passkeys.*`, `@simplewebauthn/server` 14.0.2): list, registration
+  options, save and remove (owner only); public, throttled login options and login, which return a
+  new owner key. RP id and origin come from `WEB_ORIGIN`. A throwaway identity already in that
+  browser is merged in on sign-in (`owner.merged`). Account deletion and retention revoke all
+  owner keys and passkeys.
+- **Web** (`@simplewebauthn/browser` 14.0.0): Account page panel; `/signin` page (site header,
+  landing nav, empty dashboard); the `/auth/passkey` server route sets the HttpOnly cookie. The BFF
+  refuses `owners` and `passkeys/login`, so page scripts never receive an owner token.
+- **Tests**: `passkeys.int.test.ts` with a software authenticator (`test/webauthn.ts`, real P-256
+  key); E2E `passkeys.spec.ts` with Chrome's virtual authenticator.
+
+## Template tiers (2026-09-25)
+
+Owner decision: every template except **Birthday wish** is Plus. Set on production through the
+operator API (audited). Seed defaults are unchanged: tiers apply only on first seed, and tests rely
+on a free template. A database backup was taken on the server at
+`/root/backups/pre-cleanup-20260924-2152.sql.gz` before a planned clean-up of test data.
+
 ## Retention: activity tracking and 1-year cleanup (2026-09-25)
 
 Owner decision: **one year**. Without accounts nobody tells us they have left, so activity decides.

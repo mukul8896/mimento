@@ -147,6 +147,8 @@ model UserProfile {
   updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
   deletedAt      DateTime?           @db.Timestamptz(3)
   experiences    Experience[]
+  ownerKeys      OwnerKey[]
+  passkeys       Passkey[]
   media          MediaAsset[]
   auditLogs      AuditLog[]
   idempotency    IdempotencyRecord[]
@@ -478,5 +480,48 @@ model IdempotencyRecord {
   expiresAt      DateTime    @db.Timestamptz(3)
 
   @@unique([userId, key])
+  @@index([expiresAt])
+}
+
+/// Further owner tokens for the same creator, one per device signed in with a passkey or an email
+/// link, so signing in on a new phone never signs the old one out. Hashed like the main token.
+model OwnerKey {
+  id         String      @id @default(uuid()) @db.Uuid
+  ownerId    String      @db.Uuid
+  owner      UserProfile @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tokenHash  String      @unique
+  createdAt  DateTime    @default(now()) @db.Timestamptz(3)
+  lastUsedAt DateTime    @default(now()) @db.Timestamptz(3)
+
+  @@index([ownerId])
+}
+
+/// A WebAuthn passkey that signs a creator back in on any device where it syncs.
+model Passkey {
+  id           String      @id @default(uuid()) @db.Uuid
+  ownerId      String      @db.Uuid
+  owner        UserProfile @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  /// Base64url credential id from the authenticator.
+  credentialId String      @unique
+  publicKey    Bytes
+  counter      BigInt      @default(0)
+  transports   String[]
+  /// Synced (multi-device) passkeys survive a lost phone; single-device ones do not.
+  backedUp     Boolean     @default(false)
+  name         String
+  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
+  lastUsedAt   DateTime?   @db.Timestamptz(3)
+
+  @@index([ownerId])
+}
+
+/// One-time WebAuthn challenges, valid for a few minutes.
+model WebAuthnChallenge {
+  id        String   @id @default(uuid()) @db.Uuid
+  challenge String
+  /// Set for registration (the creator adding a passkey); null for sign-in.
+  ownerId   String?  @db.Uuid
+  expiresAt DateTime @db.Timestamptz(3)
+
   @@index([expiresAt])
 }

@@ -36,6 +36,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/passkeys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PasskeysController_list"];
+        put?: never;
+        post: operations["PasskeysController_register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/passkeys/registration-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PasskeysController_registrationOptions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/passkeys/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["PasskeysController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/passkeys/login-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PasskeysController_loginOptions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/passkeys/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PasskeysController_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/templates": {
         parameters: {
             query?: never;
@@ -721,6 +801,54 @@ export interface components {
             email: string | null;
             displayName: string | null;
             isAdmin: boolean;
+        };
+        PasskeyListResponseDto_Output: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                backedUp: boolean;
+                /** Format: date-time */
+                createdAt: string;
+                lastUsedAt: string | null;
+            }[];
+        };
+        PasskeyOptionsResponseDto_Output: {
+            /** Format: uuid */
+            challengeId: string;
+            options: {
+                challenge: string;
+            } & {
+                [key: string]: unknown;
+            };
+        };
+        PasskeyRegisterRequestDto: {
+            /** Format: uuid */
+            challengeId: string;
+            response: {
+                id: string;
+            } & {
+                [key: string]: unknown;
+            };
+            name?: string;
+        };
+        PasskeyDto_Output: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            backedUp: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            lastUsedAt: string | null;
+        };
+        PasskeyLoginRequestDto: {
+            /** Format: uuid */
+            challengeId: string;
+            response: {
+                id: string;
+            } & {
+                [key: string]: unknown;
+            };
         };
         Theme_Output: {
             palette: {
@@ -2311,6 +2439,128 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    PasskeysController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyListResponseDto_Output"];
+                };
+            };
+        };
+    };
+    PasskeysController_register: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyRegisterRequestDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyDto_Output"];
+                };
+            };
+        };
+    };
+    PasskeysController_registrationOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyOptionsResponseDto_Output"];
+                };
+            };
+        };
+    };
+    PasskeysController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PasskeysController_loginOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyOptionsResponseDto_Output"];
+                };
+            };
+        };
+    };
+    PasskeysController_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyLoginRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerTokenResponseDto_Output"];
+                };
             };
         };
     };

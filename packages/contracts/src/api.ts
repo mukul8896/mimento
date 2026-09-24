@@ -52,6 +52,34 @@ export const ProblemDetailsSchema = z.object({
 /** Anonymous owner identity, minted instead of registering. Returned once, never again. */
 export const OwnerTokenResponseSchema = z.object({ ownerToken: z.string() });
 
+/**
+ * Passkeys (WebAuthn): an optional way back in on any device where the passkey syncs. The
+ * browser's WebAuthn JSON is passed through unchanged and checked by the server library.
+ */
+export const PasskeySchema = z.object({
+  id: Uuid,
+  name: z.string().max(60),
+  backedUp: z.boolean(),
+  createdAt: IsoDateTime,
+  lastUsedAt: IsoDateTime.nullable(),
+});
+export type Passkey = z.infer<typeof PasskeySchema>;
+export const PasskeyListResponseSchema = z.object({ items: z.array(PasskeySchema) });
+const WebAuthnJson = z.looseObject({ id: z.string().max(1500) });
+export const PasskeyOptionsResponseSchema = z.object({
+  challengeId: Uuid,
+  options: z.looseObject({ challenge: z.string().max(200) }),
+});
+export const PasskeyRegisterRequestSchema = z.strictObject({
+  challengeId: Uuid,
+  response: WebAuthnJson,
+  name: z.string().trim().max(60).optional(),
+});
+export const PasskeyLoginRequestSchema = z.strictObject({
+  challengeId: Uuid,
+  response: WebAuthnJson,
+});
+
 export const MeResponseSchema = z.object({
   id: Uuid,
   email: z.string().max(2000).nullable(),

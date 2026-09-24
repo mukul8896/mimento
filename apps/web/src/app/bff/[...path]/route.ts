@@ -48,6 +48,12 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
   if (path[0] !== 'api' || path[1] !== 'v1' || path.some((p) => p === '..' || p === '.')) {
     return problem(404, 'NOT_FOUND', 'Not found');
   }
+  // Endpoints that hand out an owner token are only called by our server routes, which put the
+  // token straight into the HttpOnly cookie; page scripts must never see one.
+  const route = path.slice(2).join('/');
+  if (route === 'owners' || route === 'passkeys/login') {
+    return problem(404, 'NOT_FOUND', 'Not found');
+  }
   if (MUTATING.has(request.method) && !isSameOrigin(request)) {
     return problem(403, 'CSRF_REJECTED', 'Cross-site request rejected');
   }

@@ -45,6 +45,11 @@ export default async function Home({
           <Link href="/pricing" className="text-ink-600 hover:underline">
             Pricing
           </Link>
+          {signedIn ? null : (
+            <Link href="/signin" className="text-ink-600 hover:underline">
+              Sign in
+            </Link>
+          )}
           <Link
             href={signedIn ? '/dashboard' : '/new'}
             className="rounded-xl bg-brand-600 px-4 py-2 font-medium text-white shadow-sm"

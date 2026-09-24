@@ -39,15 +39,74 @@ export class IdentityService {
     };
   }
 
-  /** Resolves an owner token. Returns null for unknown tokens and deactivated profiles. */
+  /**
+   * Resolves an owner token: the one minted with the identity, or a further key minted when the
+   * creator signed in on another device. Null for unknown tokens and deactivated profiles.
+   */
   async resolveOwner(token: string): Promise<Principal | null> {
     if (!isWellFormedToken(token)) return null;
-    const profile = await this.prisma.userProfile.findUnique({
-      where: { ownerTokenHash: sha256(token) },
-    });
+    const hash = sha256(token);
+    const profile =
+      (await this.prisma.userProfile.findUnique({ where: { ownerTokenHash: hash } })) ??
+      (
+        await this.prisma.ownerKey.findUnique({
+          where: { tokenHash: hash },
+          include: { owner: true },
+        })
+      )?.owner ??
+      null;
     if (!profile || profile.status !== 'ACTIVE') return null;
     await this.retention.touchOwner(profile.id, profile.lastSeenAt);
     return { userId: profile.id, subject: profile.subject, isAdmin: false };
+  }
+
+  /** A new owner token for an existing creator on another device (after a passkey or email). */
+  async mintOwnerKey(ownerId: string): Promise<string> {
+    const token = generateToken();
+    await this.prisma.ownerKey.create({ data: { ownerId, tokenHash: sha256(token) } });
+    return token;
+  }
+
+  /**
+   * Moves everything a throwaway identity made into the creator who just signed in, then retires
+   * it. Only identities without passkeys are merged — one with its own passkey is someone's real
+   * key and is left alone.
+   */
+  async mergeInto(fromId: string, toId: string, requestId: string | null): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const from = await tx.userProfile.findUnique({
+        where: { id: fromId },
+        select: { status: true, subject: true, _count: { select: { passkeys: true } } },
+      });
+      if (!from || from.status !== 'ACTIVE' || !from.subject.startsWith('anon:')) return;
+      if (from._count.passkeys > 0) return;
+      const moved = await tx.experience.updateMany({
+        where: { ownerId: fromId },
+        data: { ownerId: toId },
+      });
+      await tx.mediaAsset.updateMany({ where: { ownerId: fromId }, data: { ownerId: toId } });
+      await tx.idempotencyRecord.deleteMany({ where: { userId: fromId } });
+      await tx.userProfile.update({
+        where: { id: fromId },
+        data: {
+          status: 'DELETED',
+          deletedAt: new Date(),
+          ownerTokenHash: null,
+          ownerKeys: { deleteMany: {} },
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorType: 'USER',
+          actorId: toId,
+          action: 'owner.merged',
+          targetType: 'user',
+          targetId: fromId,
+          requestId,
+          metadata: { experienceCount: moved.count },
+        },
+      });
+    });
   }
 
   /**

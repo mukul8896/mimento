@@ -41,6 +41,8 @@ export class AccountDeletionService {
             deletedAt: new Date(),
             email: null,
             displayName: null,
+            ownerKeys: { deleteMany: {} },
+            passkeys: { deleteMany: {} },
           },
         });
         await this.audit.record(

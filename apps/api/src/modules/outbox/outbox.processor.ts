@@ -126,6 +126,7 @@ export class OutboxProcessor implements OnApplicationBootstrap, OnModuleDestroy 
   async housekeeping(now = new Date()): Promise<void> {
     await this.prisma.idempotencyRecord.deleteMany({ where: { expiresAt: { lt: now } } });
     await this.prisma.recipientSession.deleteMany({ where: { expiresAt: { lt: now } } });
+    await this.prisma.webAuthnChallenge.deleteMany({ where: { expiresAt: { lt: now } } });
     const processedCutoff = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
     await this.prisma.outboxEvent.deleteMany({
       where: { status: 'PROCESSED', processedAt: { lt: processedCutoff } },

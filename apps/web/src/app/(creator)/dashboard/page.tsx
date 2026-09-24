@@ -70,6 +70,12 @@ export default async function Dashboard({
           <Link href="/new" className="mt-3 inline-block font-medium text-brand-700 underline">
             Create your first surprise
           </Link>
+          <p className="mt-4 text-sm text-ink-500">
+            Made surprises on another device?{' '}
+            <Link href="/signin" className="font-medium text-brand-700 underline">
+              Sign in with a passkey
+            </Link>
+          </p>
         </div>
       ) : (
         <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

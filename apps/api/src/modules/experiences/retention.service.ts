@@ -151,6 +151,8 @@ export class RetentionService implements OnApplicationBootstrap, OnModuleDestroy
             ownerTokenHash: null,
             email: null,
             displayName: null,
+            ownerKeys: { deleteMany: {} },
+            passkeys: { deleteMany: {} },
           },
         });
         await this.audit.record(

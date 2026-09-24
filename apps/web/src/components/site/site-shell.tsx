@@ -42,12 +42,17 @@ export function SiteShell({
         <Link href="/" className="text-lg font-semibold tracking-tight text-brand-700">
           Wish Revealer
         </Link>
-        <Link
-          href="/new"
-          className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white"
-        >
-          Create a surprise
-        </Link>
+        <nav className="flex items-center gap-3">
+          <Link href="/signin" className="text-sm font-medium text-ink-700 hover:text-brand-700">
+            Sign in
+          </Link>
+          <Link
+            href="/new"
+            className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white"
+          >
+            Create a surprise
+          </Link>
+        </nav>
       </header>
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-16 pt-6 sm:px-6">
         <h1 className="text-3xl font-bold tracking-tight text-ink-900">{title}</h1>

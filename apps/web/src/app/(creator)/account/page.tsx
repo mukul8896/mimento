@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { Card } from '@momentpath/design-system';
 import { DeleteAccount } from '@/components/creator/delete-account';
+import { PasskeysPanel } from '@/components/creator/passkeys';
 import { RecoveryLink } from '@/components/creator/recovery-link';
 import { readOwnerToken } from '@/lib/auth/owner';
 import { webEnv } from '@/lib/env';
@@ -24,6 +25,21 @@ export default async function AccountPage() {
           private key to the surprises you have made.
         </p>
       </Card>
+
+      {recoveryUrl ? (
+        <Card>
+          <h2 className="text-base font-medium">Passkey — the easy way back</h2>
+          <p className="mt-2 text-sm text-ink-600">
+            Save a passkey and you can get back to your surprises on any device with Face ID, Touch
+            ID or your screen lock — no password, no email. It is kept by your phone or computer
+            (and synced by iCloud Keychain or Google Password Manager); we only store a public key
+            that is useless to anyone else.
+          </p>
+          <div className="mt-4">
+            <PasskeysPanel />
+          </div>
+        </Card>
+      ) : null}
 
       <Card>
         <h2 className="text-base font-medium">Getting back in</h2>
