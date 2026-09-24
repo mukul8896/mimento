@@ -37,7 +37,13 @@ const CLASSIC_TEMPLATES: TemplateDefinition[] = [
       title: 'A little question for you',
       occasion: 'Love',
       emoji: '💌',
-      theme: { ...DEFAULT_THEME, palette: { ...PALETTE_PRESETS.blush }, animation: 'POP' },
+      theme: {
+        ...DEFAULT_THEME,
+        palette: { ...PALETTE_PRESETS.blush },
+        animation: 'POP',
+        music: { source: 'LIBRARY', track: 'LOVE_PIANO' },
+        celebration: 'HEARTS',
+      },
       steps: [
         {
           key: k(1),
@@ -61,6 +67,9 @@ const CLASSIC_TEMPLATES: TemplateDefinition[] = [
             maybeLabel: 'Maybe',
             noButton: { mode: 'AFTER_ATTEMPTS', attempts: 3 },
             evasiveMessage: 'Are you sure? 🥺',
+            yesReaction: { emoji: '😍💖🥰', sound: 'APPLAUSE' },
+            noReaction: { emoji: '💔', sound: 'WOMP' },
+            maybeReaction: { emoji: '🤔😏', sound: 'BOING' },
           },
         },
         {
@@ -121,7 +130,13 @@ const CLASSIC_TEMPLATES: TemplateDefinition[] = [
       title: 'Happy birthday!',
       occasion: 'Birthday',
       emoji: '🎂',
-      theme: { ...DEFAULT_THEME, palette: { ...PALETTE_PRESETS.sunrise }, animation: 'SLIDE' },
+      theme: {
+        ...DEFAULT_THEME,
+        palette: { ...PALETTE_PRESETS.sunrise },
+        animation: 'RISE',
+        music: { source: 'LIBRARY', track: 'BIRTHDAY_BOX' },
+        celebration: 'BALLOONS',
+      },
       steps: [
         {
           key: k(1),
@@ -172,6 +187,8 @@ const CLASSIC_TEMPLATES: TemplateDefinition[] = [
             maybeLabel: 'Maybe',
             noButton: { mode: 'IMMEDIATE' },
             evasiveMessage: 'Nice try!',
+            yesReaction: { emoji: '🎁🥳', sound: 'YAY' },
+            noReaction: { emoji: '⏳', sound: 'BOING' },
           },
         },
         {
@@ -207,7 +224,9 @@ const CLASSIC_TEMPLATES: TemplateDefinition[] = [
         ...DEFAULT_THEME,
         palette: { ...PALETTE_PRESETS.midnight },
         font: 'SERIF',
-        animation: 'FADE',
+        animation: 'FLIP',
+        music: { source: 'LIBRARY', track: 'LOVE_PIANO' },
+        celebration: 'HEARTS',
       },
       steps: [
         {
@@ -245,6 +264,7 @@ const CLASSIC_TEMPLATES: TemplateDefinition[] = [
             maybeLabel: 'Maybe',
             noButton: { mode: 'EVASIVE' },
             evasiveMessage: 'That button seems to be shy 😄',
+            yesReaction: { emoji: '💞♾️💍', sound: 'APPLAUSE' },
           },
         },
         {

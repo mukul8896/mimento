@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import {
   DEFAULT_THEME,
   referencedMediaIds,
+  ThemeSchema,
+  themeMediaIds,
   type DraftStep,
   type ExperienceSummary,
   fieldIssues,
@@ -271,7 +273,7 @@ export class ExperiencesService {
       experienceId: exp.id,
       revision: draft.revision,
       title: draft.title,
-      theme: draft.theme as unknown as typeof DEFAULT_THEME,
+      theme: ThemeSchema.parse(draft.theme),
       settings: { responseVisibility: draft.responseVisibility },
       steps,
       // Only whether a secret exists; the secret itself has its own owner-only endpoint.
@@ -421,7 +423,9 @@ export class ExperiencesService {
         throw Problem.badRequest('DUPLICATE_STEP_KEY', 'Step keys must be unique');
       keys.add(step.key);
     }
-    const mediaIds = [...new Set(body.steps.flatMap(referencedMediaIds))];
+    const mediaIds = [
+      ...new Set([...body.steps.flatMap(referencedMediaIds), ...themeMediaIds(body.theme)]),
+    ];
     if (mediaIds.length > 0) {
       const owned = await this.prisma.mediaAsset.count({
         where: {

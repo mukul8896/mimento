@@ -44,6 +44,14 @@ const KINDS = {
     help: 'MP3, M4A, AAC, OGG or WebM up to 10 MB (a few minutes of speech). Checked for viruses.',
     noun: 'voice note',
   },
+  music: {
+    types: ALLOWED_AUDIO_TYPES as readonly string[],
+    maxBytes: MAX_AUDIO_BYTES,
+    wrongType: 'Use an MP3, M4A, AAC, OGG or WebM audio file.',
+    tooBig: 'Songs must be 10 MB or smaller (about 8 minutes of MP3).',
+    help: 'MP3, M4A, AAC, OGG or WebM up to 10 MB. Only upload music you have the right to share — your own recording, or a royalty-free track.',
+    noun: 'song',
+  },
 } as const;
 
 /**
@@ -72,6 +80,7 @@ export function MediaUpload({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const current = media.find((m) => m.id === value);
+  const isAudio = kind !== 'image';
 
   async function upload(file: File) {
     setError(null);
@@ -124,7 +133,7 @@ export function MediaUpload({
   return (
     <div className="space-y-2">
       <span className="block text-sm font-medium text-ink-800">{label}</span>
-      {current && kind === 'audio' ? (
+      {current && isAudio ? (
         <audio controls src={current.url} className="w-full" data-testid="audio-preview" />
       ) : current ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -138,12 +147,10 @@ export function MediaUpload({
         <input
           ref={input}
           type="file"
-          accept={[...spec.types, ...(kind === 'audio' ? Object.keys(AUDIO_ALIASES) : [])].join(
-            ',',
-          )}
+          accept={[...spec.types, ...(isAudio ? Object.keys(AUDIO_ALIASES) : [])].join(',')}
           className="sr-only"
           id={`upload-${label}`}
-          data-testid={kind === 'audio' ? 'audio-input' : 'image-input'}
+          data-testid={kind === 'music' ? 'music-input' : isAudio ? 'audio-input' : 'image-input'}
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) void upload(file);

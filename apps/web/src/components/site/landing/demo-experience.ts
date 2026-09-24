@@ -16,6 +16,8 @@ export const DEMO_EXPERIENCE: PublicExperience = {
     palette: { ...PALETTE_PRESETS.blush },
     font: 'ROUNDED',
     animation: 'POP',
+    music: { source: 'LIBRARY', track: 'PLAYFUL' },
+    celebration: 'CONFETTI',
   },
   versionNumber: 0,
   responsesVisibleToCreator: false,

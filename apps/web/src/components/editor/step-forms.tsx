@@ -4,12 +4,17 @@ import {
   MAX_GALLERY_ITEMS,
   NO_BUTTON_LIMITS,
   parseVideoUrl,
+  SOUND_EFFECT_LABELS,
+  SOUND_EFFECTS,
   type DraftStep,
+  type Reaction,
+  type SoundEffect,
   type NoButtonConfig,
   type StepConfigOf,
   type StepType,
 } from '@momentpath/contracts';
 import { Alert, Button, Field, Input, Select, Switch, Textarea } from '@momentpath/design-system';
+import { previewEffect } from '@/components/player/fx/preview';
 import { GiftSecretForm } from './gift-secret-form';
 import { MediaUpload, type MediaItem } from './media-upload';
 import { RichTextEditor } from './rich-text-editor';
@@ -60,6 +65,83 @@ function TextField({
         />
       )}
     </Field>
+  );
+}
+
+/** Picks a sound effect, with a button to hear it. */
+export function SoundPicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: SoundEffect;
+  onChange: (v: SoundEffect) => void;
+}) {
+  return (
+    <div className="flex items-end gap-2">
+      <div className="min-w-0 flex-1">
+        <Field label={label}>
+          {(p) => (
+            <Select
+              value={value}
+              onChange={(e) => {
+                const next = e.target.value as SoundEffect;
+                onChange(next);
+                previewEffect(next);
+              }}
+              {...p}
+            >
+              {SOUND_EFFECTS.map((effect) => (
+                <option key={effect} value={effect}>
+                  {SOUND_EFFECT_LABELS[effect]}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+      </div>
+      <Button
+        variant="secondary"
+        aria-label={`Play ${label.toLowerCase()}`}
+        disabled={value === 'NONE'}
+        onClick={() => previewEffect(value)}
+      >
+        ▶
+      </Button>
+    </div>
+  );
+}
+
+function ReactionFields({
+  title,
+  value,
+  onChange,
+}: {
+  title: string;
+  value: Reaction;
+  onChange: (v: Reaction) => void;
+}) {
+  return (
+    <div className="grid grid-cols-[5.5rem_1fr] items-end gap-2 rounded-xl p-3 ring-1 ring-inset ring-ink-200">
+      <Field label={`${title} emoji`}>
+        {(p) => (
+          <Input
+            value={value.emoji}
+            maxLength={16}
+            placeholder="🎉"
+            className="text-center text-xl"
+            onChange={(e) => onChange({ ...value, emoji: e.target.value })}
+            {...p}
+          />
+        )}
+      </Field>
+      <SoundPicker
+        label={`${title} sound`}
+        value={value.sound}
+        onChange={(sound) => onChange({ ...value, sound })}
+      />
+    </div>
   );
 }
 
@@ -154,6 +236,18 @@ function MultipleChoiceForm({ step, onChange }: FormProps<'MULTIPLE_CHOICE'>) {
         {c.options.map((o, i) => (
           <div key={o.id} className="flex items-center gap-2">
             <Input
+              aria-label={`Emoji for answer ${i + 1}`}
+              value={o.emoji}
+              maxLength={16}
+              placeholder="🙂"
+              className="w-16 shrink-0 text-center text-lg"
+              onChange={(e) =>
+                setOptions(
+                  c.options.map((x) => (x.id === o.id ? { ...x, emoji: e.target.value } : x)),
+                )
+              }
+            />
+            <Input
               aria-label={`Answer ${i + 1}`}
               value={o.label}
               maxLength={80}
@@ -181,7 +275,7 @@ function MultipleChoiceForm({ step, onChange }: FormProps<'MULTIPLE_CHOICE'>) {
             onClick={() =>
               setOptions([
                 ...c.options,
-                { id: `option-${crypto.randomUUID().slice(0, 8)}`, label: '' },
+                { id: `option-${crypto.randomUUID().slice(0, 8)}`, label: '', emoji: '' },
               ])
             }
           >
@@ -388,6 +482,29 @@ function YesNoForm({ step, onChange }: FormProps<'YES_NO_CHOICE'>) {
           onChange={(evasiveMessage) => onChange({ ...c, evasiveMessage })}
         />
       ) : null}
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium text-ink-800">Reactions</legend>
+        <p className="text-xs text-ink-600">
+          What bursts out, and what they hear, when they pick each answer.
+        </p>
+        <ReactionFields
+          title="Yes"
+          value={c.yesReaction}
+          onChange={(yesReaction) => onChange({ ...c, yesReaction })}
+        />
+        <ReactionFields
+          title="No"
+          value={c.noReaction}
+          onChange={(noReaction) => onChange({ ...c, noReaction })}
+        />
+        {c.maybeEnabled ? (
+          <ReactionFields
+            title="Maybe"
+            value={c.maybeReaction}
+            onChange={(maybeReaction) => onChange({ ...c, maybeReaction })}
+          />
+        ) : null}
+      </fieldset>
       <Alert tone="info">
         Whatever you choose, the recipient can always close the experience. Closing never counts as
         Yes or No.

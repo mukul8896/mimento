@@ -173,3 +173,62 @@ describe('gallery, video and place reveal', () => {
     expect((await alice.post(`/experiences/${exp.id}/publish-check`)).body.ok).toBe(true);
   });
 });
+
+describe('background music', () => {
+  async function setMusic(id: string, music: object) {
+    const draft = (await alice.get(`/experiences/${id}/draft`)).body;
+    return alice.put(`/experiences/${id}/draft`, {
+      revision: draft.revision,
+      title: draft.title,
+      theme: { ...draft.theme, music },
+      settings: draft.settings,
+      steps: draft.steps,
+    });
+  }
+
+  it('plays a built-in track, and new experiences start silent', async () => {
+    const { id } = await draftWith([
+      { key: randomUUID(), type: 'PLACE_REVEAL', config: { placeName: 'Marine Drive' } },
+    ]);
+    expect((await alice.get(`/experiences/${id}/draft`)).body.theme).toMatchObject({
+      music: { source: 'NONE' },
+      sounds: true,
+      celebration: 'CONFETTI',
+    });
+    expect((await setMusic(id, { source: 'LIBRARY', track: 'JINGLE' })).status).toBe(200);
+    expect((await setMusic(id, { source: 'LIBRARY', track: 'NOPE' })).status).toBe(400);
+    const r = recipient(ctx, await publish(id));
+    expect((await r.start()).body.experience.theme.music).toEqual({
+      source: 'LIBRARY',
+      track: 'JINGLE',
+    });
+  });
+
+  it('plays the creator’s own upload: it must be theirs and audio, and reaches the recipient', async () => {
+    const { id } = await draftWith([
+      { key: randomUUID(), type: 'PLACE_REVEAL', config: { placeName: 'Marine Drive' } },
+    ]);
+    // A file from another experience cannot be borrowed.
+    const { body: other } = await alice.post('/experiences', {});
+    const foreign = await upload(other.id, mp3, 'audio/mpeg');
+    const borrowed = await setMusic(id, { source: 'UPLOAD', mediaId: foreign.body.id });
+    expect(borrowed.status).toBe(400);
+    expect(borrowed.body.code).toBe('INVALID_MEDIA');
+
+    // An image is not music.
+    const image = await upload(id, makePng(8, 8), 'image/png');
+    expect((await setMusic(id, { source: 'UPLOAD', mediaId: image.body.id })).status).toBe(200);
+    const check = await alice.post(`/experiences/${id}/publish-check`);
+    expect(check.body.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ field: 'music' })]),
+    );
+
+    const song = await upload(id, mp3, 'audio/mpeg');
+    await ctx.app.get(MediaPipeline).processPending(id);
+    expect((await setMusic(id, { source: 'UPLOAD', mediaId: song.body.id })).status).toBe(200);
+    const r = recipient(ctx, await publish(id));
+    const started = (await r.start()).body;
+    expect(started.experience.theme.music).toEqual({ source: 'UPLOAD', mediaId: song.body.id });
+    expect(started.experience.media.map((m: { id: string }) => m.id)).toContain(song.body.id);
+  });
+});

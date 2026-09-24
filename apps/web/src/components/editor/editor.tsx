@@ -346,6 +346,7 @@ export function Editor({ draft }: { draft: DraftDocument }) {
               settings={state.settings}
               onTheme={(theme) => dispatch({ type: 'setTheme', theme })}
               onSettings={(settings) => dispatch({ type: 'setSettings', settings })}
+              ctx={ctx}
             />
           </div>
         </section>
@@ -361,6 +362,7 @@ export function Editor({ draft }: { draft: DraftDocument }) {
               settings={state.settings}
               onTheme={(theme) => dispatch({ type: 'setTheme', theme })}
               onSettings={(settings) => dispatch({ type: 'setSettings', settings })}
+              ctx={ctx}
             />
           </div>
         </section>

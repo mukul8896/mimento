@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useFx } from '../fx/fx';
 import { accentButton, outlineButton } from '../theme';
 import type { StepProps } from './types';
 
@@ -13,6 +14,7 @@ function formatWhen(iso: string): string {
 export function PlaceStep({ step, busy, submit }: StepProps<'PLACE_REVEAL'>) {
   const [revealed, setRevealed] = useState(false);
   const c = step.config;
+  const fx = useFx();
   const maps = c.address
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${c.placeName} ${c.address}`)}`
     : null;
@@ -40,7 +42,11 @@ export function PlaceStep({ step, busy, submit }: StepProps<'PLACE_REVEAL'>) {
         <button
           type="button"
           className={`${outlineButton} w-full`}
-          onClick={() => setRevealed(true)}
+          onClick={(e) => {
+            fx.effect('WHOOSH');
+            fx.burst({ emoji: '📍✨', at: e.currentTarget, size: 'big' });
+            setRevealed(true);
+          }}
         >
           {c.revealLabel}
         </button>

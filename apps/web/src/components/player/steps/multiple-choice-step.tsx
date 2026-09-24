@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
+import { useFx } from '../fx/fx';
 import { accentButton } from '../theme';
 import type { StepProps } from './types';
 
@@ -8,6 +9,7 @@ export function MultipleChoiceStep({ step, busy, submit }: StepProps<'MULTIPLE_C
   const [selected, setSelected] = useState<string | null>(null);
   const [wrong, setWrong] = useState(false);
   const id = useId();
+  const fx = useFx();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,13 +38,24 @@ export function MultipleChoiceStep({ step, busy, submit }: StepProps<'MULTIPLE_C
                 name={id}
                 value={option.id}
                 checked={checked}
-                onChange={() => {
+                onChange={(e) => {
                   setSelected(option.id);
                   setWrong(false);
+                  fx.effect('POP');
+                  if (option.emoji)
+                    fx.burst({ emoji: option.emoji, at: e.currentTarget.parentElement });
                 }}
                 className="size-5 accent-[var(--mp-accent)]"
               />
-              <span className="min-w-0 break-words">{option.label}</span>
+              <span className="min-w-0 flex-1 break-words">{option.label}</span>
+              {option.emoji ? (
+                <span
+                  aria-hidden="true"
+                  className={`text-[1.4em] transition ${checked ? 'scale-125' : ''}`}
+                >
+                  {option.emoji}
+                </span>
+              ) : null}
             </label>
           );
         })}

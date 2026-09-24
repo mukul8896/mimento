@@ -735,7 +735,34 @@ export interface components {
             /** @enum {string} */
             typeScale: "COMPACT" | "COMFORTABLE" | "LARGE";
             /** @enum {string} */
-            animation: "NONE" | "FADE" | "SLIDE" | "POP";
+            animation: "NONE" | "FADE" | "SLIDE" | "POP" | "FLIP" | "RISE";
+            /**
+             * @default {
+             *       "source": "NONE"
+             *     }
+             */
+            music: components["schemas"]["Music_Output"];
+            /** @default true */
+            sounds: boolean;
+            /**
+             * @default CONFETTI
+             * @enum {string}
+             */
+            celebration: "CONFETTI" | "HEARTS" | "SPARKLES" | "BALLOONS" | "FESTIVE" | "FLOWERS" | "SNOW" | "NONE";
+        };
+        Music_Output: {
+            /** @constant */
+            source: "NONE";
+        } | {
+            /** @constant */
+            source: "LIBRARY";
+            /** @enum {string} */
+            track: "LOVE_PIANO" | "BIRTHDAY_BOX" | "PARTY" | "FESTIVE" | "JINGLE" | "AULD_LANG_SYNE" | "DREAMY" | "PLAYFUL";
+        } | {
+            /** @constant */
+            source: "UPLOAD";
+            /** Format: uuid */
+            mediaId: string;
         };
         TemplateListResponseDto_Output: {
             items: {
@@ -821,6 +848,8 @@ export interface components {
                 options: {
                     id: string;
                     label: string;
+                    /** @default  */
+                    emoji: string;
                 }[];
                 /** @default null */
                 correctOptionId: string | null;
@@ -868,6 +897,39 @@ export interface components {
                 };
                 /** @default Nice try! */
                 evasiveMessage: string;
+                /**
+                 * @default {
+                 *       "emoji": "😍",
+                 *       "sound": "YAY"
+                 *     }
+                 */
+                yesReaction: {
+                    emoji: string;
+                    /** @enum {string} */
+                    sound: "NONE" | "POP" | "YAY" | "APPLAUSE" | "FANFARE" | "DING" | "CHIME" | "SPARKLE" | "BOING" | "WOMP" | "BUZZ" | "WHOOSH" | "DRUMROLL" | "HEARTBEAT";
+                };
+                /**
+                 * @default {
+                 *       "emoji": "🥺",
+                 *       "sound": "WOMP"
+                 *     }
+                 */
+                noReaction: {
+                    emoji: string;
+                    /** @enum {string} */
+                    sound: "NONE" | "POP" | "YAY" | "APPLAUSE" | "FANFARE" | "DING" | "CHIME" | "SPARKLE" | "BOING" | "WOMP" | "BUZZ" | "WHOOSH" | "DRUMROLL" | "HEARTBEAT";
+                };
+                /**
+                 * @default {
+                 *       "emoji": "🤔",
+                 *       "sound": "BOING"
+                 *     }
+                 */
+                maybeReaction: {
+                    emoji: string;
+                    /** @enum {string} */
+                    sound: "NONE" | "POP" | "YAY" | "APPLAUSE" | "FANFARE" | "DING" | "CHIME" | "SPARKLE" | "BOING" | "WOMP" | "BUZZ" | "WHOOSH" | "DRUMROLL" | "HEARTBEAT";
+                };
             };
             next?: components["schemas"]["StepRouting_Output"];
         } | {
@@ -1378,7 +1440,34 @@ export interface components {
             /** @enum {string} */
             typeScale: "COMPACT" | "COMFORTABLE" | "LARGE";
             /** @enum {string} */
-            animation: "NONE" | "FADE" | "SLIDE" | "POP";
+            animation: "NONE" | "FADE" | "SLIDE" | "POP" | "FLIP" | "RISE";
+            /**
+             * @default {
+             *       "source": "NONE"
+             *     }
+             */
+            music: components["schemas"]["Music"];
+            /** @default true */
+            sounds: boolean;
+            /**
+             * @default CONFETTI
+             * @enum {string}
+             */
+            celebration: "CONFETTI" | "HEARTS" | "SPARKLES" | "BALLOONS" | "FESTIVE" | "FLOWERS" | "SNOW" | "NONE";
+        };
+        Music: {
+            /** @constant */
+            source: "NONE";
+        } | {
+            /** @constant */
+            source: "LIBRARY";
+            /** @enum {string} */
+            track: "LOVE_PIANO" | "BIRTHDAY_BOX" | "PARTY" | "FESTIVE" | "JINGLE" | "AULD_LANG_SYNE" | "DREAMY" | "PLAYFUL";
+        } | {
+            /** @constant */
+            source: "UPLOAD";
+            /** Format: uuid */
+            mediaId: string;
         };
         Step: {
             /** Format: uuid */
@@ -1430,6 +1519,8 @@ export interface components {
                 options: {
                     id: string;
                     label: string;
+                    /** @default  */
+                    emoji: string;
                 }[];
                 /** @default null */
                 correctOptionId: string | null;
@@ -1477,6 +1568,39 @@ export interface components {
                 };
                 /** @default Nice try! */
                 evasiveMessage: string;
+                /**
+                 * @default {
+                 *       "emoji": "😍",
+                 *       "sound": "YAY"
+                 *     }
+                 */
+                yesReaction: {
+                    emoji: string;
+                    /** @enum {string} */
+                    sound: "NONE" | "POP" | "YAY" | "APPLAUSE" | "FANFARE" | "DING" | "CHIME" | "SPARKLE" | "BOING" | "WOMP" | "BUZZ" | "WHOOSH" | "DRUMROLL" | "HEARTBEAT";
+                };
+                /**
+                 * @default {
+                 *       "emoji": "🥺",
+                 *       "sound": "WOMP"
+                 *     }
+                 */
+                noReaction: {
+                    emoji: string;
+                    /** @enum {string} */
+                    sound: "NONE" | "POP" | "YAY" | "APPLAUSE" | "FANFARE" | "DING" | "CHIME" | "SPARKLE" | "BOING" | "WOMP" | "BUZZ" | "WHOOSH" | "DRUMROLL" | "HEARTBEAT";
+                };
+                /**
+                 * @default {
+                 *       "emoji": "🤔",
+                 *       "sound": "BOING"
+                 *     }
+                 */
+                maybeReaction: {
+                    emoji: string;
+                    /** @enum {string} */
+                    sound: "NONE" | "POP" | "YAY" | "APPLAUSE" | "FANFARE" | "DING" | "CHIME" | "SPARKLE" | "BOING" | "WOMP" | "BUZZ" | "WHOOSH" | "DRUMROLL" | "HEARTBEAT";
+                };
             };
             next?: components["schemas"]["StepRouting"];
         } | {

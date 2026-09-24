@@ -1,7 +1,11 @@
 import {
+  DEFAULT_REACTIONS,
   DEFAULT_THEME,
   PALETTE_PRESETS,
   richTextFromParagraphs,
+  type Music,
+  type SoundEffect,
+  type MusicTrack,
   type PalettePresetName,
   type Theme,
   type TemplateField,
@@ -36,6 +40,8 @@ const from = (placeholder = 'Rahul'): FieldInput => ({
   maxLength: 40,
 });
 
+const track = (t: MusicTrack): Music => ({ source: 'LIBRARY', track: t });
+
 const theme = (palette: PalettePresetName, extra: Partial<Omit<Theme, 'palette'>> = {}): Theme => ({
   ...DEFAULT_THEME,
   palette: { ...PALETTE_PRESETS[palette] },
@@ -55,7 +61,16 @@ const message = (n: number, heading: string, ...paragraphs: string[]) => ({
 const yesNo = (
   n: number,
   question: string,
-  opts: { yes?: string; no?: string; evasive?: boolean; tries?: number; maybe?: boolean } = {},
+  opts: {
+    yes?: string;
+    no?: string;
+    evasive?: boolean;
+    tries?: number;
+    maybe?: boolean;
+    /** Emoji burst and sound for Yes and No. */
+    onYes?: [string, SoundEffect];
+    onNo?: [string, SoundEffect];
+  } = {},
 ) => ({
   key: k(n),
   type: 'YES_NO_CHOICE' as const,
@@ -71,6 +86,11 @@ const yesNo = (
         ? { mode: 'AFTER_ATTEMPTS' as const, attempts: opts.tries }
         : { mode: 'IMMEDIATE' as const },
     evasiveMessage: 'Nice try! 😄',
+    yesReaction: opts.onYes
+      ? { emoji: opts.onYes[0], sound: opts.onYes[1] }
+      : DEFAULT_REACTIONS.yes,
+    noReaction: opts.onNo ? { emoji: opts.onNo[0], sound: opts.onNo[1] } : DEFAULT_REACTIONS.no,
+    maybeReaction: DEFAULT_REACTIONS.maybe,
   },
 });
 
@@ -79,7 +99,15 @@ const choice = (n: number, question: string, options: string[]) => ({
   type: 'MULTIPLE_CHOICE' as const,
   config: {
     question,
-    options: options.map((label, i) => ({ id: `option-${i + 1}`, label })),
+    // An emoji at the end of a label also bursts out when that answer is picked.
+    options: options.map((label, i) => ({
+      id: `option-${i + 1}`,
+      label,
+      emoji:
+        /(\p{Extended_Pictographic}[\u{FE0F}\u{200D}\p{Extended_Pictographic}]*)\s*$/u.exec(
+          label,
+        )?.[1] ?? '',
+    })),
     correctOptionId: null,
     requireCorrect: false,
     wrongAnswerMessage: 'Not quite — try again!',
@@ -206,7 +234,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Birthday',
     emoji: '🎉',
     title: 'Happy birthday, {{name}}!',
-    theme: theme('sunrise', { font: 'ROUNDED', animation: 'POP' }),
+    theme: theme('sunrise', {
+      font: 'ROUNDED',
+      animation: 'POP',
+      music: track('BIRTHDAY_BOX'),
+      celebration: 'BALLOONS',
+    }),
     fields: [name(), from()],
     steps: [
       message(
@@ -219,6 +252,7 @@ const RECIPES: Recipe[] = [
         yes: 'Yes, show me!',
         no: 'Not yet',
         tries: 3,
+        onYes: ['🎂🥳🎈', 'YAY'],
       }),
       scratch(
         3,
@@ -236,7 +270,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Birthday',
     emoji: '⏰',
     title: 'Counting down to your birthday, {{name}}',
-    theme: theme('midnight', { font: 'ROUNDED', animation: 'FADE' }),
+    theme: theme('midnight', {
+      font: 'ROUNDED',
+      animation: 'RISE',
+      music: track('BIRTHDAY_BOX'),
+      celebration: 'SPARKLES',
+    }),
     fields: [
       name(),
       from(),
@@ -284,7 +323,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Festivals',
     emoji: '🪔',
     title: 'Happy Diwali, {{name}}!',
-    theme: theme('festive', { font: 'SERIF', animation: 'FADE' }),
+    theme: theme('festive', {
+      font: 'SERIF',
+      animation: 'RISE',
+      music: track('FESTIVE'),
+      celebration: 'FESTIVE',
+    }),
     fields: [name('Their name', 'Anjali'), from()],
     steps: [
       message(
@@ -314,7 +358,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Festivals',
     emoji: '🎆',
     title: 'Happy New Year, {{name}}!',
-    theme: theme('midnight', { font: 'SANS', animation: 'POP' }),
+    theme: theme('midnight', {
+      font: 'SANS',
+      animation: 'POP',
+      music: track('AULD_LANG_SYNE'),
+      celebration: 'SPARKLES',
+    }),
     fields: [
       name(),
       from(),
@@ -363,7 +412,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Festivals',
     emoji: '🎨',
     title: 'Happy Holi, {{name}}!',
-    theme: theme('holi', { font: 'ROUNDED', animation: 'POP' }),
+    theme: theme('holi', {
+      font: 'ROUNDED',
+      animation: 'POP',
+      music: track('FESTIVE'),
+      celebration: 'CONFETTI',
+    }),
     fields: [name(), from()],
     steps: [
       message(
@@ -388,7 +442,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Festivals',
     emoji: '🧵',
     title: 'Happy Raksha Bandhan, {{name}}',
-    theme: theme('sunrise', { font: 'SERIF', animation: 'FADE' }),
+    theme: theme('sunrise', {
+      font: 'SERIF',
+      animation: 'RISE',
+      music: track('FESTIVE'),
+      celebration: 'FLOWERS',
+    }),
     fields: [name('Their name', 'Aarav'), from('Meera')],
     steps: [
       message(
@@ -413,7 +472,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Festivals',
     emoji: '🌙',
     title: 'Eid Mubarak, {{name}}!',
-    theme: theme('crescent', { font: 'SERIF', animation: 'FADE' }),
+    theme: theme('crescent', {
+      font: 'SERIF',
+      animation: 'FADE',
+      music: track('DREAMY'),
+      celebration: 'SPARKLES',
+    }),
     fields: [name('Their name', 'Ayaan'), from()],
     steps: [
       message(
@@ -437,7 +501,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Festivals',
     emoji: '🎄',
     title: 'Merry Christmas, {{name}}!',
-    theme: theme('evergreen', { font: 'SERIF', animation: 'FADE' }),
+    theme: theme('evergreen', {
+      font: 'SERIF',
+      animation: 'RISE',
+      music: track('JINGLE'),
+      celebration: 'SNOW',
+    }),
     fields: [name(), from()],
     steps: [
       message(
@@ -445,7 +514,13 @@ const RECIPES: Recipe[] = [
         'Merry Christmas, {{name}}! 🎄',
         'Wishing you warm lights, good food and the best company.',
       ),
-      yesNo(2, 'Have you been good this year?', { yes: 'Of course! 😇', no: 'Umm…', tries: 2 }),
+      yesNo(2, 'Have you been good this year?', {
+        yes: 'Of course! 😇',
+        no: 'Umm…',
+        tries: 2,
+        onYes: ['😇🎁', 'YAY'],
+        onNo: ['🙈', 'BOING'],
+      }),
       choice(3, 'What is Christmas without…', ['Presents 🎁', 'Cake 🍰', 'Music 🎶', 'Family 🏡']),
       gift(4, 'A present under the tree', 'From {{from}}, with love.', 'Unwrap it'),
     ],
@@ -460,11 +535,21 @@ const RECIPES: Recipe[] = [
     occasion: 'Love',
     emoji: '💘',
     title: 'A question for you, {{name}}',
-    theme: theme('blush', { font: 'ROUNDED', animation: 'POP' }),
+    theme: theme('blush', {
+      font: 'ROUNDED',
+      animation: 'FLIP',
+      music: track('LOVE_PIANO'),
+      celebration: 'HEARTS',
+    }),
     fields: [name(), from()],
     steps: [
       message(1, 'Hi {{name}} 💌', 'I have been wanting to ask you something…'),
-      yesNo(2, 'Will you be my Valentine?', { yes: 'Yes! 💖', no: 'No', evasive: true }),
+      yesNo(2, 'Will you be my Valentine?', {
+        yes: 'Yes! 💖',
+        no: 'No',
+        evasive: true,
+        onYes: ['💖💘💕', 'APPLAUSE'],
+      }),
       choice(3, 'Pick our Valentine plan', [
         'Dinner date 🍷',
         'Movie night 🎬',
@@ -482,7 +567,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Love',
     emoji: '💍',
     title: 'For you, {{name}}',
-    theme: theme('lavender', { font: 'SERIF', animation: 'FADE' }),
+    theme: theme('lavender', {
+      font: 'SERIF',
+      animation: 'RISE',
+      music: track('LOVE_PIANO'),
+      celebration: 'HEARTS',
+    }),
     fields: [
       name(),
       from(),
@@ -503,7 +593,12 @@ const RECIPES: Recipe[] = [
       ),
       puzzle(2, 'Where did we first meet?', '{{firstPlace}}', 'Think back to the very beginning…'),
       message(3, 'You remembered 🥹', 'Then you already know how much you mean to me.'),
-      yesNo(4, 'Will you marry me?', { yes: 'YES! 💍', no: 'No', evasive: true }),
+      yesNo(4, 'Will you marry me?', {
+        yes: 'YES! 💍',
+        no: 'No',
+        evasive: true,
+        onYes: ['💍💖🥂', 'FANFARE'],
+      }),
       gift(5, 'Forever starts now', 'I love you.', 'Open my heart'),
     ],
     giftMessage: 'You have made me the happiest person alive. — {{from}}',
@@ -517,7 +612,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Celebrate',
     emoji: '🏆',
     title: 'Congratulations, {{name}}!',
-    theme: theme('sunrise', { font: 'SANS', animation: 'POP' }),
+    theme: theme('sunrise', {
+      font: 'SANS',
+      animation: 'POP',
+      music: track('PARTY'),
+      celebration: 'CONFETTI',
+    }),
     fields: [
       name(),
       from(),
@@ -553,7 +653,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Celebrate',
     emoji: '🎓',
     title: 'Happy graduation, {{name}}!',
-    theme: theme('ocean', { font: 'SANS', animation: 'SLIDE' }),
+    theme: theme('ocean', {
+      font: 'SANS',
+      animation: 'SLIDE',
+      music: track('PARTY'),
+      celebration: 'CONFETTI',
+    }),
     fields: [name(), from()],
     steps: [
       message(1, 'You did it, {{name}}! 🎓', 'All those late nights paid off.'),
@@ -579,7 +684,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Celebrate',
     emoji: '💐',
     title: 'Congratulations, {{name}}!',
-    theme: theme('lavender', { font: 'SERIF', animation: 'FADE' }),
+    theme: theme('lavender', {
+      font: 'SERIF',
+      animation: 'RISE',
+      music: track('LOVE_PIANO'),
+      celebration: 'FLOWERS',
+    }),
     fields: [name('The couple', 'Riya & Karan'), from()],
     steps: [
       message(
@@ -605,7 +715,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Celebrate',
     emoji: '👶',
     title: 'Welcome, little one!',
-    theme: theme('ocean', { font: 'ROUNDED', animation: 'FADE' }),
+    theme: theme('ocean', {
+      font: 'ROUNDED',
+      animation: 'RISE',
+      music: track('DREAMY'),
+      celebration: 'BALLOONS',
+    }),
     fields: [name('Parents’ names', 'Neha & Arjun'), from()],
     steps: [
       message(1, 'Congratulations, {{name}}! 👶', 'Your family just got a whole lot sweeter.'),
@@ -626,7 +741,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Celebrate',
     emoji: '🍀',
     title: 'Good luck, {{name}}!',
-    theme: theme('meadow', { font: 'SANS', animation: 'SLIDE' }),
+    theme: theme('meadow', {
+      font: 'SANS',
+      animation: 'SLIDE',
+      music: track('PLAYFUL'),
+      celebration: 'SPARKLES',
+    }),
     fields: [
       name(),
       from(),
@@ -648,6 +768,8 @@ const RECIPES: Recipe[] = [
         yes: 'Absolutely! 💪',
         no: 'I am nervous',
         tries: 3,
+        onYes: ['💪🔥⭐', 'APPLAUSE'],
+        onNo: ['🫂', 'HEARTBEAT'],
       }),
       scratch(3, 'Scratch for a reminder', 'Breathe. Believe. You are more ready than you think.'),
       gift(4, 'For afterwards', 'A treat is waiting when it is over.', 'Peek at my treat'),
@@ -663,7 +785,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Care',
     emoji: '🌻',
     title: 'Get well soon, {{name}}',
-    theme: theme('meadow', { font: 'ROUNDED', animation: 'FADE' }),
+    theme: theme('meadow', {
+      font: 'ROUNDED',
+      animation: 'FADE',
+      music: track('DREAMY'),
+      celebration: 'FLOWERS',
+    }),
     fields: [name(), from()],
     steps: [
       message(1, 'Get well soon, {{name}} 🌻', 'Sending you a big warm hug and lots of rest.'),
@@ -684,7 +811,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Care',
     emoji: '🙏',
     title: 'Thank you, {{name}}',
-    theme: theme('meadow', { font: 'SERIF', animation: 'FADE' }),
+    theme: theme('meadow', {
+      font: 'SERIF',
+      animation: 'RISE',
+      music: track('DREAMY'),
+      celebration: 'FLOWERS',
+    }),
     fields: [
       name(),
       from(),
@@ -714,11 +846,22 @@ const RECIPES: Recipe[] = [
     occasion: 'Care',
     emoji: '🥺',
     title: 'I am sorry, {{name}}',
-    theme: theme('blush', { font: 'ROUNDED', animation: 'FADE' }),
+    theme: theme('blush', {
+      font: 'ROUNDED',
+      animation: 'FADE',
+      music: track('DREAMY'),
+      celebration: 'HEARTS',
+    }),
     fields: [name(), from()],
     steps: [
       message(1, 'I am sorry, {{name}} 🥺', 'I messed up, and I want to make it right.'),
-      yesNo(2, 'Will you forgive me?', { yes: 'Okay, fine 💞', no: 'No', tries: 4 }),
+      yesNo(2, 'Will you forgive me?', {
+        yes: 'Okay, fine 💞',
+        no: 'No',
+        tries: 4,
+        onYes: ['💞🤗', 'YAY'],
+        onNo: ['💔', 'WOMP'],
+      }),
       gift(
         3,
         'A peace offering',
@@ -735,7 +878,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Care',
     emoji: '👋',
     title: 'We will miss you, {{name}}',
-    theme: theme('sunrise', { font: 'SANS', animation: 'SLIDE' }),
+    theme: theme('sunrise', {
+      font: 'SANS',
+      animation: 'SLIDE',
+      music: track('DREAMY'),
+      celebration: 'BALLOONS',
+    }),
     fields: [name(), from('The team')],
     steps: [
       message(
@@ -763,7 +911,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Family & friends',
     emoji: '🤝',
     title: 'For my best friend, {{name}}',
-    theme: theme('sunrise', { font: 'ROUNDED', animation: 'POP' }),
+    theme: theme('sunrise', {
+      font: 'ROUNDED',
+      animation: 'POP',
+      music: track('PLAYFUL'),
+      celebration: 'BALLOONS',
+    }),
     fields: [name(), from()],
     steps: [
       message(1, 'Hey {{name}} 🤝', 'Just a reminder that you are stuck with me forever.'),
@@ -785,7 +938,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Family & friends',
     emoji: '🌷',
     title: 'Happy Mother’s Day, {{name}}',
-    theme: theme('blush', { font: 'SERIF', animation: 'FADE' }),
+    theme: theme('blush', {
+      font: 'SERIF',
+      animation: 'RISE',
+      music: track('LOVE_PIANO'),
+      celebration: 'FLOWERS',
+    }),
     fields: [name('What you call her', 'Maa'), from()],
     steps: [
       message(
@@ -810,7 +968,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Family & friends',
     emoji: '👔',
     title: 'Happy Father’s Day, {{name}}',
-    theme: theme('ocean', { font: 'SANS', animation: 'FADE' }),
+    theme: theme('ocean', {
+      font: 'SANS',
+      animation: 'RISE',
+      music: track('DREAMY'),
+      celebration: 'SPARKLES',
+    }),
     fields: [name('What you call him', 'Papa'), from()],
     steps: [
       message(1, 'Happy Father’s Day, {{name}} 👔', 'Thank you for always being my hero.'),
@@ -818,6 +981,8 @@ const RECIPES: Recipe[] = [
         yes: 'Obviously 😎',
         no: 'Never!',
         tries: 2,
+        onYes: ['😂🤣😎', 'APPLAUSE'],
+        onNo: ['🙄', 'WOMP'],
       }),
       gift(3, 'For the best dad', 'With love.', 'Open my gift'),
     ],
@@ -830,7 +995,12 @@ const RECIPES: Recipe[] = [
     occasion: 'Love',
     emoji: '📍',
     title: 'A secret plan for {{name}}',
-    theme: theme('lavender', { font: 'ROUNDED', animation: 'SLIDE' }),
+    theme: theme('lavender', {
+      font: 'ROUNDED',
+      animation: 'FLIP',
+      music: track('PLAYFUL'),
+      celebration: 'HEARTS',
+    }),
     fields: [
       name(),
       from(),
@@ -846,7 +1016,12 @@ const RECIPES: Recipe[] = [
     ],
     steps: [
       message(1, 'Hey {{name}} 🤫', 'I have a plan. Are you ready?'),
-      yesNo(2, 'Are you free for a surprise?', { yes: 'Always! 😍', no: 'Busy…', tries: 3 }),
+      yesNo(2, 'Are you free for a surprise?', {
+        yes: 'Always! 😍',
+        no: 'Busy…',
+        tries: 3,
+        onYes: ['😍🎉', 'YAY'],
+      }),
       place(3, 'Guess where we are going', '{{where}}', '{{when}}'),
       gift(4, 'See you there!', 'Dress comfy — the rest is a surprise.', 'One more thing'),
     ],

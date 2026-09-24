@@ -1,6 +1,7 @@
 export * from './rich-text';
 export * from './tiers';
 export * from './theme';
+export * from './sound';
 export * from './steps';
 export * from './gifts';
 export * from './answers';

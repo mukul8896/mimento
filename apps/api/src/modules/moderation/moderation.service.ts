@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { referencedMediaIds, ThemeSchema, type Tier } from '@momentpath/contracts';
+import { referencedMediaIds, ThemeSchema, themeMediaIds, type Tier } from '@momentpath/contracts';
 import { decodeCursor, page } from '../../common/pagination';
 import { Problem } from '../../common/problem';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -164,13 +164,18 @@ export class ModerationService {
       targetId: id,
       requestId,
     });
+    const theme = ThemeSchema.parse(version.theme);
     return {
       title: version.title,
-      theme: ThemeSchema.parse(version.theme),
+      theme,
       versionNumber: version.number,
       responsesVisibleToCreator: version.responseVisibility === 'FULL',
       steps: steps.map(publicStep),
-      media: await this.media.publicMedia(steps.flatMap(referencedMediaIds), exp.id, 15 * 60),
+      media: await this.media.publicMedia(
+        [...steps.flatMap(referencedMediaIds), ...themeMediaIds(theme)],
+        exp.id,
+        15 * 60,
+      ),
     };
   }
 

@@ -6,6 +6,7 @@ import {
   referencedMediaIds,
   walkPath,
   ThemeSchema,
+  themeMediaIds,
   type Answer,
   type DraftStep,
 } from '@momentpath/contracts';
@@ -123,10 +124,11 @@ export class RecipientSessionsService {
   /** What the recipient's browser gets, plus the full steps (with routing) for progress. */
   private async publicExperience(exp: Experience, versionId: string) {
     const version = await this.version(versionId);
-    const mediaIds = version.parsedSteps.flatMap(referencedMediaIds);
+    const theme = ThemeSchema.parse(version.theme);
+    const mediaIds = [...version.parsedSteps.flatMap(referencedMediaIds), ...themeMediaIds(theme)];
     const experience = {
       title: version.title,
-      theme: ThemeSchema.parse(version.theme),
+      theme,
       versionNumber: version.number,
       responsesVisibleToCreator: version.responseVisibility === 'FULL',
       steps: version.parsedSteps.map(publicStep),

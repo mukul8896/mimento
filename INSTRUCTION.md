@@ -1,6 +1,6 @@
 # INSTRUCTION.md — current application state
 
-_Last updated: 2026-09-24 (Phase 2 live; ready-made templates and new landing page)._ Update this file at the end of every session.
+_Last updated: 2026-09-24 (Phase 2 live; music, sound effects and celebrations in the player)._ Update this file at the end of every session.
 
 ## Status snapshot
 
@@ -17,6 +17,53 @@ stages 2 and 3 are not started.**
 | Docker Compose, Dockerfiles                                                             | **Verified 2026-09-23** — services healthy, both images build, API + web serve                     |
 | GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
 | Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
+
+## Music, sound effects and celebrations (2026-09-24)
+
+The player now reacts to every tap. All built-in audio is **synthesised in the browser with Web
+Audio** — no audio files, no third-party hosts, nothing to license.
+
+- **Contracts** (`packages/contracts/src/sound.ts`): `MUSIC_TRACKS` (8 built-in tracks),
+  `SOUND_EFFECTS` (14), `CELEBRATIONS` (8), `ReactionSchema` (emoji + sound). `ThemeSchema` gained
+  `music` (`NONE` | `LIBRARY` track | `UPLOAD` mediaId), `sounds` (bool) and `celebration`, plus
+  `FLIP` and `RISE` animations — all with defaults, so stored themes and published versions parse
+  unchanged. Yes/No steps gained `yesReaction`/`noReaction`/`maybeReaction`; quiz options gained an
+  optional `emoji`. `themeMediaIds(theme)` returns the uploaded track id.
+- **API**: an uploaded track goes through the same checks as other media — draft save requires the
+  file to belong to the experience (`INVALID_MEDIA`), publish-check requires it to be ready audio
+  (issue `field: 'music'`), and the recipient/moderation payloads include it in `media`. `getDraft`
+  now parses the theme so defaults are filled in.
+- **Web** (`apps/web/src/components/player/fx/`): `synth.ts` (instruments: music box, e-piano, pad,
+  sitar, tabla, marimba, sleigh bells…), `songs.ts` (the tracks as note data; Happy Birthday,
+  Jingle Bells, Auld Lang Syne and Pachelbel's Canon are public domain, the rest are original),
+  `effects.ts`, `engine.ts` (lookahead scheduler, reverb, compressor, mute, ducking; uploads play
+  through an `<audio>` element), `particles.ts` (canvas emoji/confetti bursts, full-screen shower,
+  faint floating emoji), `fx.tsx` (`useFx()` context and the sound toggle).
+- **Player behaviour**: sound starts on the first tap (browser rule); a sound toggle sits next to
+  Close (preference saved in `localStorage` as `wr-sound`); Continue = pop + small burst; Yes/No/Maybe
+  = the step's reaction (Yes also showers the screen); quiz right = ding + burst, wrong = buzzer +
+  card shake; evasive No = boing + 😜; scratch reveal = sparkle; place reveal = whoosh; gift reveal
+  = fanfare + shower; music ducks on video steps and while a voice note plays. Card entrances
+  stagger; the main button glows (shadow only, so it never moves under a tap). Reduced motion turns
+  off particles and CSS animations; sound is unaffected. Sound failures never break the player.
+- **Editor**: Style → "Music & sounds" (listen to each track, pick one or upload your own song —
+  the upload says to use only music you have the rights to — toggle tap sounds, pick a
+  celebration). Yes/No form → "Reactions" (emoji + sound per answer, with a play button). Quiz
+  answers have an emoji box.
+- **Templates**: every template has a matching track, celebration and livelier animation; Yes/No
+  steps have themed reactions; quiz labels ending in an emoji burst that emoji.
+- **Tests**: contracts (defaults, music union), web unit (`fx/songs.test.ts`: note parsing, every
+  track loops inside its length), integration (`new-steps.int.test.ts` → background music: library
+  track reaches the recipient; uploads must be owned, audio, and are served), E2E `sound.spec.ts`
+  (toggle persists, reactions don't block, editor picks save). Every track and effect was also
+  rendered offline in Chromium: no NaN, peaks ≤ 0.35.
+- **Local E2E note**: the local `.env` has `BILLING_ENABLED=true`, which makes template publishing
+  in E2E fail on tier checks. Run E2E with billing off without editing `.env`:
+  stop the Docker `api`/`web` containers, `pnpm build`, then from `apps/web`:
+  `BILLING_ENABLED=false CI=1 node --env-file=../../.env node_modules/@playwright/test/cli.js test`.
+- **Not done / ideas**: GIF stickers (Giphy/Tenor need API keys and CSP changes — creators can
+  already upload a GIF in an image step); real recorded tracks (could add CC0 files later);
+  gating uploads or premium tracks behind a paid tier (currently all free).
 
 ## Ready-made templates and a new landing page (2026-09-24)
 

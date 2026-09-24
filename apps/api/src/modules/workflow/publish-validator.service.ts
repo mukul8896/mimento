@@ -5,6 +5,7 @@ import {
   referencedMediaIds,
   referencedMediaKinds,
   ThemeSchema,
+  themeMediaIds,
   type DraftStep,
   type PublishIssue,
 } from '@momentpath/contracts';
@@ -52,11 +53,15 @@ export class PublishValidatorService {
       giftStepKeysWithSecret: new Set(gifts.map((g) => g.stepKey)),
     });
 
-    const refs = new Map<string, string>(); // mediaId -> stepKey
+    const refs = new Map<string, string | null>(); // mediaId -> stepKey (null: the theme's music)
     const kinds = new Map<string, 'image' | 'audio'>();
     for (const step of draft.steps) {
       for (const id of referencedMediaIds(step)) refs.set(id, step.key);
       for (const [id, kind] of referencedMediaKinds(step)) kinds.set(id, kind);
+    }
+    for (const id of themeMediaIds(theme.data)) {
+      refs.set(id, null);
+      kinds.set(id, 'audio');
     }
     for (const gift of gifts) if (gift.mediaId) refs.set(gift.mediaId, gift.stepKey);
     if (refs.size > 0) {
@@ -66,6 +71,22 @@ export class PublishValidatorService {
       const byId = new Map(assets.map((a) => [a.id, a]));
       for (const [mediaId, stepKey] of refs) {
         const asset = byId.get(mediaId);
+        if (stepKey === null) {
+          // The theme's own music track.
+          if (!asset || asset.status !== 'READY' || !isAudioType(asset.mimeType))
+            issues.push({
+              stepKey,
+              field: 'music',
+              message: 'Your background music has not finished uploading. Upload it again.',
+            });
+          else if (!this.media.isPublishable(asset))
+            issues.push({
+              stepKey,
+              field: 'music',
+              message: 'Your background music is still being checked. Try again in a minute.',
+            });
+          continue;
+        }
         if (asset?.scanStatus === 'INFECTED') {
           issues.push({
             stepKey,

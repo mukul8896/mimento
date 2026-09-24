@@ -203,3 +203,82 @@ body {
   border: 3px solid #ec4899;
   animation: wr-pulse-ring 1.8s ease-out infinite;
 }
+
+/* ---- Player delight: staggered entrances, a glowing call to action, the music meter ---- */
+@keyframes mp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.mp-stagger > * > * {
+  animation: mp-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.mp-stagger > * > :nth-child(1) {
+  animation-delay: 0.08s;
+}
+.mp-stagger > * > :nth-child(2) {
+  animation-delay: 0.18s;
+}
+.mp-stagger > * > :nth-child(3) {
+  animation-delay: 0.28s;
+}
+.mp-stagger > * > :nth-child(4) {
+  animation-delay: 0.36s;
+}
+.mp-stagger > * > :nth-child(n + 5) {
+  animation-delay: 0.44s;
+}
+
+/* Only the shadow moves, so the button never shifts under a finger (or a test). */
+@keyframes mp-glow {
+  0%,
+  60%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--mp-accent) 55%, transparent);
+  }
+  85% {
+    box-shadow: 0 0 0 12px color-mix(in srgb, var(--mp-accent) 0%, transparent);
+  }
+}
+.mp-player .mp-cta:not(:disabled) {
+  animation: mp-glow 2.6s ease-out 2.5s infinite;
+}
+
+@keyframes mp-eq {
+  0%,
+  100% {
+    height: 30%;
+  }
+  50% {
+    height: 100%;
+  }
+}
+.mp-eq > span {
+  display: block;
+  width: 3px;
+  border-radius: 2px;
+  background: currentColor;
+  animation: mp-eq 0.9s ease-in-out infinite;
+}
+.mp-eq > span:nth-child(2) {
+  animation-delay: -0.3s;
+}
+.mp-eq > span:nth-child(3) {
+  animation-delay: -0.6s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mp-stagger > * > *,
+  .mp-player .mp-cta,
+  .mp-eq > span {
+    animation: none;
+  }
+  .mp-eq > span {
+    height: 60%;
+  }
+}

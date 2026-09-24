@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useFx } from '../fx/fx';
 import { accentButton, outlineButton } from '../theme';
 import type { StepProps } from './types';
 
@@ -17,6 +18,16 @@ export function ScratchStep({ step, media, busy, submit }: StepProps<'SCRATCH_RE
   const canvas = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const image = media.find((m) => m.id === cfg.hiddenMediaId);
+  const fx = useFx();
+  const card = useRef<HTMLDivElement>(null);
+  const celebrated = useRef(false);
+
+  useEffect(() => {
+    if (!revealed || celebrated.current) return;
+    celebrated.current = true;
+    fx.effect('SPARKLE');
+    fx.burst({ at: card.current, size: 'big' });
+  }, [revealed, fx]);
 
   useEffect(() => {
     const el = canvas.current;
@@ -62,7 +73,10 @@ export function ScratchStep({ step, media, busy, submit }: StepProps<'SCRATCH_RE
   return (
     <div className="space-y-5 text-center">
       <h2 className="text-[1.5em] font-bold leading-tight">{cfg.instructions}</h2>
-      <div className="relative mx-auto aspect-[4/3] w-full max-w-sm overflow-hidden rounded-3xl bg-[var(--mp-surface)] shadow-md">
+      <div
+        ref={card}
+        className="relative mx-auto aspect-[4/3] w-full max-w-sm overflow-hidden rounded-3xl bg-[var(--mp-surface)] shadow-md"
+      >
         <div
           aria-hidden={!revealed}
           className="flex h-full flex-col items-center justify-center gap-3 p-4"

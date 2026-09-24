@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { StepRoutingSchema } from './flow';
 import { EMPTY_RICH_TEXT, RichTextDocSchema } from './rich-text';
+import { DEFAULT_REACTIONS, ReactionSchema } from './sound';
 
 /**
  * Step configuration is stored as JSONB but always passes through these discriminated
@@ -49,7 +50,14 @@ export const MultipleChoiceConfigSchema = z
   .strictObject({
     question: shortText(200).default(''),
     options: z
-      .array(z.strictObject({ id: OptionIdSchema, label: shortText(80) }))
+      .array(
+        z.strictObject({
+          id: OptionIdSchema,
+          label: shortText(80),
+          /** Bursts from the option when it is picked. */
+          emoji: z.string().trim().max(16).default(''),
+        }),
+      )
       .min(2)
       .max(6),
     correctOptionId: OptionIdSchema.nullable().default(null),
@@ -113,6 +121,10 @@ export const YesNoConfigSchema = z.strictObject({
   maybeLabel: label('Maybe'),
   noButton: NoButtonConfigSchema.default({ mode: 'IMMEDIATE' }),
   evasiveMessage: shortText(120).default('Nice try!'),
+  /** Emoji burst and sound for each answer. */
+  yesReaction: ReactionSchema.default(DEFAULT_REACTIONS.yes),
+  noReaction: ReactionSchema.default(DEFAULT_REACTIONS.no),
+  maybeReaction: ReactionSchema.default(DEFAULT_REACTIONS.maybe),
 });
 
 export const ScratchRevealConfigSchema = z.strictObject({
@@ -390,8 +402,8 @@ export function defaultStepConfig<T extends StepType>(type: T): StepConfigOf<T> 
   if (type === 'MULTIPLE_CHOICE') {
     return MultipleChoiceConfigSchema.parse({
       options: [
-        { id: 'option-1', label: '' },
-        { id: 'option-2', label: '' },
+        { id: 'option-1', label: '', emoji: '' },
+        { id: 'option-2', label: '', emoji: '' },
       ],
     }) as StepConfigOf<T>;
   }

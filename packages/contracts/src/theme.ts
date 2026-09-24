@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CelebrationSchema, MusicSchema, NO_MUSIC, type Music } from './sound';
 
 /**
  * Themes are a closed set of design tokens. Creators never supply CSS or JavaScript;
@@ -11,7 +12,7 @@ const HexColor = z
 
 export const ThemeFontSchema = z.enum(['SANS', 'SERIF', 'ROUNDED', 'MONO']);
 export const ThemeTypeScaleSchema = z.enum(['COMPACT', 'COMFORTABLE', 'LARGE']);
-export const ThemeAnimationSchema = z.enum(['NONE', 'FADE', 'SLIDE', 'POP']);
+export const ThemeAnimationSchema = z.enum(['NONE', 'FADE', 'SLIDE', 'POP', 'FLIP', 'RISE']);
 
 export const ThemePaletteSchema = z.strictObject({
   background: HexColor,
@@ -27,6 +28,11 @@ export const ThemeSchema = z
     font: ThemeFontSchema,
     typeScale: ThemeTypeScaleSchema,
     animation: ThemeAnimationSchema,
+    /** Background music; it starts on the recipient's first tap and can be muted. */
+    music: MusicSchema.default(NO_MUSIC),
+    /** Tap and answer sound effects. */
+    sounds: z.boolean().default(true),
+    celebration: CelebrationSchema.default('CONFETTI'),
   })
   .meta({ id: 'Theme' });
 export type Theme = z.infer<typeof ThemeSchema>;
@@ -115,7 +121,15 @@ export const DEFAULT_THEME: Theme = {
   font: 'SANS',
   typeScale: 'COMFORTABLE',
   animation: 'FADE',
+  music: NO_MUSIC,
+  sounds: true,
+  celebration: 'CONFETTI',
 };
+
+/** The uploaded track a theme plays, if any (it must belong to the experience). */
+export function themeMediaIds(theme: { music?: Music }): string[] {
+  return theme.music?.source === 'UPLOAD' ? [theme.music.mediaId] : [];
+}
 
 function channel(hex: string, offset: number): number {
   const c = parseInt(hex.slice(offset, offset + 2), 16) / 255;

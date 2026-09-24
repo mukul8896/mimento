@@ -1,9 +1,26 @@
 'use client';
 
-import { AnimatePresence, motion, useReducedMotion, type Variants } from 'motion/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Answer, DraftStep, RevealedGift, Theme } from '@momentpath/contracts';
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  type Transition,
+  type Variants,
+} from 'motion/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  NO_MUSIC,
+  type Answer,
+  type DraftStep,
+  type Reaction,
+  type RevealedGift,
+  type Theme,
+} from '@momentpath/contracts';
 import { PlayerError, type PlayerBackend, type PlayerState } from './backend';
+import { AudioEngine } from './fx/engine';
+import { ambientGlyphs, burstGlyphs, centerOf, splitEmoji } from './fx/emoji';
+import { FxContext, SoundToggle, type Fx } from './fx/fx';
+import { ParticleLayer, type Point } from './fx/particles';
 import { ReportDialog } from './report-dialog';
 import { OpeningSoon, PinGate } from './access-screens';
 import { CountdownStep } from './steps/countdown-step';
@@ -30,11 +47,50 @@ const VARIANTS: Record<Theme['animation'], Variants> = {
     exit: { opacity: 0, x: -40 },
   },
   POP: {
-    initial: { opacity: 0, scale: 0.92 },
+    initial: { opacity: 0, scale: 0.85 },
     animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 0, scale: 0.96 },
+    exit: { opacity: 0, scale: 0.94 },
+  },
+  FLIP: {
+    initial: { opacity: 0, rotateY: -75, scale: 0.92 },
+    animate: { opacity: 1, rotateY: 0, scale: 1 },
+    exit: { opacity: 0, rotateY: 75, scale: 0.92 },
+  },
+  RISE: {
+    initial: { opacity: 0, y: 70, scale: 0.94 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: { opacity: 0, y: -50, scale: 0.97 },
   },
 };
+
+const SPRING: Transition = { type: 'spring', stiffness: 260, damping: 22 };
+const TRANSITIONS: Record<Theme['animation'], Transition> = {
+  NONE: { duration: 0 },
+  FADE: { duration: 0.3 },
+  SLIDE: { duration: 0.3, ease: 'easeOut' },
+  POP: SPRING,
+  FLIP: { type: 'spring', stiffness: 180, damping: 20 },
+  RISE: SPRING,
+};
+
+const SOUND_PREF = 'wr-sound';
+
+function readMutedPref(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(SOUND_PREF) === 'off';
+  } catch {
+    return false;
+  }
+}
+
+function writeMutedPref(muted: boolean) {
+  try {
+    window.localStorage.setItem(SOUND_PREF, muted ? 'off' : 'on');
+  } catch {
+    /* private mode */
+  }
+}
 
 function StepView(props: StepProps) {
   const { step } = props;
@@ -86,6 +142,16 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
   const [reporting, setReporting] = useState(false);
   const [viewing, setViewing] = useState<string | null>(null);
   const reducedMotion = useReducedMotion() ?? false;
+  const [engine] = useState(() => new AudioEngine());
+  // Read on first render: the toggle only appears after the client has loaded the experience.
+  const [muted, setMuted] = useState(readMutedPref);
+  const [unlocked, setUnlocked] = useState(false);
+  const burstCanvas = useRef<HTMLCanvasElement>(null);
+  const ambientCanvas = useRef<HTMLCanvasElement>(null);
+  const bursts = useRef<ParticleLayer | null>(null);
+  const ambient = useRef<ParticleLayer | null>(null);
+  const lastPointer = useRef<Point | null>(null);
+  const card = useRef<HTMLElement>(null);
 
   const [attempt, setAttempt] = useState(0);
   const [pin, setPin] = useState<string | undefined>(undefined);
@@ -118,14 +184,137 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
   // With branching the list order is not the recipient's order, so count steps they have done.
   const position = Math.min((state?.progress.completedStepKeys.length ?? 0) + 1, steps.length);
   const finished = state?.progress.completed === true && current?.type !== 'GIFT_REVEAL';
+  const music = theme.music ?? NO_MUSIC;
+  const musicUrl =
+    music.source === 'UPLOAD'
+      ? (state?.experience.media.find((m) => m.id === music.mediaId)?.url ?? null)
+      : null;
+  const hasSound = music.source !== 'NONE' || theme.sounds !== false;
+
+  useEffect(() => () => engine.dispose(), [engine]);
+  useEffect(() => engine.setMuted(muted), [engine, muted]);
+  useEffect(() => {
+    engine.setMusic(closed ? NO_MUSIC : music, musicUrl);
+  }, [engine, music, musicUrl, closed]);
+  // Embedded videos have their own sound; the music steps back while one is on screen.
+  useEffect(() => engine.setDucked(current?.type === 'VIDEO'), [engine, current?.type]);
+
+  useEffect(() => {
+    if (reducedMotion || !burstCanvas.current || !ambientCanvas.current) return;
+    bursts.current = new ParticleLayer(burstCanvas.current);
+    ambient.current = new ParticleLayer(ambientCanvas.current);
+    return () => {
+      bursts.current?.dispose();
+      ambient.current?.dispose();
+      bursts.current = ambient.current = null;
+    };
+  }, [reducedMotion]);
+
+  const celebration = theme.celebration ?? 'CONFETTI';
+  const loaded = state !== null;
+  useEffect(() => {
+    ambient.current?.setAmbient(loaded && !closed ? ambientGlyphs(celebration) : []);
+  }, [celebration, loaded, closed, reducedMotion]);
+
+  const fx: Fx = useMemo(() => {
+    const effect: Fx['effect'] = (e) => {
+      if (theme.sounds !== false) engine.effect(e);
+    };
+    const origin = (at?: Point | Element | null): Point => {
+      const point = centerOf(at) ?? lastPointer.current;
+      if (point) return point;
+      const r = card.current?.getBoundingClientRect();
+      return r
+        ? { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+        : { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    };
+    const burst: Fx['burst'] = ({ emoji, at, size = 'small' } = {}) => {
+      const glyphs = emoji ? splitEmoji(emoji) : burstGlyphs(celebration);
+      if (!emoji && celebration === 'NONE') return;
+      const big = size === 'big';
+      bursts.current?.burst(origin(at), glyphs, big ? 28 : 10, big ? 1.1 : 0.7);
+    };
+    return {
+      effect,
+      burst,
+      react: (reaction: Reaction, at?: Point | Element | null) => {
+        effect(reaction.sound);
+        burst({ emoji: reaction.emoji, at, size: 'big' });
+      },
+      celebrate: () => {
+        if (celebration !== 'NONE') bursts.current?.shower(burstGlyphs(celebration));
+      },
+      duck: (ducked: boolean) => engine.setDucked(ducked),
+    };
+  }, [engine, theme.sounds, celebration]);
+
+  const shake = useCallback(() => {
+    if (reducedMotion) return;
+    card.current?.animate(
+      [
+        { transform: 'translateX(0)' },
+        { transform: 'translateX(-10px)' },
+        { transform: 'translateX(9px)' },
+        { transform: 'translateX(-6px)' },
+        { transform: 'translateX(4px)' },
+        { transform: 'translateX(0)' },
+      ],
+      { duration: 420, easing: 'ease-out' },
+    );
+  }, [reducedMotion]);
+
+  const wasFinished = useRef(false);
+  useEffect(() => {
+    if (finished && !wasFinished.current) {
+      fx.effect('CHIME');
+      fx.celebrate();
+    }
+    wasFinished.current = finished;
+  }, [finished, fx]);
+
+  /** Immediate feedback for the tap itself, before the server has answered. */
+  function answerFx(step: DraftStep, answer: Answer) {
+    if (answer.kind === 'CHOICE' && step.type === 'YES_NO_CHOICE') {
+      const reaction =
+        answer.value === 'YES'
+          ? step.config.yesReaction
+          : answer.value === 'NO'
+            ? step.config.noReaction
+            : step.config.maybeReaction;
+      fx.react(reaction);
+      if (answer.value === 'YES' && !reducedMotion)
+        bursts.current?.shower(
+          reaction.emoji ? splitEmoji(reaction.emoji) : burstGlyphs(celebration),
+        );
+    } else if (answer.kind === 'ACK') {
+      fx.effect('POP');
+      fx.burst();
+    }
+  }
+
+  function resultFx(step: DraftStep, answer: Answer, correct: boolean | null) {
+    if (answer.kind !== 'OPTION' && answer.kind !== 'TEXT') return;
+    if (correct === true) {
+      fx.effect('DING');
+      fx.burst({ size: 'big' });
+    } else if (correct === false) {
+      fx.effect('BUZZ');
+      shake();
+    } else if (step.type === 'MULTIPLE_CHOICE') {
+      fx.effect('POP');
+      fx.burst();
+    }
+  }
 
   const submit = useCallback(
     async (answer: Answer): Promise<boolean | null> => {
       if (!current) return null;
       setBusy(true);
       setNotice(null);
+      answerFx(current, answer);
       try {
         const res = await backend.answer(current.key, answer);
+        resultFx(current, answer, res.correct);
         // A wrong required answer (quiz or puzzle) keeps the recipient on the same step.
         if (
           res.correct === false &&
@@ -146,7 +335,8 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
         setBusy(false);
       }
     },
-    [backend, current],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the fx helpers only read refs and fx
+    [backend, current, fx],
   );
 
   const reveal = useCallback(async (): Promise<RevealedGift | null> => {
@@ -156,6 +346,8 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
     try {
       const res = await backend.reveal(current.key);
       setState((s) => (s ? { ...s, progress: res.progress } : s));
+      fx.effect('FANFARE');
+      fx.celebrate();
       return res.gift;
     } catch (err) {
       const code = err instanceof PlayerError ? err.code : '';
@@ -171,7 +363,7 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
     } finally {
       setBusy(false);
     }
-  }, [backend, current]);
+  }, [backend, current, fx]);
 
   function close() {
     // Fire-and-forget: closing must work even offline and never submits an answer.
@@ -180,14 +372,32 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
   }
 
   const variants = reducedMotion ? VARIANTS.NONE : VARIANTS[theme.animation];
+  const transition = reducedMotion ? TRANSITIONS.NONE : TRANSITIONS[theme.animation];
   const shell = embedded ? 'relative h-full min-h-full' : 'relative min-h-dvh';
+  const layer = `pointer-events-none ${embedded ? 'absolute' : 'fixed'} inset-0 size-full`;
+
+  // Browsers allow sound only after a tap or key press, so the first one switches it on.
+  const unlock = () => {
+    engine.unlock();
+    if (!unlocked) setUnlocked(true);
+  };
 
   return (
     <div
       className={`${themeClass(theme)} ${shell} flex flex-col overflow-x-hidden`}
       style={themeStyle(theme)}
       data-testid="player"
+      onPointerDownCapture={(e) => {
+        lastPointer.current = { x: e.clientX, y: e.clientY };
+      }}
+      onPointerUpCapture={unlock}
+      onKeyDownCapture={(e) => {
+        lastPointer.current = null;
+        if (e.key === 'Enter' || e.key === ' ') unlock();
+      }}
     >
+      <canvas ref={ambientCanvas} aria-hidden="true" className={`${layer} z-0`} />
+      <canvas ref={burstCanvas} aria-hidden="true" className={`${layer} z-30`} />
       <header className="sticky top-0 z-40 flex items-center justify-between gap-3 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
         <div className="min-w-0 flex-1">
           {state && !closed && steps.length > 0 ? (
@@ -205,6 +415,17 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
             </div>
           ) : null}
         </div>
+        {!closed && hasSound && state ? (
+          <SoundToggle
+            muted={muted}
+            playing={unlocked && music.source !== 'NONE'}
+            onToggle={() => {
+              const next = !muted;
+              setMuted(next);
+              writeMutedPref(next);
+            }}
+          />
+        ) : null}
         {!closed ? (
           <button
             type="button"
@@ -228,7 +449,7 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
         ) : null}
       </header>
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-6">
+      <main className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-6 [perspective:1200px]">
         {error?.code === 'EXPERIENCE_UNAVAILABLE' ? (
           <Unavailable />
         ) : closed ? (
@@ -291,24 +512,27 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
             ) : null}
             <AnimatePresence mode="wait" initial={false}>
               <motion.section
+                ref={card}
                 key={current.key}
                 aria-label={`Step ${position} of ${steps.length}`}
                 variants={variants}
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                transition={{ duration: 0.25 }}
-                className="rounded-3xl bg-[var(--mp-surface)] p-5 shadow-lg sm:p-7"
+                transition={transition}
+                className={`rounded-3xl bg-[var(--mp-surface)] p-5 shadow-lg sm:p-7 ${theme.animation === 'NONE' ? '' : 'mp-stagger'}`}
               >
-                <StepView
-                  step={current}
-                  media={state.experience.media}
-                  busy={busy}
-                  reducedMotion={reducedMotion}
-                  submit={submit}
-                  reveal={reveal}
-                  preview={backend.mode === 'preview'}
-                />
+                <FxContext.Provider value={fx}>
+                  <StepView
+                    step={current}
+                    media={state.experience.media}
+                    busy={busy}
+                    reducedMotion={reducedMotion}
+                    submit={submit}
+                    reveal={reveal}
+                    preview={backend.mode === 'preview'}
+                  />
+                </FxContext.Provider>
               </motion.section>
             </AnimatePresence>
             {notice ? (
@@ -320,7 +544,7 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
         )}
       </main>
 
-      <footer className="flex items-center justify-between gap-2 px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-xs opacity-70">
+      <footer className="relative z-10 flex items-center justify-between gap-2 px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-xs opacity-70">
         <span>Made with Wish Revealer</span>
         {backend.mode === 'live' && error?.code !== 'EXPERIENCE_UNAVAILABLE' ? (
           <button type="button" className="min-h-9 underline" onClick={() => setReporting(true)}>

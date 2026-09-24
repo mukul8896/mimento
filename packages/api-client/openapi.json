@@ -1935,7 +1935,33 @@
               "NONE",
               "FADE",
               "SLIDE",
-              "POP"
+              "POP",
+              "FLIP",
+              "RISE"
+            ]
+          },
+          "music": {
+            "default": {
+              "source": "NONE"
+            },
+            "$ref": "#/components/schemas/Music_Output"
+          },
+          "sounds": {
+            "default": true,
+            "type": "boolean"
+          },
+          "celebration": {
+            "default": "CONFETTI",
+            "type": "string",
+            "enum": [
+              "CONFETTI",
+              "HEARTS",
+              "SPARKLES",
+              "BALLOONS",
+              "FESTIVE",
+              "FLOWERS",
+              "SNOW",
+              "NONE"
             ]
           }
         },
@@ -1943,9 +1969,75 @@
           "palette",
           "font",
           "typeScale",
-          "animation"
+          "animation",
+          "music",
+          "sounds",
+          "celebration"
         ],
         "additionalProperties": false
+      },
+      "Music_Output": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "const": "NONE"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "const": "LIBRARY"
+              },
+              "track": {
+                "type": "string",
+                "enum": [
+                  "LOVE_PIANO",
+                  "BIRTHDAY_BOX",
+                  "PARTY",
+                  "FESTIVE",
+                  "JINGLE",
+                  "AULD_LANG_SYNE",
+                  "DREAMY",
+                  "PLAYFUL"
+                ]
+              }
+            },
+            "required": [
+              "source",
+              "track"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "const": "UPLOAD"
+              },
+              "mediaId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "required": [
+              "source",
+              "mediaId"
+            ],
+            "additionalProperties": false
+          }
+        ]
       },
       "TemplateListResponseDto_Output": {
         "type": "object",
@@ -2230,11 +2322,17 @@
                         "label": {
                           "type": "string",
                           "maxLength": 80
+                        },
+                        "emoji": {
+                          "default": "",
+                          "type": "string",
+                          "maxLength": 16
                         }
                       },
                       "required": [
                         "id",
-                        "label"
+                        "label",
+                        "emoji"
                       ],
                       "additionalProperties": false
                     }
@@ -2398,6 +2496,117 @@
                     "default": "Nice try!",
                     "type": "string",
                     "maxLength": 120
+                  },
+                  "yesReaction": {
+                    "default": {
+                      "emoji": "😍",
+                      "sound": "YAY"
+                    },
+                    "type": "object",
+                    "properties": {
+                      "emoji": {
+                        "type": "string",
+                        "maxLength": 16
+                      },
+                      "sound": {
+                        "type": "string",
+                        "enum": [
+                          "NONE",
+                          "POP",
+                          "YAY",
+                          "APPLAUSE",
+                          "FANFARE",
+                          "DING",
+                          "CHIME",
+                          "SPARKLE",
+                          "BOING",
+                          "WOMP",
+                          "BUZZ",
+                          "WHOOSH",
+                          "DRUMROLL",
+                          "HEARTBEAT"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "emoji",
+                      "sound"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "noReaction": {
+                    "default": {
+                      "emoji": "🥺",
+                      "sound": "WOMP"
+                    },
+                    "type": "object",
+                    "properties": {
+                      "emoji": {
+                        "type": "string",
+                        "maxLength": 16
+                      },
+                      "sound": {
+                        "type": "string",
+                        "enum": [
+                          "NONE",
+                          "POP",
+                          "YAY",
+                          "APPLAUSE",
+                          "FANFARE",
+                          "DING",
+                          "CHIME",
+                          "SPARKLE",
+                          "BOING",
+                          "WOMP",
+                          "BUZZ",
+                          "WHOOSH",
+                          "DRUMROLL",
+                          "HEARTBEAT"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "emoji",
+                      "sound"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "maybeReaction": {
+                    "default": {
+                      "emoji": "🤔",
+                      "sound": "BOING"
+                    },
+                    "type": "object",
+                    "properties": {
+                      "emoji": {
+                        "type": "string",
+                        "maxLength": 16
+                      },
+                      "sound": {
+                        "type": "string",
+                        "enum": [
+                          "NONE",
+                          "POP",
+                          "YAY",
+                          "APPLAUSE",
+                          "FANFARE",
+                          "DING",
+                          "CHIME",
+                          "SPARKLE",
+                          "BOING",
+                          "WOMP",
+                          "BUZZ",
+                          "WHOOSH",
+                          "DRUMROLL",
+                          "HEARTBEAT"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "emoji",
+                      "sound"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -2407,7 +2616,10 @@
                   "maybeEnabled",
                   "maybeLabel",
                   "noButton",
-                  "evasiveMessage"
+                  "evasiveMessage",
+                  "yesReaction",
+                  "noReaction",
+                  "maybeReaction"
                 ],
                 "additionalProperties": false
               },
@@ -4678,7 +4890,33 @@
               "NONE",
               "FADE",
               "SLIDE",
-              "POP"
+              "POP",
+              "FLIP",
+              "RISE"
+            ]
+          },
+          "music": {
+            "default": {
+              "source": "NONE"
+            },
+            "$ref": "#/components/schemas/Music"
+          },
+          "sounds": {
+            "default": true,
+            "type": "boolean"
+          },
+          "celebration": {
+            "default": "CONFETTI",
+            "type": "string",
+            "enum": [
+              "CONFETTI",
+              "HEARTS",
+              "SPARKLES",
+              "BALLOONS",
+              "FESTIVE",
+              "FLOWERS",
+              "SNOW",
+              "NONE"
             ]
           }
         },
@@ -4689,6 +4927,69 @@
           "animation"
         ],
         "additionalProperties": false
+      },
+      "Music": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "const": "NONE"
+              }
+            },
+            "required": [
+              "source"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "const": "LIBRARY"
+              },
+              "track": {
+                "type": "string",
+                "enum": [
+                  "LOVE_PIANO",
+                  "BIRTHDAY_BOX",
+                  "PARTY",
+                  "FESTIVE",
+                  "JINGLE",
+                  "AULD_LANG_SYNE",
+                  "DREAMY",
+                  "PLAYFUL"
+                ]
+              }
+            },
+            "required": [
+              "source",
+              "track"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "const": "UPLOAD"
+              },
+              "mediaId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "required": [
+              "source",
+              "mediaId"
+            ],
+            "additionalProperties": false
+          }
+        ]
       },
       "Step": {
         "oneOf": [
@@ -4835,6 +5136,11 @@
                         "label": {
                           "type": "string",
                           "maxLength": 80
+                        },
+                        "emoji": {
+                          "default": "",
+                          "type": "string",
+                          "maxLength": 16
                         }
                       },
                       "required": [
@@ -4999,6 +5305,117 @@
                     "default": "Nice try!",
                     "type": "string",
                     "maxLength": 120
+                  },
+                  "yesReaction": {
+                    "default": {
+                      "emoji": "😍",
+                      "sound": "YAY"
+                    },
+                    "type": "object",
+                    "properties": {
+                      "emoji": {
+                        "type": "string",
+                        "maxLength": 16
+                      },
+                      "sound": {
+                        "type": "string",
+                        "enum": [
+                          "NONE",
+                          "POP",
+                          "YAY",
+                          "APPLAUSE",
+                          "FANFARE",
+                          "DING",
+                          "CHIME",
+                          "SPARKLE",
+                          "BOING",
+                          "WOMP",
+                          "BUZZ",
+                          "WHOOSH",
+                          "DRUMROLL",
+                          "HEARTBEAT"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "emoji",
+                      "sound"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "noReaction": {
+                    "default": {
+                      "emoji": "🥺",
+                      "sound": "WOMP"
+                    },
+                    "type": "object",
+                    "properties": {
+                      "emoji": {
+                        "type": "string",
+                        "maxLength": 16
+                      },
+                      "sound": {
+                        "type": "string",
+                        "enum": [
+                          "NONE",
+                          "POP",
+                          "YAY",
+                          "APPLAUSE",
+                          "FANFARE",
+                          "DING",
+                          "CHIME",
+                          "SPARKLE",
+                          "BOING",
+                          "WOMP",
+                          "BUZZ",
+                          "WHOOSH",
+                          "DRUMROLL",
+                          "HEARTBEAT"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "emoji",
+                      "sound"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "maybeReaction": {
+                    "default": {
+                      "emoji": "🤔",
+                      "sound": "BOING"
+                    },
+                    "type": "object",
+                    "properties": {
+                      "emoji": {
+                        "type": "string",
+                        "maxLength": 16
+                      },
+                      "sound": {
+                        "type": "string",
+                        "enum": [
+                          "NONE",
+                          "POP",
+                          "YAY",
+                          "APPLAUSE",
+                          "FANFARE",
+                          "DING",
+                          "CHIME",
+                          "SPARKLE",
+                          "BOING",
+                          "WOMP",
+                          "BUZZ",
+                          "WHOOSH",
+                          "DRUMROLL",
+                          "HEARTBEAT"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "emoji",
+                      "sound"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "additionalProperties": false

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { noButtonState } from '@momentpath/contracts';
+import { useFx } from '../fx/fx';
 import { accentButton, outlineButton } from '../theme';
 import type { StepProps } from './types';
 
@@ -27,6 +28,7 @@ export function YesNoStep({ step, busy, submit, reducedMotion }: StepProps<'YES_
   const yesRef = useRef<HTMLButtonElement>(null);
   const suppressClick = useRef(false);
   const hintId = useId();
+  const fx = useFx();
 
   const state = noButtonState(cfg.noButton, { attempts, elapsedMs: now - startedAt });
 
@@ -39,6 +41,8 @@ export function YesNoStep({ step, busy, submit, reducedMotion }: StepProps<'YES_
   const evade = useCallback(() => {
     setAttempts((a) => a + 1);
     setMessage(cfg.evasiveMessage);
+    fx.effect('BOING');
+    fx.burst({ emoji: '😜', at: noRef.current });
     if (reducedMotion) return;
     const box = arena.current?.getBoundingClientRect();
     const btn = noRef.current?.getBoundingClientRect();
@@ -59,7 +63,7 @@ export function YesNoStep({ step, busy, submit, reducedMotion }: StepProps<'YES_
         return;
       }
     }
-  }, [cfg.evasiveMessage, reducedMotion]);
+  }, [cfg.evasiveMessage, reducedMotion, fx]);
 
   // Once No becomes a normal button it returns to its natural place and the teasing stops.
   const floating = state.clickable ? null : position;

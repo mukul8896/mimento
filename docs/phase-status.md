@@ -11,6 +11,7 @@ _Updated 22 Sep 2026._ Phase 1 implemented; awaiting owner review before Phase 2
 - Dashboard with drafts/live/inactive filters, cursor pagination and open/completed counts.
 - Create from three seeded templates (date invitation, birthday surprise, anniversary) or blank.
   (Since 2026-09-24: 26 templates with quick personalisation; tier set by the operator.)
+  (Since 2026-09-24: background music, answer sounds, emoji reactions and celebrations.)
 - Linear editor: add, edit, duplicate, reorder (accessible up/down), delete; one final surprise kept last.
 - Step types: message (restricted rich text), photo with caption + alt text, multiple choice
   (optional quiz), Yes/No/Maybe with four No modes, scratch card with accessible reveal, final surprise.

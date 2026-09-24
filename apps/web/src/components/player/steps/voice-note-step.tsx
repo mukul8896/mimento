@@ -1,8 +1,13 @@
+import { useEffect } from 'react';
+import { useFx } from '../fx/fx';
 import { accentButton } from '../theme';
 import type { StepProps } from './types';
 
 export function VoiceNoteStep({ step, media, busy, submit }: StepProps<'VOICE_NOTE'>) {
   const audio = media.find((m) => m.id === step.config.mediaId);
+  const fx = useFx();
+  // Background music steps back while the voice note plays.
+  useEffect(() => () => fx.duck(false), [fx]);
   return (
     <div className="space-y-5 text-center">
       <p className="text-[2.5em]" aria-hidden="true">
@@ -16,6 +21,9 @@ export function VoiceNoteStep({ step, media, busy, submit }: StepProps<'VOICE_NO
           src={audio.url}
           className="w-full"
           data-testid="voice-note"
+          onPlay={() => fx.duck(true)}
+          onPause={() => fx.duck(false)}
+          onEnded={() => fx.duck(false)}
         />
       ) : (
         <p className="opacity-70">This voice note is not available.</p>

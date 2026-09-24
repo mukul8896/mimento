@@ -8,7 +8,13 @@ import {
   STEP_TYPES,
 } from './steps';
 import { RichTextDocSchema } from './rich-text';
-import { ThemeSchema, DEFAULT_THEME, themeContrastIssues, contrastRatio } from './theme';
+import {
+  ThemeSchema,
+  DEFAULT_THEME,
+  themeContrastIssues,
+  contrastRatio,
+  themeMediaIds,
+} from './theme';
 
 const key = '6a2f9d4e-3b7c-4d1a-9f0e-1c2b3a4d5e6f';
 
@@ -155,5 +161,54 @@ describe('theme', () => {
     expect(
       themeContrastIssues({ ...DEFAULT_THEME.palette, text: '#eeeeee', background: '#ffffff' }),
     ).not.toEqual([]);
+  });
+});
+
+describe('sound and celebration settings', () => {
+  it('older themes and steps get sensible defaults', () => {
+    const legacy = {
+      palette: DEFAULT_THEME.palette,
+      font: 'SANS',
+      typeScale: 'COMFORTABLE',
+      animation: 'POP',
+    };
+    expect(ThemeSchema.parse(legacy)).toMatchObject({
+      music: { source: 'NONE' },
+      sounds: true,
+      celebration: 'CONFETTI',
+    });
+    expect(YesNoConfigSchema.parse({})).toMatchObject({
+      yesReaction: { emoji: '😍', sound: 'YAY' },
+      noReaction: { emoji: '🥺', sound: 'WOMP' },
+    });
+    const mc = MultipleChoiceConfigSchema.parse({
+      options: [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B', emoji: '🍕' },
+      ],
+    });
+    expect(mc.options.map((o: { emoji: string }) => o.emoji)).toEqual(['', '🍕']);
+    expect(themeMediaIds(ThemeSchema.parse(legacy))).toEqual([]);
+  });
+
+  it('accepts library and uploaded music, and rejects anything else', () => {
+    const id = '6f1c2a55-7a0e-4b8e-9d1f-2b3c4d5e6f70';
+    const upload = ThemeSchema.parse({
+      ...DEFAULT_THEME,
+      music: { source: 'UPLOAD', mediaId: id },
+    });
+    expect(themeMediaIds(upload)).toEqual([id]);
+    expect(
+      ThemeSchema.safeParse({ ...DEFAULT_THEME, music: { source: 'LIBRARY', track: 'JINGLE' } })
+        .success,
+    ).toBe(true);
+    expect(
+      ThemeSchema.safeParse({ ...DEFAULT_THEME, music: { source: 'LIBRARY', track: 'TOP40' } })
+        .success,
+    ).toBe(false);
+    expect(
+      ThemeSchema.safeParse({ ...DEFAULT_THEME, music: { source: 'URL', url: 'https://x' } })
+        .success,
+    ).toBe(false);
   });
 });

@@ -16,8 +16,9 @@ export function themeClass(theme: Theme): string {
   return `mp-player mp-font-${theme.font} mp-scale-${theme.typeScale}`;
 }
 
+/** `mp-cta` adds a gentle glow that invites the tap (see globals.css). */
 export const accentButton =
-  'inline-flex min-h-12 items-center justify-center rounded-2xl px-6 font-semibold shadow-sm transition active:scale-[0.98] ' +
+  'mp-cta inline-flex min-h-12 items-center justify-center rounded-2xl px-6 font-semibold shadow-sm transition active:scale-[0.98] ' +
   'bg-[var(--mp-accent)] text-[var(--mp-accent-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mp-accent)] ' +
   'disabled:opacity-60';
 
