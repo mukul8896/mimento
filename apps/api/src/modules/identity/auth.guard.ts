@@ -42,16 +42,29 @@ export class AuthGuard implements CanActivate {
     return true;
   }
 
+  /**
+   * A browser can hold both an owner token (everything it created) and a manage token (one
+   * experience, possibly someone else's, opened from a manage link). The owner token is used
+   * unless the request is about the managed experience of a different owner; when both belong
+   * to the same owner the owner token already covers everything, so no scope applies.
+   */
   private async resolve(req: Request): Promise<Principal | null> {
     const admin = header(req, ADMIN_TOKEN_HEADER);
     if (admin) return this.identity.resolveAdmin(admin);
 
-    const manage = header(req, MANAGE_TOKEN_HEADER);
-    if (manage) return this.identity.resolveManageToken(manage);
-
-    const owner = header(req, OWNER_TOKEN_HEADER);
-    if (owner) return this.identity.resolveOwner(owner);
-
-    return null;
+    const manageToken = header(req, MANAGE_TOKEN_HEADER);
+    const ownerToken = header(req, OWNER_TOKEN_HEADER);
+    const [managed, owner] = await Promise.all([
+      manageToken ? this.identity.resolveManageToken(manageToken) : null,
+      ownerToken ? this.identity.resolveOwner(ownerToken) : null,
+    ]);
+    if (!managed) return owner;
+    if (!owner) return managed;
+    if (owner.userId === managed.userId) return owner;
+    const params = req.params as Record<string, string | undefined>;
+    const target = params.id ?? params.experienceId;
+    return target === managed.scopeExperienceId
+      ? managed
+      : { ...owner, alsoManagedExperienceId: managed.scopeExperienceId };
   }
 }

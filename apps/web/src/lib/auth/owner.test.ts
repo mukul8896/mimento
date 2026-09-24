@@ -40,12 +40,14 @@ describe('creator credentials', () => {
     expect(creatorHeaders(cookies({ mp_owner: VALID }))).toEqual({ 'x-owner-token': VALID });
   });
 
-  it('prefers the manage token, which is scoped to one experience', async () => {
+  it('sends both tokens so the API can pick per request', async () => {
     const { creatorHeaders } = await import('./owner');
     const manage = 'b'.repeat(43);
     expect(creatorHeaders(cookies({ mp_owner: VALID, mp_manage: manage }))).toEqual({
+      'x-owner-token': VALID,
       'x-manage-token': manage,
     });
+    expect(creatorHeaders(cookies({ mp_manage: manage }))).toEqual({ 'x-manage-token': manage });
   });
 
   it('sends no credential when there is no cookie', async () => {

@@ -100,7 +100,13 @@ export class ExperiencesService {
     const cursor = decodeCursor(query.cursor);
     const now = new Date();
     const filters: Prisma.ExperienceWhereInput[] = [
-      { ownerId: principal.userId, status: { not: 'DELETED' } },
+      {
+        status: { not: 'DELETED' },
+        OR: [
+          { ownerId: principal.userId },
+          ...(principal.alsoManagedExperienceId ? [{ id: principal.alsoManagedExperienceId }] : []),
+        ],
+      },
     ];
     // A manage link sees only the experience it was issued for.
     if (principal.scopeExperienceId) filters.push({ id: principal.scopeExperienceId });
@@ -136,6 +142,13 @@ export class ExperiencesService {
     input: { title?: string; templateKey?: string | null },
     requestId: string | null,
   ) {
+    // A manage link opens one experience; new ones need this browser's own owner token.
+    if (principal.scopeExperienceId) {
+      throw Problem.forbidden(
+        'MANAGE_LINK_ONLY',
+        'This browser was opened with a link to one surprise. Start fresh on this device to create new ones.',
+      );
+    }
     const template = input.templateKey ? await this.templates.find(input.templateKey) : null;
     if (input.templateKey && !template)
       throw Problem.badRequest('UNKNOWN_TEMPLATE', 'Template not found');

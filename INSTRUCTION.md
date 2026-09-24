@@ -18,6 +18,18 @@ stages 2 and 3 are not started.**
 | GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
 | Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
 
+## Fix: new surprises "not found" with a manage-link cookie (2026-09-24)
+
+- Reported from the owner's phone: creating a surprise succeeded but the editor said it did not
+  exist. The browser held both its owner cookie and a manage-link cookie; the BFF sent only the
+  manage token, whose scope is one experience.
+- Now the BFF sends both, and `AuthGuard.resolve` picks: same owner → owner token; different
+  owners → manage token only for its own experience, owner token otherwise (lists include the
+  managed one via `Principal.alsoManagedExperienceId`). Browsers with only a manage link are
+  minted an owner cookie on creator routes, so they can create too. A manage-only API caller
+  gets `MANAGE_LINK_ONLY` instead of an orphaned surprise.
+- Tests: `auth.int.test.ts` (both same-owner and other-owner cases), `recovery.spec.ts` E2E.
+
 ## Rebrand to Wish Revealer (2026-09-24)
 
 - Every user-visible "MomentPath" is now **Wish Revealer** (header, titles, footer, policies,

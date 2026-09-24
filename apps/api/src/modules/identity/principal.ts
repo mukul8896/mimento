@@ -8,6 +8,11 @@ export interface Principal {
    * this experience only, so sharing a recovery link cannot reach the owner's other experiences.
    */
   scopeExperienceId?: string;
+  /**
+   * Set when this browser also holds a manage link for another owner's experience. Lists
+   * include it; requests about it are authorised by the manage token instead (see AuthGuard).
+   */
+  alsoManagedExperienceId?: string;
 }
 
 /** Creator credential for every experience this anonymous owner created in one browser. */

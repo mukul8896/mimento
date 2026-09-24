@@ -4,7 +4,6 @@ import {
   mintOwnerToken,
   OWNER_COOKIE,
   OWNER_MAX_AGE,
-  readManageToken,
   readOwnerToken,
   type CookieOptions,
 } from '@/lib/auth/owner';
@@ -64,9 +63,10 @@ export async function proxy(request: NextRequest) {
       pending.push({ name, value, options }),
   };
 
-  // No sign-in step: a visitor who starts building simply becomes an anonymous owner. A manage
-  // link already identifies its holder, so it never triggers a mint.
-  if (isCreatorRoute && !readOwnerToken(request.cookies) && !readManageToken(request.cookies)) {
+  // No sign-in step: a visitor who starts building simply becomes an anonymous owner. A browser
+  // that only holds a manage link gets one too, so it can create its own surprises; the API keeps
+  // using the manage token for the one experience it opens.
+  if (isCreatorRoute && !readOwnerToken(request.cookies)) {
     const minted = await mintOwnerToken();
     if (minted) writer.set(OWNER_COOKIE, minted, cookieOptions(OWNER_MAX_AGE));
   }

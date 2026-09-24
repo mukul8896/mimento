@@ -60,10 +60,13 @@ export function readManageToken(cookies: CookieReader): string | null {
 export function creatorHeaders(cookies: CookieReader): Record<string, string> {
   const admin = cookies.get(ADMIN_COOKIE)?.value;
   if (admin) return { 'x-admin-token': admin };
-  const manage = readManageToken(cookies);
-  if (manage) return { 'x-manage-token': manage };
+  // Both are sent; the API decides per request (manage token only for its one experience).
+  const headers: Record<string, string> = {};
   const owner = readOwnerToken(cookies);
-  return owner ? { 'x-owner-token': owner } : {};
+  if (owner) headers['x-owner-token'] = owner;
+  const manage = readManageToken(cookies);
+  if (manage) headers['x-manage-token'] = manage;
+  return headers;
 }
 
 /** Mints a new anonymous owner. Called the first time a visitor reaches a creator route. */

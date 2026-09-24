@@ -29,6 +29,34 @@ test('a manage link restores one surprise after browser data is cleared', async 
   await fresh.close();
 });
 
+test('a browser holding a manage link can still create and open new surprises', async ({
+  browser,
+}) => {
+  // Regression: with a manage-link cookie, new surprises were created but then "not found".
+  const alice = await creatorApi('alice');
+  const { id } = await createPublished(alice, 'date-invitation');
+  const { manageToken } = (await (
+    await alice.get(`/bff/api/v1/experiences/${id}/manage-link`)
+  ).json()) as { manageToken: string };
+
+  const fresh = await browser.newContext();
+  const page = await fresh.newPage();
+  await page.goto(`/m/${manageToken}`);
+  await expect(page).toHaveURL(/\/dashboard/);
+  await page.getByRole('link', { name: 'New experience' }).click();
+  await page.getByRole('button', { name: /Birthday surprise/ }).click();
+  await expect(page).toHaveURL(/\/edit$/);
+  await expect(page.getByTestId('step-list')).toBeVisible();
+
+  // The dashboard shows both the managed surprise and the new one.
+  await page.goto('/dashboard');
+  const list = await fresh.request.get('/bff/api/v1/experiences');
+  const ids = ((await list.json()) as { items: { id: string }[] }).items.map((i) => i.id);
+  expect(ids).toContain(id);
+  expect(ids.length).toBeGreaterThanOrEqual(2);
+  await fresh.close();
+});
+
 test('a recovery link restores every surprise the creator made', async ({ browser }) => {
   const bob = await creatorApi('bob');
   const first = await createPublished(bob, 'date-invitation');
