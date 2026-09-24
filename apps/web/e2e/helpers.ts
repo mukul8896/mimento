@@ -80,7 +80,34 @@ export async function expectNoHorizontalScroll(page: Page) {
   expect(overflow, 'page should not scroll horizontally').toBeLessThanOrEqual(0);
 }
 
+/**
+ * Waits for entrance animations (fades, rises) to finish, so contrast is measured on what people
+ * actually read rather than a half-faded frame. Looping animations (a glowing button) are ignored.
+ */
+export async function settleAnimations(page: Page) {
+  await page.waitForFunction(
+    () =>
+      // Frame-by-frame (Motion) animations leave an inline opacity until they finish.
+      // Only a half-faded element is misleading: fully hidden ones (waiting to be scrolled
+      // into view) are skipped by axe, and decorative layers (aria-hidden) are faint on purpose.
+      Array.from(document.querySelectorAll<HTMLElement>('[style*="opacity"]'))
+        .filter((el) => !el.closest('[aria-hidden="true"]'))
+        .every((el) => {
+          const o = el.style.opacity === '' ? 1 : Number(el.style.opacity);
+          return o === 0 || o >= 1;
+        }) &&
+      document
+        .getAnimations()
+        .every(
+          (a) => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity,
+        ),
+    undefined,
+    { timeout: 5000 },
+  );
+}
+
 export async function expectAccessible(page: Page, include?: string) {
+  await settleAnimations(page);
   let builder = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']);
   if (include) builder = builder.include(include);
   const results = await builder.analyze();
