@@ -139,6 +139,12 @@ export const STEP_TYPE_LABEL: Record<StepType, string> = {
   MULTIPLE_CHOICE: 'Question',
   YES_NO_CHOICE: 'Yes / No',
   SCRATCH_REVEAL: 'Scratch card',
+  COUNTDOWN: 'Countdown',
+  PUZZLE: 'Puzzle',
+  PHOTO_GALLERY: 'Photo gallery',
+  VOICE_NOTE: 'Voice note',
+  VIDEO: 'Video',
+  PLACE_REVEAL: 'Place reveal',
   GIFT_REVEAL: 'Final surprise',
 };
 
@@ -148,6 +154,12 @@ export const STEP_TYPE_HINT: Record<StepType, string> = {
   MULTIPLE_CHOICE: 'Pick one answer, optionally a quiz',
   YES_NO_CHOICE: 'Yes, No and Maybe with a playful No button',
   SCRATCH_REVEAL: 'Scratch to reveal a hidden message',
+  COUNTDOWN: 'Count down to a moment, optionally waiting for it',
+  PUZZLE: 'A riddle or secret word they must guess',
+  PHOTO_GALLERY: 'Several photos to swipe through',
+  VOICE_NOTE: 'A recorded message or song clip',
+  VIDEO: 'A YouTube or Vimeo video',
+  PLACE_REVEAL: 'Reveal where and when, with a map link',
   GIFT_REVEAL: 'The gift or plan revealed at the end',
 };
 
@@ -162,6 +174,18 @@ export function stepSummary(step: DraftStep): string {
       return step.config.question || 'Untitled question';
     case 'SCRATCH_REVEAL':
       return step.config.instructions || 'Scratch card';
+    case 'COUNTDOWN':
+      return step.config.title || 'Countdown';
+    case 'PUZZLE':
+      return step.config.prompt || 'Puzzle';
+    case 'PHOTO_GALLERY':
+      return step.config.title || `${step.config.items.length} photos`;
+    case 'VOICE_NOTE':
+      return step.config.title || 'Voice note';
+    case 'VIDEO':
+      return step.config.title || 'Video';
+    case 'PLACE_REVEAL':
+      return step.config.placeName || step.config.title || 'Place reveal';
     case 'GIFT_REVEAL':
       return step.config.title || 'Final surprise';
   }

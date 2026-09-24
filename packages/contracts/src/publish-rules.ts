@@ -1,6 +1,6 @@
 import { END, successors, type FlowStep } from './flow';
 import { richTextIsEmpty } from './rich-text';
-import { MAX_STEPS, type DraftStep } from './steps';
+import { MAX_STEPS, parseVideoUrl, type DraftStep } from './steps';
 import { themeContrastIssues, type Theme } from './theme';
 
 export interface PublishIssue {
@@ -69,6 +69,34 @@ export function publishIssues(input: PublishCheckInput): PublishIssue[] {
         if (step.config.hiddenMediaId && step.config.hiddenMediaAlt.trim() === '') {
           add(step.key, 'hiddenMediaAlt', 'Describe the hidden image for screen readers.');
         }
+        break;
+      case 'COUNTDOWN':
+        if (!step.config.targetAt)
+          add(step.key, 'targetAt', 'Choose the date and time to count down to.');
+        break;
+      case 'PUZZLE':
+        if (step.config.prompt.trim() === '')
+          add(step.key, 'prompt', 'Write the riddle or question.');
+        if (step.config.answer.trim() === '')
+          add(step.key, 'answer', 'Set the answer people must type.');
+        break;
+      case 'PHOTO_GALLERY':
+        if (step.config.items.length === 0) add(step.key, 'items', 'Add at least one photo.');
+        if (step.config.items.some((i) => i.alt.trim() === '')) {
+          add(step.key, 'items', 'Describe every photo for people using screen readers.');
+        }
+        break;
+      case 'VOICE_NOTE':
+        if (!step.config.mediaId) add(step.key, 'mediaId', 'Upload the voice note.');
+        break;
+      case 'VIDEO':
+        if (!parseVideoUrl(step.config.url)) {
+          add(step.key, 'url', 'Paste a YouTube or Vimeo link.');
+        }
+        break;
+      case 'PLACE_REVEAL':
+        if (step.config.placeName.trim() === '')
+          add(step.key, 'placeName', 'Name the place to reveal.');
         break;
       case 'GIFT_REVEAL':
         if (index !== input.steps.length - 1) {

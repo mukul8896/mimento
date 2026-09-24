@@ -16,8 +16,9 @@ export default function PrivacyPage() {
       <PolicySection title="What we store">
         <ul className="list-disc space-y-1 pl-5">
           <li>
-            <strong>What you create:</strong> the text, photos, theme and gift details of your
-            surprises. Gift codes are encrypted.
+            <strong>What you create:</strong> the text, photos, voice notes, theme and gift details
+            of your surprises. Gift codes and puzzle answers are never shown to anyone but you until
+            they are earned; gift codes are encrypted.
           </li>
           <li>
             <strong>What recipients answer:</strong> their choices on each step, so the creator can
@@ -49,7 +50,12 @@ export default function PrivacyPage() {
       <PolicySection title="Who else handles your data">
         <ul className="list-disc space-y-1 pl-5">
           <li>Our hosting provider runs the servers and database.</li>
-          <li>Cloudflare R2 stores uploaded photos.</li>
+          <li>Cloudflare R2 stores uploaded photos and voice notes, after a virus scan.</li>
+          <li>
+            If a surprise includes a YouTube or Vimeo video, that service receives the viewer&apos;s
+            address and browser details when the video loads (YouTube through its privacy-enhanced
+            mode, Vimeo with do-not-track), under its own privacy policy.
+          </li>
           <li>
             Razorpay (India) and Dodo Payments (elsewhere) process payments on their own pages,
             under their own privacy policies. Dodo Payments is the seller of record for

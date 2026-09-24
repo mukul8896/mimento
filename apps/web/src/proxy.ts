@@ -24,6 +24,10 @@ function contentSecurityPolicy(nonce: string, dev: boolean): string {
     "style-src-attr 'unsafe-inline'",
     `img-src 'self' blob: data:${media}`,
     `connect-src 'self'${media}${dev ? ' ws:' : ''}`,
+    // Voice notes come from the same private storage as images.
+    `media-src 'self' blob:${media}`,
+    // Video steps embed only these two players (YouTube via its no-cookie domain).
+    'frame-src https://www.youtube-nocookie.com https://player.vimeo.com',
     "font-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",

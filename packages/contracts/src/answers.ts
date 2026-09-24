@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { OptionIdSchema, type DraftStep } from './steps';
+import { normalizePuzzleAnswer, OptionIdSchema, type DraftStep } from './steps';
 
 /**
  * Recipient answers. Continuing past a message/image/scratch card is an explicit ACK.
@@ -14,6 +14,8 @@ export const AnswerSchema = z
     z.strictObject({ kind: z.literal('ACK') }),
     z.strictObject({ kind: z.literal('OPTION'), optionId: OptionIdSchema }),
     z.strictObject({ kind: z.literal('CHOICE'), value: ChoiceValueSchema }),
+    /** A typed answer (puzzle steps). */
+    z.strictObject({ kind: z.literal('TEXT'), value: z.string().trim().min(1).max(100) }),
   ])
   .meta({ id: 'Answer' });
 export type Answer = z.infer<typeof AnswerSchema>;
@@ -26,14 +28,33 @@ export type AnswerCheck =
  * Validate an answer against the published step it targets. Pure so it can be unit-tested
  * and reused by the API as the single source of truth.
  */
-export function checkAnswer(step: DraftStep, answer: Answer): AnswerCheck {
+export function checkAnswer(step: DraftStep, answer: Answer, now: Date = new Date()): AnswerCheck {
   switch (step.type) {
     case 'MESSAGE':
     case 'IMAGE':
     case 'SCRATCH_REVEAL':
+    case 'PHOTO_GALLERY':
+    case 'VOICE_NOTE':
+    case 'VIDEO':
+    case 'PLACE_REVEAL':
       return answer.kind === 'ACK'
         ? { ok: true, correct: null }
         : { ok: false, reason: 'WRONG_KIND' };
+    case 'COUNTDOWN': {
+      if (answer.kind !== 'ACK') return { ok: false, reason: 'WRONG_KIND' };
+      const target = step.config.targetAt ? new Date(step.config.targetAt) : null;
+      if (step.config.waitForIt && target && now < target)
+        return { ok: false, reason: 'NOT_ALLOWED' };
+      return { ok: true, correct: null };
+    }
+    case 'PUZZLE': {
+      if (answer.kind !== 'TEXT') return { ok: false, reason: 'WRONG_KIND' };
+      const expected = normalizePuzzleAnswer(step.config.answer);
+      // Puzzles always need the right answer to continue, like a quiz with requireCorrect.
+      return expected !== '' && normalizePuzzleAnswer(answer.value) === expected
+        ? { ok: true, correct: true }
+        : { ok: false, reason: 'INCORRECT' };
+    }
     case 'MULTIPLE_CHOICE': {
       if (answer.kind !== 'OPTION') return { ok: false, reason: 'WRONG_KIND' };
       if (!step.config.options.some((o) => o.id === answer.optionId)) {

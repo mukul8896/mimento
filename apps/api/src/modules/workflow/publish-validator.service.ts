@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import {
   publishIssues,
+  isAudioType,
   referencedMediaIds,
+  referencedMediaKinds,
   ThemeSchema,
   type DraftStep,
   type PublishIssue,
@@ -51,8 +53,11 @@ export class PublishValidatorService {
     });
 
     const refs = new Map<string, string>(); // mediaId -> stepKey
-    for (const step of draft.steps)
+    const kinds = new Map<string, 'image' | 'audio'>();
+    for (const step of draft.steps) {
       for (const id of referencedMediaIds(step)) refs.set(id, step.key);
+      for (const [id, kind] of referencedMediaKinds(step)) kinds.set(id, kind);
+    }
     for (const gift of gifts) if (gift.mediaId) refs.set(gift.mediaId, gift.stepKey);
     if (refs.size > 0) {
       const assets = await client.mediaAsset.findMany({
@@ -70,6 +75,15 @@ export class PublishValidatorService {
           });
         } else if (!asset || asset.status !== 'READY') {
           issues.push({ stepKey, field: 'media', message: 'An image has not finished uploading.' });
+        } else if ((kinds.get(mediaId) === 'audio') !== isAudioType(asset.mimeType)) {
+          issues.push({
+            stepKey,
+            field: 'media',
+            message:
+              kinds.get(mediaId) === 'audio'
+                ? 'A voice note must be an audio file.'
+                : 'This step needs an image, not an audio file.',
+          });
         } else if (!this.media.isPublishable(asset)) {
           issues.push({
             stepKey,

@@ -5,7 +5,7 @@ import {
   OnApplicationBootstrap,
   OnModuleDestroy,
 } from '@nestjs/common';
-import { MAX_IMAGE_BYTES } from '@momentpath/contracts';
+import { isAudioType, MAX_UPLOAD_BYTES } from '@momentpath/contracts';
 import { APP_ENV, type AppEnv } from '../../config/env';
 import type { MediaAsset } from '../../generated/prisma/client';
 import { PrismaService, type Tx } from '../../prisma/prisma.service';
@@ -115,7 +115,7 @@ export class MediaPipeline implements OnApplicationBootstrap, OnModuleDestroy {
   private async process(tx: Tx, asset: MediaAsset): Promise<PipelineOutcome> {
     let bytes: Buffer | null;
     try {
-      bytes = await this.storage.read(asset.storageKey, MAX_IMAGE_BYTES);
+      bytes = await this.storage.read(asset.storageKey, MAX_UPLOAD_BYTES);
     } catch (err) {
       this.logger.warn({ mediaId: asset.id, reason: (err as Error).message }, 'Read failed');
       return 'retry';
@@ -162,15 +162,18 @@ export class MediaPipeline implements OnApplicationBootstrap, OnModuleDestroy {
     }
 
     let keys: { displayKey: string; thumbKey: string } | null = null;
-    try {
-      const variants = await makeVariants(bytes);
-      const { display, thumb } = variantKeys(asset.storageKey);
-      await this.storage.write(display, variants.display, VARIANT_MIME);
-      await this.storage.write(thumb, variants.thumb, VARIANT_MIME);
-      keys = { displayKey: display, thumbKey: thumb };
-    } catch (err) {
-      // An image the encoder cannot handle keeps being served as its (stripped) original.
-      this.logger.warn({ mediaId: asset.id, reason: (err as Error).message }, 'Re-encode failed');
+    // Voice notes are only scanned; they are served as uploaded.
+    if (!isAudioType(asset.mimeType)) {
+      try {
+        const variants = await makeVariants(bytes);
+        const { display, thumb } = variantKeys(asset.storageKey);
+        await this.storage.write(display, variants.display, VARIANT_MIME);
+        await this.storage.write(thumb, variants.thumb, VARIANT_MIME);
+        keys = { displayKey: display, thumbKey: thumb };
+      } catch (err) {
+        // An image the encoder cannot handle keeps being served as its (stripped) original.
+        this.logger.warn({ mediaId: asset.id, reason: (err as Error).message }, 'Re-encode failed');
+      }
     }
     await tx.mediaAsset.update({
       where: { id: asset.id },

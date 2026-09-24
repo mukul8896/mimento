@@ -5,12 +5,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Answer, DraftStep, RevealedGift, Theme } from '@momentpath/contracts';
 import { PlayerError, type PlayerBackend, type PlayerState } from './backend';
 import { ReportDialog } from './report-dialog';
+import { CountdownStep } from './steps/countdown-step';
+import { GalleryStep } from './steps/gallery-step';
 import { GiftStep } from './steps/gift-step';
 import { ImageStep } from './steps/image-step';
 import { MessageStep } from './steps/message-step';
 import { MultipleChoiceStep } from './steps/multiple-choice-step';
+import { PlaceStep } from './steps/place-step';
+import { PuzzleStep } from './steps/puzzle-step';
 import { ScratchStep } from './steps/scratch-step';
 import type { StepProps } from './steps/types';
+import { VideoStep } from './steps/video-step';
+import { VoiceNoteStep } from './steps/voice-note-step';
 import { YesNoStep } from './steps/yes-no-step';
 import { accentButton, outlineButton, themeClass, themeStyle } from './theme';
 
@@ -42,6 +48,18 @@ function StepView(props: StepProps) {
       return <YesNoStep {...(props as StepProps<'YES_NO_CHOICE'>)} />;
     case 'SCRATCH_REVEAL':
       return <ScratchStep {...(props as StepProps<'SCRATCH_REVEAL'>)} />;
+    case 'COUNTDOWN':
+      return <CountdownStep {...(props as StepProps<'COUNTDOWN'>)} />;
+    case 'PUZZLE':
+      return <PuzzleStep {...(props as StepProps<'PUZZLE'>)} />;
+    case 'PHOTO_GALLERY':
+      return <GalleryStep {...(props as StepProps<'PHOTO_GALLERY'>)} />;
+    case 'VOICE_NOTE':
+      return <VoiceNoteStep {...(props as StepProps<'VOICE_NOTE'>)} />;
+    case 'VIDEO':
+      return <VideoStep {...(props as StepProps<'VIDEO'>)} />;
+    case 'PLACE_REVEAL':
+      return <PlaceStep {...(props as StepProps<'PLACE_REVEAL'>)} />;
     case 'GIFT_REVEAL':
       return <GiftStep {...(props as StepProps<'GIFT_REVEAL'>)} />;
   }
@@ -105,10 +123,11 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
       setNotice(null);
       try {
         const res = await backend.answer(current.key, answer);
+        // A wrong required answer (quiz or puzzle) keeps the recipient on the same step.
         if (
           res.correct === false &&
-          current.type === 'MULTIPLE_CHOICE' &&
-          current.config.requireCorrect
+          (current.type === 'PUZZLE' ||
+            (current.type === 'MULTIPLE_CHOICE' && current.config.requireCorrect))
         )
           return false;
         setState((s) => (s ? { ...s, progress: res.progress } : s));

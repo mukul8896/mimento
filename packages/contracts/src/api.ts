@@ -192,11 +192,33 @@ export const GiftSecretResponseSchema = z.object({ secret: GiftSecretSchema.null
 export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const;
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_IMAGE_DIMENSION = 6000;
+/** Voice notes (Phase 2d). Video is linked, never uploaded. */
+export const ALLOWED_AUDIO_TYPES = [
+  'audio/mpeg',
+  'audio/mp4',
+  'audio/aac',
+  'audio/ogg',
+  'audio/webm',
+] as const;
+export const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = Math.max(MAX_IMAGE_BYTES, MAX_AUDIO_BYTES);
 
-export const CreateUploadRequestSchema = z.strictObject({
-  contentType: z.enum(ALLOWED_IMAGE_TYPES),
-  sizeBytes: z.number().int().min(1).max(MAX_IMAGE_BYTES),
-});
+export function isAudioType(mime: string): boolean {
+  return (ALLOWED_AUDIO_TYPES as readonly string[]).includes(mime);
+}
+export function maxBytesFor(mime: string): number {
+  return isAudioType(mime) ? MAX_AUDIO_BYTES : MAX_IMAGE_BYTES;
+}
+
+export const CreateUploadRequestSchema = z
+  .strictObject({
+    contentType: z.enum([...ALLOWED_IMAGE_TYPES, ...ALLOWED_AUDIO_TYPES]),
+    sizeBytes: z.number().int().min(1).max(MAX_UPLOAD_BYTES),
+  })
+  .refine((r) => r.sizeBytes <= maxBytesFor(r.contentType), {
+    path: ['sizeBytes'],
+    message: 'File is too large for its type',
+  });
 
 export const CreateUploadResponseSchema = z.object({
   mediaId: Uuid,

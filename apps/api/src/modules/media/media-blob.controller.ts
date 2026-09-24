@@ -1,7 +1,7 @@
 import { Controller, Get, Inject, Param, Put, Query, Req, Res } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { MAX_IMAGE_BYTES } from '@momentpath/contracts';
+import { MAX_UPLOAD_BYTES } from '@momentpath/contracts';
 import { Problem } from '../../common/problem';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OBJECT_STORAGE, type ObjectStorage } from '../../providers/storage';
@@ -47,7 +47,7 @@ export class MediaBlobController {
     if (
       !Buffer.isBuffer(body) ||
       body.length === 0 ||
-      body.length > MAX_IMAGE_BYTES ||
+      body.length > MAX_UPLOAD_BYTES ||
       body.length !== grant.size
     ) {
       throw Problem.badRequest('SIZE_MISMATCH', 'Upload size does not match the upload grant');
@@ -74,7 +74,7 @@ export class MediaBlobController {
     });
     if (!asset || asset.status !== 'READY') throw Problem.notFound();
     const isVariant = grant.key !== asset.storageKey;
-    const bytes = await this.fs().read(grant.key, MAX_IMAGE_BYTES);
+    const bytes = await this.fs().read(grant.key, MAX_UPLOAD_BYTES);
     if (!bytes) throw Problem.notFound();
     res
       .status(200)

@@ -9,8 +9,13 @@ import {
 
 let client: ApiClient | undefined;
 
-/** Browser client: every call goes through the same-origin BFF (tokens stay server-side). */
+/**
+ * Browser client: every call goes through the same-origin BFF (tokens stay server-side).
+ * Client components also render once on the server, where there is no `window`; creating the
+ * client there must not throw (it is never used to fetch until the browser runs effects).
+ */
 export function browserApi(): ApiClient {
+  if (typeof window === 'undefined') return createApiClient({ baseUrl: '/bff' });
   client ??= createApiClient({ baseUrl: `${window.location.origin}/bff` });
   return client;
 }

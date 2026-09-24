@@ -26,7 +26,8 @@ export function computeProgress(
 }
 
 /**
- * Removes data the recipient's browser must not receive before answering: quiz answers, and
+ * Removes data the recipient's browser must not receive before answering: quiz and puzzle
+ * answers, and
  * routing, which could give away which answer leads to the surprise.
  */
 export function publicStep(step: DraftStep): DraftStep {
@@ -34,5 +35,6 @@ export function publicStep(step: DraftStep): DraftStep {
   if (rest.type === 'MULTIPLE_CHOICE') {
     return { ...rest, config: { ...rest.config, correctOptionId: null } };
   }
+  if (rest.type === 'PUZZLE') return { ...rest, config: { ...rest.config, answer: '' } };
   return rest as DraftStep;
 }

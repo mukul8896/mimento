@@ -16,6 +16,18 @@ function stepLabel(step: DraftStep): string {
       return step.config.question || 'Question';
     case 'SCRATCH_REVEAL':
       return 'Scratch card';
+    case 'COUNTDOWN':
+      return step.config.title || 'Countdown';
+    case 'PUZZLE':
+      return step.config.prompt || 'Puzzle';
+    case 'PHOTO_GALLERY':
+      return step.config.title || 'Photo gallery';
+    case 'VOICE_NOTE':
+      return step.config.title || 'Voice note';
+    case 'VIDEO':
+      return step.config.title || 'Video';
+    case 'PLACE_REVEAL':
+      return step.config.title || 'Place reveal';
     case 'GIFT_REVEAL':
       return step.config.title || 'Surprise';
   }

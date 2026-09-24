@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { MAX_IMAGE_BYTES } from '@momentpath/contracts';
+import { isAudioType, maxBytesFor } from '@momentpath/contracts';
 import { APP_ENV, type AppEnv } from '../../config/env';
 import { requireOwnedExperience } from '../../common/ownership';
 import { Problem } from '../../common/problem';
@@ -8,6 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { OBJECT_STORAGE, type ObjectStorage } from '../../providers/storage';
 import type { MediaAsset } from '../../generated/prisma/client';
 import type { Principal } from '../identity/principal';
+import { inspectAudio } from './audio-inspection';
 import { inspectImage, stripImageMetadata } from './image-inspection';
 
 /** What to hand out: the pipeline's re-encoded copy once it exists, else the stripped original. */
@@ -66,7 +67,11 @@ export class MediaService {
     return { mediaId: asset.id, upload: { ...upload, expiresAt: upload.expiresAt.toISOString() } };
   }
 
-  /** Validates the uploaded bytes server-side, strips location metadata and marks the asset READY. */
+  /**
+   * Validates the uploaded bytes server-side and marks the asset READY. Images are checked and
+   * stripped of location metadata; voice notes are checked by their bytes. Both are then
+   * scanned by the worker before recipients can get them.
+   */
   async completeUpload(principal: Principal, experienceId: string, mediaId: string) {
     await requireOwnedExperience(this.prisma, principal, experienceId);
     const asset = await this.prisma.mediaAsset.findFirst({
@@ -77,7 +82,8 @@ export class MediaService {
     if (asset.status === 'REJECTED')
       throw Problem.unprocessable('MEDIA_REJECTED', 'This upload was rejected');
 
-    const bytes = await this.storage.read(asset.storageKey, MAX_IMAGE_BYTES);
+    const maxBytes = maxBytesFor(asset.mimeType);
+    const bytes = await this.storage.read(asset.storageKey, maxBytes);
     const reject = async (reason: string) => {
       await this.prisma.mediaAsset.update({
         where: { id: asset.id },
@@ -87,8 +93,17 @@ export class MediaService {
       throw Problem.unprocessable('MEDIA_REJECTED', reason);
     };
     if (!bytes) throw Problem.conflict('UPLOAD_MISSING', 'The file has not been uploaded yet');
-    if (bytes.length > MAX_IMAGE_BYTES || bytes.length !== asset.declaredSize) {
+    if (bytes.length > maxBytes || bytes.length !== asset.declaredSize) {
       return reject('The uploaded file size does not match the declared size');
+    }
+    if (isAudioType(asset.mimeType)) {
+      const audio = inspectAudio(bytes, asset.mimeType);
+      if (!audio.ok) return reject(audio.reason);
+      const ready = await this.prisma.mediaAsset.update({
+        where: { id: asset.id },
+        data: { status: 'READY', sizeBytes: bytes.length },
+      });
+      return this.toDto(ready, CREATOR_MEDIA_URL_TTL_SECONDS);
     }
     const inspection = inspectImage(bytes, asset.mimeType);
     if (!inspection.ok) return reject(inspection.reason);

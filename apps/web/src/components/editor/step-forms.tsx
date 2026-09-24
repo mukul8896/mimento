@@ -1,13 +1,15 @@
 'use client';
 
 import {
+  MAX_GALLERY_ITEMS,
   NO_BUTTON_LIMITS,
+  parseVideoUrl,
   type DraftStep,
   type NoButtonConfig,
   type StepConfigOf,
   type StepType,
 } from '@momentpath/contracts';
-import { Alert, Button, Field, Input, Select, Switch } from '@momentpath/design-system';
+import { Alert, Button, Field, Input, Select, Switch, Textarea } from '@momentpath/design-system';
 import { GiftSecretForm } from './gift-secret-form';
 import { MediaUpload, type MediaItem } from './media-upload';
 import { RichTextEditor } from './rich-text-editor';
@@ -504,6 +506,340 @@ function GiftForm({ step, onChange, ctx }: FormProps<'GIFT_REVEAL'>) {
   );
 }
 
+/** `<input type="datetime-local">` works in local time without a zone; the API stores ISO. */
+function toLocalInput(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fromLocalInput(value: string): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+function DateTimeField({
+  label,
+  value,
+  onChange,
+  hint,
+  required,
+}: {
+  label: string;
+  value: string | null;
+  onChange: (iso: string | null) => void;
+  hint?: string;
+  required?: boolean;
+}) {
+  return (
+    <Field
+      label={label}
+      hint={hint}
+      error={required && !value ? 'Required before publishing' : null}
+    >
+      {(p) => (
+        <Input
+          type="datetime-local"
+          value={toLocalInput(value)}
+          onChange={(e) => onChange(fromLocalInput(e.target.value))}
+          {...p}
+        />
+      )}
+    </Field>
+  );
+}
+
+function ButtonLabel({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return <TextField label="Button label" value={value} maxLength={40} onChange={onChange} />;
+}
+
+function CountdownForm({ step, onChange }: FormProps<'COUNTDOWN'>) {
+  const c = step.config;
+  return (
+    <div className="space-y-4">
+      <TextField
+        label="Title"
+        value={c.title}
+        maxLength={120}
+        onChange={(title) => onChange({ ...c, title })}
+      />
+      <DateTimeField
+        label="Count down to"
+        hint="Shown in the recipient's own time zone."
+        value={c.targetAt}
+        required
+        onChange={(targetAt) => onChange({ ...c, targetAt })}
+      />
+      <RichTextEditor
+        label="Message"
+        value={c.message}
+        onChange={(message) => onChange({ ...c, message })}
+      />
+      <Switch
+        label="Wait for it"
+        description="They can only continue once the countdown reaches zero."
+        checked={c.waitForIt}
+        onChange={(waitForIt) => onChange({ ...c, waitForIt })}
+      />
+      <ButtonLabel
+        value={c.buttonLabel}
+        onChange={(buttonLabel) => onChange({ ...c, buttonLabel })}
+      />
+    </div>
+  );
+}
+
+function PuzzleForm({ step, onChange }: FormProps<'PUZZLE'>) {
+  const c = step.config;
+  return (
+    <div className="space-y-4">
+      <TextField
+        label="Riddle or question"
+        value={c.prompt}
+        maxLength={300}
+        required
+        onChange={(prompt) => onChange({ ...c, prompt })}
+      />
+      <TextField
+        label="Answer"
+        hint="Checked privately; capitals, accents and punctuation do not matter. The recipient's browser never sees it."
+        value={c.answer}
+        maxLength={60}
+        required
+        onChange={(answer) => onChange({ ...c, answer })}
+      />
+      <TextField
+        label="Hint (optional)"
+        value={c.hint}
+        maxLength={200}
+        onChange={(hint) => onChange({ ...c, hint })}
+      />
+      <TextField
+        label="Message for a wrong answer"
+        value={c.wrongMessage}
+        maxLength={160}
+        onChange={(wrongMessage) => onChange({ ...c, wrongMessage })}
+      />
+      <ButtonLabel
+        value={c.buttonLabel}
+        onChange={(buttonLabel) => onChange({ ...c, buttonLabel })}
+      />
+    </div>
+  );
+}
+
+function GalleryForm({ step, onChange, ctx }: FormProps<'PHOTO_GALLERY'>) {
+  const c = step.config;
+  const setItems = (items: typeof c.items) => onChange({ ...c, items });
+  return (
+    <div className="space-y-4">
+      <TextField
+        label="Title"
+        value={c.title}
+        maxLength={120}
+        onChange={(title) => onChange({ ...c, title })}
+      />
+      <ol className="space-y-3" data-testid="gallery-items">
+        {c.items.map((item, i) => {
+          const media = ctx.media.find((m) => m.id === item.mediaId);
+          return (
+            <li key={item.mediaId} className="space-y-2 rounded-xl p-3 ring-1 ring-ink-100">
+              <div className="flex items-center gap-3">
+                {media ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={media.url} alt="" className="size-16 rounded-lg object-cover" />
+                ) : null}
+                <span className="text-sm font-medium">Photo {i + 1}</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="ml-auto"
+                  aria-label={`Remove photo ${i + 1}`}
+                  onClick={() => setItems(c.items.filter((x) => x.mediaId !== item.mediaId))}
+                >
+                  Remove
+                </Button>
+              </div>
+              <TextField
+                label={`Description of photo ${i + 1} (alt text)`}
+                value={item.alt}
+                maxLength={250}
+                required
+                onChange={(alt) =>
+                  setItems(c.items.map((x) => (x.mediaId === item.mediaId ? { ...x, alt } : x)))
+                }
+              />
+              <TextField
+                label={`Caption for photo ${i + 1}`}
+                value={item.caption}
+                maxLength={300}
+                onChange={(caption) =>
+                  setItems(c.items.map((x) => (x.mediaId === item.mediaId ? { ...x, caption } : x)))
+                }
+              />
+            </li>
+          );
+        })}
+      </ol>
+      {c.items.length < MAX_GALLERY_ITEMS ? (
+        <MediaUpload
+          label={c.items.length === 0 ? 'Photos' : 'Add another photo'}
+          experienceId={ctx.experienceId}
+          value={null}
+          media={ctx.media}
+          onUploaded={(item) => {
+            ctx.addMedia(item);
+            setItems([...c.items, { mediaId: item.id, alt: '', caption: '' }]);
+          }}
+          onClear={() => undefined}
+        />
+      ) : (
+        <p className="text-sm text-ink-600">A gallery holds up to {MAX_GALLERY_ITEMS} photos.</p>
+      )}
+      <ButtonLabel
+        value={c.buttonLabel}
+        onChange={(buttonLabel) => onChange({ ...c, buttonLabel })}
+      />
+    </div>
+  );
+}
+
+function VoiceNoteForm({ step, onChange, ctx }: FormProps<'VOICE_NOTE'>) {
+  const c = step.config;
+  return (
+    <div className="space-y-4">
+      <TextField
+        label="Title"
+        value={c.title}
+        maxLength={120}
+        onChange={(title) => onChange({ ...c, title })}
+      />
+      <MediaUpload
+        kind="audio"
+        label="Voice note"
+        experienceId={ctx.experienceId}
+        value={c.mediaId}
+        media={ctx.media}
+        onUploaded={(item) => {
+          ctx.addMedia(item);
+          onChange({ ...c, mediaId: item.id });
+        }}
+        onClear={() => onChange({ ...c, mediaId: null })}
+      />
+      <Field
+        label="Transcript (optional)"
+        hint="Lets people read it if they cannot listen right now."
+      >
+        {(p) => (
+          <Textarea
+            value={c.transcript}
+            maxLength={2000}
+            rows={4}
+            onChange={(e) => onChange({ ...c, transcript: e.target.value })}
+            {...p}
+          />
+        )}
+      </Field>
+      <ButtonLabel
+        value={c.buttonLabel}
+        onChange={(buttonLabel) => onChange({ ...c, buttonLabel })}
+      />
+    </div>
+  );
+}
+
+function VideoForm({ step, onChange }: FormProps<'VIDEO'>) {
+  const c = step.config;
+  const valid = c.url.trim() === '' || parseVideoUrl(c.url) !== null;
+  return (
+    <div className="space-y-4">
+      <TextField
+        label="Title"
+        value={c.title}
+        maxLength={120}
+        onChange={(title) => onChange({ ...c, title })}
+      />
+      <Field
+        label="YouTube or Vimeo link"
+        hint="Paste the address of the video. It plays inside the surprise; nothing is uploaded."
+        error={valid ? null : 'Use a YouTube or Vimeo link that starts with https://'}
+      >
+        {(p) => (
+          <Input
+            type="url"
+            inputMode="url"
+            value={c.url}
+            maxLength={300}
+            placeholder="https://youtu.be/…"
+            onChange={(e) => onChange({ ...c, url: e.target.value })}
+            {...p}
+          />
+        )}
+      </Field>
+      <TextField
+        label="Caption"
+        value={c.caption}
+        maxLength={300}
+        onChange={(caption) => onChange({ ...c, caption })}
+      />
+      <ButtonLabel
+        value={c.buttonLabel}
+        onChange={(buttonLabel) => onChange({ ...c, buttonLabel })}
+      />
+    </div>
+  );
+}
+
+function PlaceForm({ step, onChange }: FormProps<'PLACE_REVEAL'>) {
+  const c = step.config;
+  return (
+    <div className="space-y-4">
+      <TextField
+        label="Title"
+        value={c.title}
+        maxLength={120}
+        onChange={(title) => onChange({ ...c, title })}
+      />
+      <TextField
+        label="Place"
+        value={c.placeName}
+        maxLength={120}
+        required
+        onChange={(placeName) => onChange({ ...c, placeName })}
+      />
+      <TextField
+        label="Address (optional)"
+        hint="Adds an “Open in Maps” link."
+        value={c.address}
+        maxLength={300}
+        onChange={(address) => onChange({ ...c, address })}
+      />
+      <DateTimeField
+        label="When (optional)"
+        value={c.when}
+        onChange={(when) => onChange({ ...c, when })}
+      />
+      <TextField
+        label="Note (optional)"
+        value={c.note}
+        maxLength={300}
+        onChange={(note) => onChange({ ...c, note })}
+      />
+      <TextField
+        label="Reveal button label"
+        value={c.revealLabel}
+        maxLength={40}
+        onChange={(revealLabel) => onChange({ ...c, revealLabel })}
+      />
+      <ButtonLabel
+        value={c.buttonLabel}
+        onChange={(buttonLabel) => onChange({ ...c, buttonLabel })}
+      />
+    </div>
+  );
+}
+
 export function StepForm({
   step,
   onChange,
@@ -524,6 +860,18 @@ export function StepForm({
       return <YesNoForm step={step} onChange={onChange} ctx={ctx} />;
     case 'SCRATCH_REVEAL':
       return <ScratchForm step={step} onChange={onChange} ctx={ctx} />;
+    case 'COUNTDOWN':
+      return <CountdownForm step={step} onChange={onChange} ctx={ctx} />;
+    case 'PUZZLE':
+      return <PuzzleForm step={step} onChange={onChange} ctx={ctx} />;
+    case 'PHOTO_GALLERY':
+      return <GalleryForm step={step} onChange={onChange} ctx={ctx} />;
+    case 'VOICE_NOTE':
+      return <VoiceNoteForm step={step} onChange={onChange} ctx={ctx} />;
+    case 'VIDEO':
+      return <VideoForm step={step} onChange={onChange} ctx={ctx} />;
+    case 'PLACE_REVEAL':
+      return <PlaceForm step={step} onChange={onChange} ctx={ctx} />;
     case 'GIFT_REVEAL':
       return <GiftForm step={step} onChange={onChange} ctx={ctx} />;
   }

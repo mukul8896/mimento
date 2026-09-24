@@ -18,6 +18,21 @@ stages 2 and 3 are not started.**
 | GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
 | Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
 
+## Phase 2d-1 — new step types (2026-09-24)
+
+- Six step types (contracts `steps.ts`, DB enum migration `20260924190000_more_step_types`):
+  `COUNTDOWN` (server refuses to continue before `targetAt` when `waitForIt`), `PUZZLE` (typed
+  answer, answer kind `TEXT`, normalised compare on the server, answer stripped by `publicStep`),
+  `PHOTO_GALLERY` (≤ 12 images, alt required), `VOICE_NOTE` (audio upload ≤ 10 MB: MP3/M4A/AAC/
+  OGG/WebM, byte-checked, ClamAV-scanned, not re-encoded), `VIDEO` (YouTube/Vimeo link only,
+  embedded via youtube-nocookie / player.vimeo.com with `referrerpolicy=strict-origin`),
+  `PLACE_REVEAL` (tap to reveal place/time, Google Maps search link).
+- CSP gained `media-src` (storage origin) and `frame-src` for the two video players only.
+- Publish validator checks media kind per step (voice note = audio, others = image).
+- **Fixed a Phase 1 bug:** `browserApi()` read `window` during server rendering, so the manage
+  page (and operator console) threw on the server and fell back to client rendering with a 500.
+- E2E: `new-steps.mobile.spec.ts` runs on desktop and the 360px touch profile.
+
 ## Phase 2c — branching and version history (2026-09-24)
 
 - **Model** (`packages/contracts/src/flow.ts`): steps stay an ordered list; each may carry

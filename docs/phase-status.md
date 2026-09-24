@@ -52,12 +52,12 @@ _Updated 22 Sep 2026._ Phase 1 implemented; awaiting owner review before Phase 2
 
 ## Phase 2 — approved 24 Sep 2026, delivered in slices
 
-| Slice                 | Scope                                                                                                     | State                                                                       |
-| --------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| 2a Payments           | Razorpay (India) + Dodo (rest of world), checkout, confirm, signed webhooks, reconciler, pricing/policies | **Built and tested with fake providers**; sandbox keys pending              |
-| 2b Media and workers  | Worker process (Postgres jobs, no Redis: ADR 0007), ClamAV scanning, WebP/GIF metadata, re-encoded copies | **Built and tested**; real clamd verified locally                           |
-| 2c Branching          | Answer-based routing, React Flow editor, graph validation, draft version history                          | **Built and tested** (form-based routes + React Flow view; history/restore) |
-| 2d Richer experiences | New step types, scheduled publish/reveal, PIN, email notifications, multilingual, analytics, custom slugs | Not started                                                                 |
+| Slice                 | Scope                                                                                                     | State                                                                                                      |
+| --------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 2a Payments           | Razorpay (India) + Dodo (rest of world), checkout, confirm, signed webhooks, reconciler, pricing/policies | **Built and tested with fake providers**; sandbox keys pending                                             |
+| 2b Media and workers  | Worker process (Postgres jobs, no Redis: ADR 0007), ClamAV scanning, WebP/GIF metadata, re-encoded copies | **Built and tested**; real clamd verified locally                                                          |
+| 2c Branching          | Answer-based routing, React Flow editor, graph validation, draft version history                          | **Built and tested** (form-based routes + React Flow view; history/restore)                                |
+| 2d Richer experiences | New step types, scheduled publish/reveal, PIN, email notifications, multilingual, analytics, custom slugs | 2d-1 (new step types) **built and tested**; 2d-2 in progress. Email and translations deferred by the owner |
 
 ### 2a acceptance
 

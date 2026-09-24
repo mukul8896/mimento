@@ -654,7 +654,7 @@ export interface components {
         };
         CreateUploadRequestDto: {
             /** @enum {string} */
-            contentType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+            contentType: "image/jpeg" | "image/png" | "image/webp" | "image/gif" | "audio/mpeg" | "audio/mp4" | "audio/aac" | "audio/ogg" | "audio/webm";
             sizeBytes: number;
         };
         CreateUploadResponseDto_Output: {
@@ -968,6 +968,126 @@ export interface components {
             /** Format: uuid */
             key: string;
             /** @constant */
+            type: "COUNTDOWN";
+            config: {
+                /** @default Counting down… */
+                title: string;
+                /** @default null */
+                targetAt: string | null;
+                /**
+                 * @default {
+                 *       "type": "doc",
+                 *       "content": [
+                 *         {
+                 *           "type": "paragraph"
+                 *         }
+                 *       ]
+                 *     }
+                 */
+                message: components["schemas"]["RichTextDoc_Output"];
+                /** @default true */
+                waitForIt: boolean;
+                /** @default Continue */
+                buttonLabel: string;
+            };
+            next?: components["schemas"]["StepRouting_Output"];
+        } | {
+            /** Format: uuid */
+            key: string;
+            /** @constant */
+            type: "PUZZLE";
+            config: {
+                /** @default  */
+                prompt: string;
+                /** @default  */
+                hint: string;
+                /** @default  */
+                answer: string;
+                /** @default Not quite — try again! */
+                wrongMessage: string;
+                /** @default Check */
+                buttonLabel: string;
+            };
+            next?: components["schemas"]["StepRouting_Output"];
+        } | {
+            /** Format: uuid */
+            key: string;
+            /** @constant */
+            type: "PHOTO_GALLERY";
+            config: {
+                /** @default  */
+                title: string;
+                /** @default [] */
+                items: {
+                    /** Format: uuid */
+                    mediaId: string;
+                    /** @default  */
+                    alt: string;
+                    /** @default  */
+                    caption: string;
+                }[];
+                /** @default Continue */
+                buttonLabel: string;
+            };
+            next?: components["schemas"]["StepRouting_Output"];
+        } | {
+            /** Format: uuid */
+            key: string;
+            /** @constant */
+            type: "VOICE_NOTE";
+            config: {
+                /** @default  */
+                title: string;
+                /** @default null */
+                mediaId: string | null;
+                /** @default  */
+                transcript: string;
+                /** @default Continue */
+                buttonLabel: string;
+            };
+            next?: components["schemas"]["StepRouting_Output"];
+        } | {
+            /** Format: uuid */
+            key: string;
+            /** @constant */
+            type: "VIDEO";
+            config: {
+                /** @default  */
+                title: string;
+                /** @default  */
+                url: string;
+                /** @default  */
+                caption: string;
+                /** @default Continue */
+                buttonLabel: string;
+            };
+            next?: components["schemas"]["StepRouting_Output"];
+        } | {
+            /** Format: uuid */
+            key: string;
+            /** @constant */
+            type: "PLACE_REVEAL";
+            config: {
+                /** @default Guess where we are going */
+                title: string;
+                /** @default Reveal */
+                revealLabel: string;
+                /** @default  */
+                placeName: string;
+                /** @default  */
+                address: string;
+                /** @default null */
+                when: string | null;
+                /** @default  */
+                note: string;
+                /** @default Continue */
+                buttonLabel: string;
+            };
+            next?: components["schemas"]["StepRouting_Output"];
+        } | {
+            /** Format: uuid */
+            key: string;
+            /** @constant */
             type: "GIFT_REVEAL";
             config: {
                 /** @default Your surprise */
@@ -1247,6 +1367,126 @@ export interface components {
             /** Format: uuid */
             key: string;
             /** @constant */
+            type: "COUNTDOWN";
+            config: {
+                /** @default Counting down… */
+                title: string;
+                /** @default null */
+                targetAt: string | null;
+                /**
+                 * @default {
+                 *       "type": "doc",
+                 *       "content": [
+                 *         {
+                 *           "type": "paragraph"
+                 *         }
+                 *       ]
+                 *     }
+                 */
+                message: components["schemas"]["RichTextDoc"];
+                /** @default true */
+                waitForIt: boolean;
+                /** @default Continue */
+                buttonLabel: string;
+            };
+            next?: components["schemas"]["StepRouting"];
+        } | {
+            /** Format: uuid */
+            key: string;
+            /** @constant */
+            type: "PUZZLE";
+            config: {
+                /** @default  */
+                prompt: string;
+                /** @default  */
+                hint: string;
+                /** @default  */
+                answer: string;
+                /** @default Not quite — try again! */
+                wrongMessage: string;
+                /** @default Check */
+                buttonLabel: string;
+            };
+            next?: components["schemas"]["StepRouting"];
+        } | {
+            /** Format: uuid */
+            key: string;
+            /** @constant */
+            type: "PHOTO_GALLERY";
+            config: {
+                /** @default  */
+                title: string;
+                /** @default [] */
+                items: {
+                    /** Format: uuid */
+                    mediaId: string;
+                    /** @default  */
+                    alt: string;
+                    /** @default  */
+                    caption: string;
+                }[];
+                /** @default Continue */
+                buttonLabel: string;
+            };
+            next?: components["schemas"]["StepRouting"];
+        } | {
+            /** Format: uuid */
+            key: string;
+            /** @constant */
+            type: "VOICE_NOTE";
+            config: {
+                /** @default  */
+                title: string;
+                /** @default null */
+                mediaId: string | null;
+                /** @default  */
+                transcript: string;
+                /** @default Continue */
+                buttonLabel: string;
+            };
+            next?: components["schemas"]["StepRouting"];
+        } | {
+            /** Format: uuid */
+            key: string;
+            /** @constant */
+            type: "VIDEO";
+            config: {
+                /** @default  */
+                title: string;
+                /** @default  */
+                url: string;
+                /** @default  */
+                caption: string;
+                /** @default Continue */
+                buttonLabel: string;
+            };
+            next?: components["schemas"]["StepRouting"];
+        } | {
+            /** Format: uuid */
+            key: string;
+            /** @constant */
+            type: "PLACE_REVEAL";
+            config: {
+                /** @default Guess where we are going */
+                title: string;
+                /** @default Reveal */
+                revealLabel: string;
+                /** @default  */
+                placeName: string;
+                /** @default  */
+                address: string;
+                /** @default null */
+                when: string | null;
+                /** @default  */
+                note: string;
+                /** @default Continue */
+                buttonLabel: string;
+            };
+            next?: components["schemas"]["StepRouting"];
+        } | {
+            /** Format: uuid */
+            key: string;
+            /** @constant */
             type: "GIFT_REVEAL";
             config: {
                 /** @default Your surprise */
@@ -1435,6 +1675,10 @@ export interface components {
             kind: "CHOICE";
             /** @enum {string} */
             value: "YES" | "NO" | "MAYBE";
+        } | {
+            /** @constant */
+            kind: "TEXT";
+            value: string;
         };
         SubmitAnswerRequestDto: {
             /** Format: uuid */
@@ -1511,6 +1755,10 @@ export interface components {
             kind: "CHOICE";
             /** @enum {string} */
             value: "YES" | "NO" | "MAYBE";
+        } | {
+            /** @constant */
+            kind: "TEXT";
+            value: string;
         };
         ResultsResponseDto_Output: {
             /** @enum {string} */
