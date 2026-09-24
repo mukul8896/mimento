@@ -1404,6 +1404,158 @@
           "admin"
         ]
       }
+    },
+    "/api/v1/experiences/{id}/checkout": {
+      "get": {
+        "operationId": "CheckoutController_options",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutOptionsResponseDto_Output"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "payments"
+        ]
+      },
+      "post": {
+        "operationId": "CheckoutController_create",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCheckoutRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutResponseDto_Output"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/experiences/{id}/checkout/{orderId}/confirm": {
+      "post": {
+        "operationId": "CheckoutController_confirm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmCheckoutRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmCheckoutResponseDto_Output"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/pricing": {
+      "get": {
+        "operationId": "PricingController_pricing",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricingResponseDto_Output"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "payments"
+        ]
+      }
     }
   },
   "info": {
@@ -5419,6 +5571,249 @@
         "required": [
           "items",
           "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "CheckoutOptionsResponseDto_Output": {
+        "type": "object",
+        "properties": {
+          "billingEnabled": {
+            "type": "boolean"
+          },
+          "tier": {
+            "type": "object",
+            "properties": {
+              "required": {
+                "type": "string",
+                "enum": [
+                  "FREE",
+                  "PLUS",
+                  "PRO"
+                ]
+              },
+              "held": {
+                "type": "string",
+                "enum": [
+                  "FREE",
+                  "PLUS",
+                  "PRO"
+                ]
+              },
+              "satisfied": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "required",
+              "held",
+              "satisfied"
+            ],
+            "additionalProperties": false
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "enum": [
+                    "RAZORPAY",
+                    "DODO"
+                  ]
+                },
+                "tier": {
+                  "type": "string",
+                  "enum": [
+                    "FREE",
+                    "PLUS",
+                    "PRO"
+                  ]
+                },
+                "amountMinor": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "currency": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 3
+                }
+              },
+              "required": [
+                "provider",
+                "tier",
+                "amountMinor",
+                "currency"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "billingEnabled",
+          "tier",
+          "offers"
+        ],
+        "additionalProperties": false
+      },
+      "CreateCheckoutRequestDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "RAZORPAY",
+              "DODO"
+            ]
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "additionalProperties": false
+      },
+      "CheckoutResponseDto_Output": {
+        "type": "object",
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "checkoutUrl": {
+            "type": "string",
+            "maxLength": 2000,
+            "format": "uri"
+          }
+        },
+        "required": [
+          "orderId",
+          "checkoutUrl"
+        ],
+        "additionalProperties": false
+      },
+      "ConfirmCheckoutRequestDto": {
+        "type": "object",
+        "properties": {
+          "paymentId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,100}$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfirmCheckoutResponseDto_Output": {
+        "type": "object",
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "CREATED",
+              "PAID",
+              "FAILED",
+              "EXPIRED"
+            ]
+          },
+          "tier": {
+            "type": "object",
+            "properties": {
+              "required": {
+                "type": "string",
+                "enum": [
+                  "FREE",
+                  "PLUS",
+                  "PRO"
+                ]
+              },
+              "held": {
+                "type": "string",
+                "enum": [
+                  "FREE",
+                  "PLUS",
+                  "PRO"
+                ]
+              },
+              "satisfied": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "required",
+              "held",
+              "satisfied"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "orderId",
+          "status",
+          "tier"
+        ],
+        "additionalProperties": false
+      },
+      "PricingResponseDto_Output": {
+        "type": "object",
+        "properties": {
+          "billingEnabled": {
+            "type": "boolean"
+          },
+          "plans": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tier": {
+                  "type": "string",
+                  "enum": [
+                    "PLUS",
+                    "PRO"
+                  ]
+                },
+                "inrMinor": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "usdMinor": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "tier",
+                "inrMinor",
+                "usdMinor"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "billingEnabled",
+          "plans"
         ],
         "additionalProperties": false
       }

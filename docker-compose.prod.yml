@@ -9,8 +9,9 @@
 #     the presigned upload URLs the browser needs.
 #   - Caddy terminates TLS and is the only published port. It obtains and renews certificates
 #     automatically from the DOMAIN in .env.production.
-#   - Postgres keeps its data in a named volume and is published on loopback only, so release-step
-#     migrations can run from the server itself without exposing the database to the internet.
+#   - Postgres keeps its data in a named volume and is published on loopback only (for manual
+#     psql/pg_dump on the box), never to the internet.
+#   - Migrations run in the one-off `migrate` service, so the server needs only Docker.
 name: momentpath-prod
 
 services:
@@ -30,8 +31,19 @@ services:
       timeout: 5s
       retries: 20
 
+  # One-off release step, never started by `up`: applies pending migrations and the seed.
+  #   docker compose --env-file .env.production -f docker-compose.prod.yml run --rm migrate
+  migrate:
+    build: { context: ., dockerfile: infra/docker/api.Dockerfile, target: migrate }
+    profiles: [release]
+    restart: 'no'
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-momentpath}
+    depends_on:
+      postgres: { condition: service_healthy }
+
   api:
-    build: { context: ., dockerfile: infra/docker/api.Dockerfile }
+    build: { context: ., dockerfile: infra/docker/api.Dockerfile, target: runtime }
     restart: unless-stopped
     env_file: .env.production
     environment:

@@ -79,7 +79,7 @@ S3-compatible so the existing adapter is unchanged, and no egress fees.
 
 ### First deploy
 
-1. **Host.** Anything that runs Docker with ~2GB RAM. Oracle Cloud's always-free tier fits with room
+1. **Host.** Anything that runs Docker with ~2GB RAM (Docker is the only thing to install). Oracle Cloud's always-free tier fits with room
    to spare; a small VPS (Hetzner, RackNerd) costs a few euros a month; Railway takes the Dockerfiles
    directly if you would rather not run a server.
 2. **DNS.** Point an A record for your domain at the host before starting Caddy — it obtains the
@@ -92,15 +92,9 @@ S3-compatible so the existing adapter is unchanged, and no egress fees.
    that a new container never half-migrates a database another container is still using.
 
    ```bash
-   # Start only the database first.
-   docker compose --env-file .env.production -f docker-compose.prod.yml up -d postgres
-
-   # Apply migrations and seed the templates from the server itself. Postgres is published on
-   # 127.0.0.1 only, so this works locally and is not reachable from the internet.
-   export DATABASE_URL="postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB"
-   pnpm install --frozen-lockfile
-   pnpm --filter @momentpath/contracts build && pnpm db:generate
-   pnpm db:deploy && pnpm db:seed
+   # Apply pending migrations and seed the templates in a one-off container (starts Postgres
+   # first). The server needs only Docker — no Node or pnpm.
+   docker compose --env-file .env.production -f docker-compose.prod.yml run --rm migrate
 
    # Then bring up the rest.
    docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
@@ -124,11 +118,12 @@ Set `TRUST_PROXY_HOPS` to the number of proxies actually in front of the API —
 
 ```bash
 git pull
+docker compose --env-file .env.production -f docker-compose.prod.yml run --rm --build migrate
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 ```
 
-Run `pnpm db:deploy` first whenever the release contains a migration, with `DATABASE_URL` pointing
-at `127.0.0.1:5432` as above.
+Running `migrate` on every release is safe: Prisma records applied migrations in
+`_prisma_migrations` and does nothing when none are pending, and the seed only upserts templates.
 
 ### Backups
 
@@ -143,6 +138,60 @@ Losing the database loses every creator's access permanently — there are no ac
 from, so the encryption keyring in `.env.production` matters just as much: without
 `APP_ENCRYPTION_KEYS` the gift secrets and manage tokens in a backup cannot be decrypted. Store it
 somewhere other than the server.
+
+## Payments
+
+Razorpay serves India, Dodo Payments everyone else ([ADR 0006](decisions/0006-payments-razorpay-and-dodo.md)).
+A provider is offered only when its keys are set, and nothing is charged while
+`BILLING_ENABLED=false`. Test and live mode differ only in configuration.
+
+### Test mode (no KYC needed)
+
+1. **Razorpay:** Dashboard in _Test mode_ → Account & Settings → API Keys → generate. Put the
+   `rzp_test_…` Key ID and Key Secret in `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`.
+2. **Dodo:** Dashboard in _Test mode_ → Developer → API Keys. Create two one-time products
+   (Plus, Custom) priced like `PRICE_USD_PLUS` / `PRICE_USD_PRO`, and optionally a "Plus → Custom"
+   upgrade product for the difference. Set `DODO_API_KEY`, `DODO_PRODUCT_PLUS`, `DODO_PRODUCT_PRO`
+   (`DODO_PRODUCT_PLUS_TO_PRO`), and keep `DODO_ENVIRONMENT=test`.
+3. **Webhooks** need a public HTTPS URL, so register them against the server (the sslip.io address
+   works for test mode), not localhost:
+   - Razorpay → Webhooks → `https://<domain>/webhooks/razorpay`, events `payment_link.paid`,
+     `payment_link.expired`, `payment_link.cancelled`; choose a secret and set it as
+     `RAZORPAY_WEBHOOK_SECRET`.
+   - Dodo → Webhooks → `https://<domain>/webhooks/dodo`, event `payment.succeeded`; copy the
+     `whsec_…` signing secret into `DODO_WEBHOOK_SECRET`.
+     Locally, payments still complete without webhooks: the return page asks the provider directly.
+     To test webhooks locally, expose port 3000 with a tunnel (e.g. `cloudflared tunnel --url
+http://localhost:3000`) and register that URL instead.
+4. Set `BILLING_ENABLED=true`, restart the API (`up -d --force-recreate api web` on the server), and
+   buy a Plus template with Razorpay's test UPI/card or Dodo's test card.
+
+### Going live
+
+Only `.env.production` changes: `rzp_live_` keys and the live webhook secret; `DODO_ENVIRONMENT=live`,
+the live Dodo key, live webhook secret and **live product ids** (they differ from test). Both
+providers review the site first — they need the real domain and the `/pricing`, `/terms`,
+`/privacy`, `/refunds` and `/contact` pages, with `SUPPORT_EMAIL` and `OPERATOR_NAME` set to the
+name registered with them.
+
+### Support
+
+- `payment.checkout_created`, `payment.succeeded` and `payment.rejected` are in the audit log with
+  the order id, provider and tier (never customer details).
+- A buyer who paid but is still locked: the reconciler checks Razorpay orders every
+  `PAYMENTS_RECONCILE_MS`. For Dodo, find the payment in the Dodo dashboard and, if the webhook was
+  missed, grant the tier with the operator endpoint. There is no button for it yet, and the BFF only
+  accepts same-origin requests, so call the API from inside its container on the server:
+
+  ```bash
+  docker compose --env-file .env.production -f docker-compose.prod.yml exec api sh -c \
+    'wget -qO- --header "x-admin-token: $ADMIN_TOKEN" --header "content-type: application/json" \
+     --post-data "{\"tier\":\"PLUS\",\"note\":\"Dodo payment pay_...\"}" \
+     http://localhost:4000/api/v1/admin/experiences/<experience-id>/entitlement'
+  ```
+
+- `payment.rejected` means the provider's answer did not match the order (wrong amount, or a payment
+  for another checkout). Check it in the provider dashboard before refunding.
 
 ## Deployment assumptions
 

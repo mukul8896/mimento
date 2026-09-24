@@ -13,6 +13,12 @@ ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 RUN pnpm --filter @momentpath/contracts build && pnpm --filter @momentpath/api build
 RUN pnpm deploy --filter @momentpath/api --prod --legacy /out && cp -r apps/api/dist /out/dist
 
+# Release step: apply pending migrations, then the idempotent seed. Reuses the build stage because it
+# already has the Prisma CLI, tsx and the generated client, none of which the runtime image carries.
+# Compose supplies the real DATABASE_URL (`docker compose run --rm migrate`).
+FROM build AS migrate
+CMD ["sh", "-c", "pnpm db:deploy && pnpm db:seed"]
+
 FROM node:24-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
@@ -20,5 +26,5 @@ RUN addgroup -S app && adduser -S app -G app
 COPY --from=build --chown=app:app /out /app
 USER app
 EXPOSE 4000
-# Migrations are a separate release step (`pnpm db:deploy` from CI or the build stage).
+# Migrations are a separate release step: the `migrate` stage above (`docker compose run --rm migrate`).
 CMD ["node", "dist/main.js"]

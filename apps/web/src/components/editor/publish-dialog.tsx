@@ -167,6 +167,17 @@ export function PublishDialog({
                 <span className="font-medium">Experience</span>
               )}
               : {issue.message}
+              {issue.field === 'tier' ? (
+                <>
+                  {' '}
+                  <Link
+                    href={`/experiences/${experienceId}#unlock`}
+                    className="font-medium underline"
+                  >
+                    See prices
+                  </Link>
+                </>
+              ) : null}
             </li>
           ))}
         </ul>

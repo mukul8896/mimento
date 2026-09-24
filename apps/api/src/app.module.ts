@@ -16,6 +16,7 @@ import { HealthController } from './modules/health/health.controller';
 import { IdentityModule } from './modules/identity/identity.module';
 import { MediaModule } from './modules/media/media.module';
 import { OutboxModule } from './modules/outbox/outbox.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { PublishingModule } from './modules/publishing/publishing.module';
 import { RecipientSessionsModule } from './modules/recipient-sessions/recipient-sessions.module';
 import { ResponsesModule } from './modules/responses/responses.module';
@@ -65,6 +66,7 @@ export class AppModule {
         RecipientSessionsModule,
         ResponsesModule,
         AdministrationModule,
+        PaymentsModule,
       ],
       controllers: [HealthController],
       providers: [

@@ -15,3 +15,9 @@
 		header_up Host {host}
 	}
 }
+
+# One canonical origin: cookies, CSP and payment return URLs are all bound to {$DOMAIN}.
+# Needs its own DNS record; until it exists Caddy just retries the certificate.
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}

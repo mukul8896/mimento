@@ -26,12 +26,17 @@
 | `GET /experiences/{id}/share-link` · `POST …/share-link/rotate`                                      | Copy link · replace link                                                           |
 | `POST /experiences/{id}/disable` · `enable` · `expire` · `PUT …/expiry` · `DELETE /experiences/{id}` | Lifecycle                                                                          |
 | `GET /experiences/{id}/results`                                                                      | Aggregates and permitted responses                                                 |
+| `GET /pricing`                                                                                       | Public price list (per configured provider)                                        |
+| `GET /experiences/{id}/checkout` · `POST …/checkout`                                                 | Tier needed vs held and priced offers · open hosted checkout (Razorpay / Dodo)     |
+| `POST /experiences/{id}/checkout/{orderId}/confirm`                                                  | Ask the provider about the payment; unlock if paid                                 |
+| `POST /payments/webhooks/{razorpay,dodo}`                                                            | Signed provider webhooks (raw body; not in the generated client)                   |
 | `GET /public/experiences/{token}/meta`                                                               | Availability, title and theme (server render)                                      |
 | `POST /public/experiences/{token}/sessions` · `GET …/session`                                        | Start · resume                                                                     |
 | `POST …/session/answers` · `POST …/session/close` · `POST …/session/gift`                            | Answer · close (records nothing) · reveal gift                                     |
 | `POST /public/experiences/{token}/reports`                                                           | Abuse report (always 202)                                                          |
 | `GET /admin/reports` · `POST /admin/reports/{id}/resolve`                                            | Moderation queue                                                                   |
 | `GET /admin/experiences` · `GET …/{id}/content` · `POST …/{id}/takedown` · `POST …/{id}/restore`     | Takedown workflow                                                                  |
+| `POST /admin/experiences/{id}/entitlement`                                                           | Operator grant of a tier (support, refunds)                                        |
 | `GET /admin/audit-logs`                                                                              | Audit trail                                                                        |
 
 ## Regenerating the client

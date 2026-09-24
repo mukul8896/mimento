@@ -33,8 +33,10 @@ export function configureApp(app: NestExpressApplication, env: AppEnv): NestExpr
       strictTransportSecurity: env.APP_ENV === 'production',
     }),
   );
-  // Raw bodies only for signed filesystem uploads; JSON everywhere else with a small limit.
+  // Raw bodies only where a signature covers the exact bytes: signed filesystem uploads and
+  // payment webhooks. JSON everywhere else with a small limit.
   app.use('/api/v1/media/blob', express.raw({ type: () => true, limit: '5mb' }));
+  app.use('/api/v1/payments/webhooks', express.raw({ type: () => true, limit: '256kb' }));
   app.use(express.json({ limit: '256kb' }));
   app.enableCors({
     origin: [env.WEB_ORIGIN],

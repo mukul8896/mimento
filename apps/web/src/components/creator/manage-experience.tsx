@@ -7,6 +7,7 @@ import type { Schemas } from '@momentpath/api-client';
 import { Alert, Badge, Button, Card, Dialog, Field, Input } from '@momentpath/design-system';
 import { ApiError, browserApi, unwrap } from '@/lib/api/browser';
 import { formatDateTime, STATUS_LABEL, STATUS_TONE } from '@/lib/format';
+import { UnlockPanel } from './unlock-panel';
 
 type Detail = Schemas['ExperienceDetailDto_Output'];
 
@@ -144,6 +145,7 @@ export function ManageExperience({ experience }: { experience: Detail }) {
           </p>
         </Alert>
       ) : null}
+      {!experience.tier.satisfied ? <UnlockPanel experienceId={id} /> : null}
 
       <Card>
         <h2 className="font-semibold">Your link back to this surprise</h2>

@@ -38,6 +38,18 @@ enum EntitlementSource {
   PURCHASE
 }
 
+enum PaymentProvider {
+  RAZORPAY
+  DODO
+}
+
+enum PaymentOrderStatus {
+  CREATED
+  PAID
+  FAILED
+  EXPIRED
+}
+
 enum ModerationState {
   ACTIVE
   TAKEN_DOWN
@@ -162,6 +174,7 @@ model Experience {
   sessions           RecipientSession[]
   reports            AbuseReport[]
   entitlement        Entitlement?
+  paymentOrders      PaymentOrder[]
 
   @@index([ownerId, updatedAt(sort: Desc), id])
   @@index([status, createdAt(sort: Desc), id])
@@ -317,6 +330,46 @@ model Entitlement {
   grantedById  String?           @db.Uuid
   createdAt    DateTime          @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime          @updatedAt @db.Timestamptz(3)
+}
+
+/// One checkout attempt for one experience at one provider. Kept after the experience is deleted
+/// (experienceId becomes null) because it is the record support needs for refunds and disputes.
+/// Contains no customer details: the provider's hosted page collects those.
+model PaymentOrder {
+  id                String             @id @default(uuid()) @db.Uuid
+  experienceId      String?            @db.Uuid
+  experience        Experience?        @relation(fields: [experienceId], references: [id], onDelete: SetNull)
+  tier              Tier
+  provider          PaymentProvider
+  status            PaymentOrderStatus @default(CREATED)
+  /// What the customer is charged, in the currency's minor unit (paise, cents).
+  amountMinor       Int
+  currency          String             @db.Char(3)
+  /// Razorpay payment link id or Dodo checkout session id.
+  providerOrderId   String
+  /// Set once paid: Razorpay or Dodo payment id.
+  providerPaymentId String?
+  checkoutUrl       String
+  createdById       String?            @db.Uuid
+  createdAt         DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime           @updatedAt @db.Timestamptz(3)
+  paidAt            DateTime?          @db.Timestamptz(3)
+
+  @@unique([provider, providerOrderId])
+  @@unique([provider, providerPaymentId])
+  @@index([status, createdAt])
+  @@index([experienceId, createdAt(sort: Desc)])
+}
+
+/// Webhook deliveries already processed, so a provider retry is acknowledged without re-running.
+model PaymentWebhookEvent {
+  id         String          @id @default(uuid()) @db.Uuid
+  provider   PaymentProvider
+  eventId    String
+  type       String
+  receivedAt DateTime        @default(now()) @db.Timestamptz(3)
+
+  @@unique([provider, eventId])
 }
 
 model AbuseReport {

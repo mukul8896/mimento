@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
 const bool = z.enum(['true', 'false']).transform((v) => v === 'true');
+/** `KEY=` in an env file means "not set", so an unused provider can stay listed but blank. */
+const blankAsUnset = (v: unknown) => (v === '' ? undefined : v);
+const optionalSecret = z.preprocess(blankAsUnset, z.string().min(1).optional());
 
 /**
  * All API configuration comes from the environment and is validated once at start-up.
@@ -42,6 +45,34 @@ export const EnvSchema = z
      * a payment provider exists; turning it on without one leaves upgrades to the operator.
      */
     BILLING_ENABLED: bool.default(false),
+
+    /**
+     * Payments. A provider is offered only when its credentials are set, so test and live mode
+     * differ only in these values — never in code. Razorpay serves India (UPI, INR); Dodo
+     * Payments is the merchant of record for everyone else and handles their sales tax.
+     */
+    RAZORPAY_KEY_ID: optionalSecret,
+    RAZORPAY_KEY_SECRET: optionalSecret,
+    RAZORPAY_WEBHOOK_SECRET: optionalSecret,
+    RAZORPAY_API_BASE: z.url().default('https://api.razorpay.com'),
+    DODO_API_KEY: optionalSecret,
+    DODO_WEBHOOK_SECRET: optionalSecret,
+    DODO_ENVIRONMENT: z.enum(['test', 'live']).default('test'),
+    /** Overrides the base URL DODO_ENVIRONMENT picks (tests point it at a local fake). */
+    DODO_API_BASE: z.preprocess(blankAsUnset, z.url().optional()),
+    /** Dodo product ids differ between test and live mode; create them in the Dodo dashboard. */
+    DODO_PRODUCT_PLUS: optionalSecret,
+    DODO_PRODUCT_PRO: optionalSecret,
+    /** Optional product for an experience that already holds PLUS. Without it Dodo is not offered. */
+    DODO_PRODUCT_PLUS_TO_PRO: optionalSecret,
+    /** Prices in minor units. USD prices must match the Dodo products; they are shown, not charged. */
+    PRICE_INR_PLUS: z.coerce.number().int().min(100).default(9900),
+    PRICE_INR_PRO: z.coerce.number().int().min(100).default(19900),
+    PRICE_USD_PLUS: z.coerce.number().int().min(50).default(299),
+    PRICE_USD_PRO: z.coerce.number().int().min(50).default(499),
+    /** How often unfinished checkouts are checked with the provider. 0 disables. */
+    PAYMENTS_RECONCILE_MS: z.coerce.number().int().min(0).default(300_000),
+
     RATE_LIMIT_DISABLED: bool.default(false),
     OUTBOX_POLL_MS: z.coerce.number().int().min(0).default(5000),
   })
@@ -69,6 +100,37 @@ export const EnvSchema = z
       }
       if (!env.MEDIA_PUBLIC_BASE_URL) {
         ctx.addIssue({ code: 'custom', path: ['MEDIA_PUBLIC_BASE_URL'], message: 'Required' });
+      }
+    }
+    if (Boolean(env.RAZORPAY_KEY_ID) !== Boolean(env.RAZORPAY_KEY_SECRET)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['RAZORPAY_KEY_SECRET'],
+        message: 'Set both RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET, or neither',
+      });
+    }
+    if (env.DODO_API_KEY && !env.DODO_PRODUCT_PLUS && !env.DODO_PRODUCT_PRO) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['DODO_PRODUCT_PLUS'],
+        message: 'Dodo needs at least one product id',
+      });
+    }
+    // Real money only in production: a live key on a laptop or in CI is a mistake.
+    if (env.APP_ENV !== 'production') {
+      if (env.RAZORPAY_KEY_ID?.startsWith('rzp_live_')) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['RAZORPAY_KEY_ID'],
+          message: 'Live Razorpay keys are only allowed in production',
+        });
+      }
+      if (env.DODO_ENVIRONMENT === 'live') {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['DODO_ENVIRONMENT'],
+          message: 'Live Dodo mode is only allowed in production',
+        });
       }
     }
     if (env.STORAGE_DRIVER === 's3') {

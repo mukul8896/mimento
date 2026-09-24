@@ -38,7 +38,7 @@ Do not place all business logic inside Next.js route handlers. Public rendering 
 | Authentication | Keycloak using OIDC/OAuth 2.0 | Open source, self-hostable, supports social login and MFA | Managed Keycloak, Auth0, Clerk or WorkOS |
 | File storage | S3-compatible object storage | Portable API and presigned uploads | Cloudflare R2, AWS S3, Backblaze B2 |
 | Local file storage | MinIO-compatible development service or filesystem adapter | Local development without a cloud account | Never rely on local disk in production |
-| Payments | Provider adapter; Razorpay first for India | UPI/cards and webhook support | Stripe for international sales |
+| Payments | Provider adapter; Razorpay for India, Dodo Payments (merchant of record) elsewhere — see ADR 0006 | UPI/cards, webhook support, foreign sales tax handled | Stripe if the business incorporates abroad |
 | Email | SMTP adapter | Avoid vendor lock-in | Amazon SES, Postmark or Resend |
 | Analytics | Umami for simple product analytics | Lightweight and self-hostable | PostHog Cloud when funnels/features are needed |
 | Error monitoring | OpenTelemetry + structured logs | Vendor-neutral instrumentation | Sentry; GlitchTip for open-source error tracking |
@@ -176,7 +176,7 @@ Add:
 - Optional PIN/passcode and recipient email verification.
 - Countdown, puzzle, photo gallery, audio/voice note, video and location/date reveal steps.
 - Multilingual UI and creator-authored content; begin with English and selected Indian languages.
-- Payments for one-time premium publishing through Razorpay.
+- Payments for one-time premium publishing through Razorpay (India) and Dodo Payments (elsewhere).
 - Payment webhook signature verification, idempotency and reconciliation.
 - Premium entitlements independent of payment-provider objects.
 - Email notifications that reveal only necessary information.

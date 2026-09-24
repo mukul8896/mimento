@@ -374,3 +374,60 @@ export const AuditLogListResponseSchema = z.object({
 });
 
 export { Uuid as UuidSchema };
+
+// ---------------------------------------------------------------------------------------
+// Payments (Phase 2a). Hosted checkout: the browser is sent to the provider's page and comes
+// back to the manage page, which asks the API to confirm with the provider.
+export const PaymentProviderSchema = z.enum(['RAZORPAY', 'DODO']);
+export type PaymentProvider = z.infer<typeof PaymentProviderSchema>;
+export const PaymentOrderStatusSchema = z.enum(['CREATED', 'PAID', 'FAILED', 'EXPIRED']);
+
+export const CheckoutOfferSchema = z.object({
+  provider: PaymentProviderSchema,
+  tier: TierSchema,
+  /** Minor units (paise, cents). Dodo may add local tax on its own page. */
+  amountMinor: z.number().int(),
+  currency: z.string().length(3),
+});
+export type CheckoutOffer = z.infer<typeof CheckoutOfferSchema>;
+
+export const CheckoutOptionsResponseSchema = z.object({
+  billingEnabled: z.boolean(),
+  tier: TierStateSchema,
+  offers: z.array(CheckoutOfferSchema),
+});
+
+export const CreateCheckoutRequestSchema = z.strictObject({
+  provider: PaymentProviderSchema,
+});
+
+export const CheckoutResponseSchema = z.object({
+  orderId: Uuid,
+  checkoutUrl: z.url().max(2000),
+});
+
+export const ConfirmCheckoutRequestSchema = z.strictObject({
+  /** Dodo appends payment_id to the return URL; Razorpay needs nothing. */
+  paymentId: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{1,100}$/)
+    .optional(),
+});
+
+export const ConfirmCheckoutResponseSchema = z.object({
+  orderId: Uuid,
+  status: PaymentOrderStatusSchema,
+  tier: TierStateSchema,
+});
+
+/** Public price list. A currency is null when no provider can charge it right now. */
+export const PricingResponseSchema = z.object({
+  billingEnabled: z.boolean(),
+  plans: z.array(
+    z.object({
+      tier: z.enum(['PLUS', 'PRO']),
+      inrMinor: z.number().int().nullable(),
+      usdMinor: z.number().int().nullable(),
+    }),
+  ),
+});

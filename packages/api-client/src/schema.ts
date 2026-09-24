@@ -548,6 +548,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/experiences/{id}/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CheckoutController_options"];
+        put?: never;
+        post: operations["CheckoutController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/experiences/{id}/checkout/{orderId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CheckoutController_confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pricing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PricingController_pricing"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1463,6 +1511,59 @@ export interface components {
             }[];
             nextCursor: string | null;
         };
+        CheckoutOptionsResponseDto_Output: {
+            billingEnabled: boolean;
+            tier: {
+                /** @enum {string} */
+                required: "FREE" | "PLUS" | "PRO";
+                /** @enum {string} */
+                held: "FREE" | "PLUS" | "PRO";
+                satisfied: boolean;
+            };
+            offers: {
+                /** @enum {string} */
+                provider: "RAZORPAY" | "DODO";
+                /** @enum {string} */
+                tier: "FREE" | "PLUS" | "PRO";
+                amountMinor: number;
+                currency: string;
+            }[];
+        };
+        CreateCheckoutRequestDto: {
+            /** @enum {string} */
+            provider: "RAZORPAY" | "DODO";
+        };
+        CheckoutResponseDto_Output: {
+            /** Format: uuid */
+            orderId: string;
+            /** Format: uri */
+            checkoutUrl: string;
+        };
+        ConfirmCheckoutRequestDto: {
+            paymentId?: string;
+        };
+        ConfirmCheckoutResponseDto_Output: {
+            /** Format: uuid */
+            orderId: string;
+            /** @enum {string} */
+            status: "CREATED" | "PAID" | "FAILED" | "EXPIRED";
+            tier: {
+                /** @enum {string} */
+                required: "FREE" | "PLUS" | "PRO";
+                /** @enum {string} */
+                held: "FREE" | "PLUS" | "PRO";
+                satisfied: boolean;
+            };
+        };
+        PricingResponseDto_Output: {
+            billingEnabled: boolean;
+            plans: {
+                /** @enum {string} */
+                tier: "PLUS" | "PRO";
+                inrMinor: number | null;
+                usdMinor: number | null;
+            }[];
+        };
     };
     responses: never;
     parameters: never;
@@ -2334,6 +2435,97 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditLogListResponseDto_Output"];
+                };
+            };
+        };
+    };
+    CheckoutController_options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckoutOptionsResponseDto_Output"];
+                };
+            };
+        };
+    };
+    CheckoutController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCheckoutRequestDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckoutResponseDto_Output"];
+                };
+            };
+        };
+    };
+    CheckoutController_confirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmCheckoutRequestDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmCheckoutResponseDto_Output"];
+                };
+            };
+        };
+    };
+    PricingController_pricing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PricingResponseDto_Output"];
                 };
             };
         };

@@ -1,6 +1,6 @@
 # INSTRUCTION.md — current application state
 
-_Last updated: 2026-09-23 (Docker verified; accounts removed — stage 1 of the no-signup plan)._ Update this file at the end of every session.
+_Last updated: 2026-09-24 (Phase 2 approved; slice 2a payments built — awaiting sandbox keys)._ Update this file at the end of every session.
 
 ## Status snapshot
 
@@ -18,6 +18,50 @@ stages 2 and 3 are not started.**
 | GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
 | Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
 
+## Phase 2 — approved 2026-09-24, slice 2a (payments) built
+
+Owner approved Phase 2, delivered in slices: **2a payments** → 2b media/workers (ClamAV) → 2c
+branching → 2d richer experiences. See `docs/phase-status.md`.
+
+**2a is built and tested against fake providers; not yet run against the real sandboxes.**
+
+- API `modules/payments`: Razorpay Payment Links and Dodo checkout sessions (hosted pages only),
+  `GET/POST /experiences/:id/checkout`, `POST …/checkout/:orderId/confirm` (asks the provider),
+  `POST /payments/webhooks/{razorpay,dodo}` (raw body, signature-verified, deduplicated), public
+  `GET /pricing`, and an in-process reconciler. New tables `PaymentOrder`, `PaymentWebhookEvent`
+  (migration `20260923182058_payments`).
+- Web: unlock panel on the manage page (guesses India from timezone/locale, "Paying from outside
+  India?" switch), `/experiences/:id/checkout` return page, `/webhooks/:provider` pass-through,
+  `/pricing`, `/terms`, `/privacy`, `/refunds`, `/contact` + site footer. New web env
+  `SUPPORT_EMAIL`, `OPERATOR_NAME`.
+- Placeholder prices ₹99/₹199 and $2.99/$4.99 (`PRICE_*`), one-time per surprise.
+- Tests: 69 unit, 68 integration (15 new payment tests), E2E 46 passed / 1 skipped against
+  `next build && next start`.
+
+**Next for 2a:** owner provides Razorpay + Dodo test keys (put straight into `.env` /
+`.env.production`, never in chat) → run a real sandbox purchase with each → fix any field-name
+differences → deploy to the server with `BILLING_ENABLED=true` and register webhooks. Policy pages
+are drafts and need legal review before live keys. Not covered by E2E: the unlock → provider →
+return flow in a browser (needs a provider; covered at API level).
+
+## First production deploy (2026-09-23)
+
+- Contabo VPS `85.208.51.49` (Ubuntu 24.04, 4 vCPU / 8 GB, 2 GB swap, ufw allows 22/80/443 only).
+  Docker 29, Node 24, pnpm 10.34.5. Repo cloned at `/root/mimento`, `.env.production` there (mode 600).
+- Domain **wishrevealer.com** (bought on Cloudflare; A records for `@` and `www` → server, DNS only /
+  grey cloud) since 2026-09-24. `www` redirects to the apex (Caddyfile). The old sslip.io host is no
+  longer served; `.env.production.bak-sslip` on the server is the previous config.
+- Migrations + seed applied; all four containers up; `/bff/api/v1/health` → ok.
+- Migrations now run in a one-off `migrate` compose service (Dockerfile `migrate` stage, profile
+  `release`), so hosts need only Docker. Verified on the server. Node/pnpm are still installed
+  there from the first deploy but are no longer needed.
+- R2 configured by the owner (bucket `momentpath-media`, CORS for the sslip.io origin); uploads work.
+  As expected, publishing **with images** is blocked in production ("An image is waiting for its
+  safety scan") because no scanner exists. Owner chose to leave it that way for now; text-only
+  experiences publish. The ClamAV scanner (Phase 2) needs owner approval.
+- Still open: upload malware scanning (production blocker), password SSH login still enabled,
+  no automated backups yet.
+
 ## Product change: no accounts (decided 2026-09-23, owner-approved)
 
 Every comparable product (Gifft.me, GiftFeels, YoursToOpen, openme.gift) lets people build and send
@@ -32,7 +76,8 @@ Planned in three stages:
 2. Template tiers and entitlement checks (free / advanced / custom builder) — not started.
    `Experience.templateKey` and the Template model already exist, so this is mostly gating what is
    built rather than new features.
-3. Stripe Checkout, anonymous, with the entitlement attached to the owner or experience — not started.
+3. ~~Stripe Checkout~~ → **Razorpay (India) + Dodo Payments (elsewhere)**, anonymous, entitlement on
+   the experience — built in Phase 2a, see below and [ADR 0006](docs/decisions/0006-payments-razorpay-and-dodo.md).
 
 ### What stage 1 changed
 

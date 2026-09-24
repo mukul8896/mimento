@@ -25,24 +25,26 @@ Browser ──► Next.js web (apps/web) ──/bff/*──► NestJS API (apps/
 
 ## API modules (`apps/api/src/modules`)
 
-| Module                                | Responsibility                                                                                                                         |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| identity                              | Anonymous owner minting, owner/manage/operator token resolution, `/me`, data deletion endpoint                                         |
-| experiences                           | Create (template/blank), list, detail, draft autosave with optimistic concurrency, lifecycle, permanent deletion, account data erasure |
-| workflow                              | Server-side publish validation (content rules + media readiness/scan state)                                                            |
-| publishing                            | Immutable version snapshots, share-link issue/rotation                                                                                 |
-| recipient-sessions                    | Public recipient API: meta, sessions, answers, close, gift reveal, abuse report                                                        |
-| responses                             | Creator results (aggregates + permitted individual answers)                                                                            |
-| gifts                                 | Encrypted gift secrets, eligibility rule, one-time reveal                                                                              |
-| media                                 | Signed uploads/downloads, byte-level validation, metadata stripping, storage adapters                                                  |
-| templates                             | Curated templates (seeded)                                                                                                             |
-| moderation / administration           | Reports, takedown/restore, content review, audit log                                                                                   |
-| audit                                 | Security-relevant audit trail (no private content)                                                                                     |
-| outbox                                | Transactional outbox + in-process worker (storage cleanup, identity deletion, retention)                                               |
-| entitlements, payments, notifications | Reserved for Phase 2 (empty by design)                                                                                                 |
+| Module                      | Responsibility                                                                                                                                 |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| identity                    | Anonymous owner minting, owner/manage/operator token resolution, `/me`, data deletion endpoint                                                 |
+| experiences                 | Create (template/blank), list, detail, draft autosave with optimistic concurrency, lifecycle, permanent deletion, account data erasure         |
+| workflow                    | Server-side publish validation (content rules + media readiness/scan state)                                                                    |
+| publishing                  | Immutable version snapshots, share-link issue/rotation                                                                                         |
+| recipient-sessions          | Public recipient API: meta, sessions, answers, close, gift reveal, abuse report                                                                |
+| responses                   | Creator results (aggregates + permitted individual answers)                                                                                    |
+| gifts                       | Encrypted gift secrets, eligibility rule, one-time reveal                                                                                      |
+| media                       | Signed uploads/downloads, byte-level validation, metadata stripping, storage adapters                                                          |
+| templates                   | Curated templates (seeded)                                                                                                                     |
+| moderation / administration | Reports, takedown/restore, content review, audit log                                                                                           |
+| audit                       | Security-relevant audit trail (no private content)                                                                                             |
+| outbox                      | Transactional outbox + in-process worker (storage cleanup, identity deletion, retention)                                                       |
+| entitlements                | Tier a draft needs vs. holds; grants (operator or purchase), one row per experience                                                            |
+| payments                    | Razorpay + Dodo hosted checkout, confirm-with-provider, signed webhooks, reconciler ([ADR 0006](decisions/0006-payments-razorpay-and-dodo.md)) |
+| notifications               | Reserved for Phase 2 (empty by design)                                                                                                         |
 
-Provider ports live in `apps/api/src/providers` (storage implemented; payments, email, analytics
-declared for Phase 2).
+Provider ports live in `apps/api/src/providers` (storage and payments implemented; email and
+analytics declared for Phase 2).
 
 ## Data model
 

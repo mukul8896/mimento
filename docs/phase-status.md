@@ -51,6 +51,26 @@ _Updated 22 Sep 2026._ Phase 1 implemented; awaiting owner review before Phase 2
 - CI workflow written but not yet run on GitHub (no remote configured).
 - Legal review of privacy notice, terms, moderation and gift wording (founder task).
 
-## Phase 2 — not started (awaiting approval)
+## Phase 2 — approved 24 Sep 2026, delivered in slices
 
-See the proposed backlog in the Phase 1 completion report and the master prompt.
+| Slice                 | Scope                                                                                                     | State                                                          |
+| --------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 2a Payments           | Razorpay (India) + Dodo (rest of world), checkout, confirm, signed webhooks, reconciler, pricing/policies | **Built and tested with fake providers**; sandbox keys pending |
+| 2b Media and workers  | Redis/BullMQ worker, ClamAV scanning (unblocks images in production), WebP/GIF metadata, thumbnails       | Not started                                                    |
+| 2c Branching          | Answer-based routing, React Flow editor, graph validation, draft version history                          | Not started                                                    |
+| 2d Richer experiences | New step types, scheduled publish/reveal, PIN, email notifications, multilingual, analytics, custom slugs | Not started                                                    |
+
+### 2a acceptance
+
+| Criterion                                              | Evidence                                                                          |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| Paid template publishes only after payment             | `payments.int.test.ts` (Razorpay return flow, Dodo return flow)                   |
+| Signed webhook grants once, replay harmless            | `payments.int.test.ts` (Razorpay replay; Dodo Standard Webhooks, stale rejected)  |
+| Forged/mis-signed/mismatched payments unlock nothing   | `payments.int.test.ts` (bad signature, wrong amount, payment for another session) |
+| Missed webhook + closed tab still unlocks (Razorpay)   | `payments.int.test.ts` reconciler test                                            |
+| Test → live is configuration only; no live keys in dev | `config/env.test.ts`                                                              |
+| Pricing and policy pages exist, accessible at 360px    | `e2e/site.spec.ts`                                                                |
+
+Not yet verified against the real providers: the adapters follow the published API docs, and the
+first run with the owner's sandbox keys must confirm field names (notably that Dodo returns
+`checkout_session_id` or our `metadata.order_id` on the payment).
