@@ -36,7 +36,7 @@ function musicKey(m: Music): string {
  * Background music: a built-in track (synthesised in the browser, nothing to license), the
  * creator's own upload, or silence. Each track can be heard before choosing it.
  */
-function MusicPicker({
+export function MusicPicker({
   theme,
   onTheme,
   ctx,

@@ -3,6 +3,7 @@
 import { useId, useState } from 'react';
 import { accentButton } from '../theme';
 import type { StepProps } from './types';
+import { Editable } from '../editable';
 
 /** The answer is never in the browser: every guess is checked by the server. */
 export function PuzzleStep({ step, busy, submit }: StepProps<'PUZZLE'>) {
@@ -20,9 +21,11 @@ export function PuzzleStep({ step, busy, submit }: StepProps<'PUZZLE'>) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-5 text-center">
-      <label htmlFor={id} className="block text-[1.4em] font-bold leading-tight">
-        {step.config.prompt}
-      </label>
+      <Editable field="Riddle or question" block>
+        <label htmlFor={id} className="block text-[1.4em] font-bold leading-tight">
+          {step.config.prompt}
+        </label>
+      </Editable>
       <input
         id={id}
         value={guess}
@@ -47,9 +50,11 @@ export function PuzzleStep({ step, busy, submit }: StepProps<'PUZZLE'>) {
           </button>
         )
       ) : null}
-      <button type="submit" className={`${accentButton} w-full`} disabled={busy || !guess.trim()}>
-        {step.config.buttonLabel}
-      </button>
+      <Editable field="Button label" block>
+        <button type="submit" className={`${accentButton} w-full`} disabled={busy || !guess.trim()}>
+          {step.config.buttonLabel}
+        </button>
+      </Editable>
     </form>
   );
 }

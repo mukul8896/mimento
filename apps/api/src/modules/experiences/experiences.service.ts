@@ -9,6 +9,7 @@ import {
   type ExperienceSummary,
   fieldIssues,
   materializeTemplate,
+  structureChange,
   type TemplateFieldValues,
   type UpdateAccessRequest,
   type UpdateDraftRequest,
@@ -52,6 +53,37 @@ export class ExperiencesService {
     @Inject(KEYRING) private readonly keyring: Keyring,
     private readonly retention: RetentionService,
   ) {}
+
+  /** The creator changed something: from now on this is work in progress worth keeping. */
+  private async markEdited(experienceId: string, client: PrismaService | Tx = this.prisma) {
+    await client.experience.updateMany({
+      where: { id: experienceId, editedAt: null },
+      data: { editedAt: new Date() },
+    });
+  }
+
+  /**
+   * What this browser is working on: never-published surprises it has changed, newest first.
+   * One it opened but never changed is not a draft: it is not listed, and the retention sweep
+   * removes it after a day. A manage link opens one published surprise, so it has none.
+   */
+  async inProgress(principal: Principal) {
+    if (principal.scopeExperienceId) return { items: [] };
+    const rows = await this.prisma.experience.findMany({
+      where: { ownerId: principal.userId, status: 'DRAFT', editedAt: { not: null } },
+      orderBy: { editedAt: 'desc' },
+      take: 50,
+    });
+    return {
+      items: rows.map((r) => ({
+        id: r.id,
+        templateKey: r.templateKey,
+        mode: r.mode,
+        title: r.title,
+        editedAt: (r.updatedAt > r.editedAt! ? r.updatedAt : r.editedAt!).toISOString(),
+      })),
+    };
+  }
 
   /**
    * The experience's recovery credential, decrypted for the creator. Minted at creation, so a
@@ -99,7 +131,7 @@ export class ExperiencesService {
       updatedAt: exp.updatedAt.toISOString(),
       publishedAt: exp.publishedAt?.toISOString() ?? null,
       expiresAt: exp.expiresAt?.toISOString() ?? null,
-      keptUntil: this.retention.keptUntil(exp.lastActivityAt)?.toISOString() ?? null,
+      keptUntil: this.retention.keptUntil(exp.lastActivityAt, exp.status)?.toISOString() ?? null,
       stats,
     };
   }
@@ -169,6 +201,8 @@ export class ExperiencesService {
       );
     }
     const template = content ? materializeTemplate(content, input.fields ?? {}) : null;
+    // Typing their name (or any detail) is already making it personal.
+    const personalised = Object.values(input.fields ?? {}).some((v) => String(v).trim() !== '');
 
     // Templates carry placeholder keys; every experience gets fresh stable step keys.
     const keyMap = new Map<string, string>();
@@ -189,6 +223,9 @@ export class ExperiencesService {
           ownerId: principal.userId,
           title,
           templateKey: input.templateKey ?? null,
+          // A template is personalised with its structure fixed; blank starts use the builder.
+          mode: input.templateKey ? 'TEMPLATE' : 'CUSTOM',
+          editedAt: personalised ? new Date() : null,
           manageTokenHash: sha256(manageToken),
         },
       });
@@ -220,7 +257,11 @@ export class ExperiencesService {
     // Starter surprise details from the template (never real vouchers), encrypted like any secret.
     for (const [templateKey, secret] of Object.entries(template?.giftDefaults ?? {})) {
       const stepKey = keyMap.get(templateKey);
-      if (stepKey) await this.gifts.setDraftSecret(principal, experience.id, stepKey, secret);
+      if (stepKey) {
+        await this.gifts.setDraftSecret(principal, experience.id, stepKey, secret, {
+          byCreator: false,
+        });
+      }
     }
     return this.detail(principal, experience.id);
   }
@@ -241,6 +282,63 @@ export class ExperiencesService {
     return draft;
   }
 
+  /** Name and tier of the template an experience started from, for the creator's own pages. */
+  private async templateOf(templateKey: string | null) {
+    if (!templateKey) return null;
+    const t = await this.prisma.template.findFirst({
+      where: { key: templateKey },
+      select: { key: true, name: true, tier: true },
+    });
+    return t ? { key: t.key, name: t.name, tier: t.tier } : null;
+  }
+
+  /**
+   * Refuses a structural change to a personalised template (contracts/structure.ts). The
+   * creator gets there only by choosing "Customize with PRO", never by accident.
+   */
+  private assertStructureKept(before: DraftStep[], after: DraftStep[]) {
+    const change = structureChange(before, after);
+    if (change) {
+      throw Problem.unprocessable('STRUCTURE_LOCKED', change, [
+        {
+          stepKey: null,
+          field: 'steps',
+          message: 'Templates keep their steps. Choose Customize with PRO to change them.',
+        },
+      ]);
+    }
+  }
+
+  /**
+   * "Customize with PRO": the draft moves to the full builder with everything the creator has
+   * personalised. The master template is not touched — the draft was always the creator's copy.
+   * Paying happens at publish; this only changes what can be edited.
+   */
+  async customize(principal: Principal, experienceId: string, requestId: string | null) {
+    const exp = await requireOwnedExperience(this.prisma, principal, experienceId);
+    if (exp.mode !== 'CUSTOM') {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.experience.update({
+          where: { id: exp.id },
+          data: { mode: 'CUSTOM', editedAt: exp.editedAt ?? new Date() },
+        });
+        await this.audit.record(
+          {
+            actorType: 'USER',
+            actorId: principal.userId,
+            action: 'experience.customized',
+            targetType: 'experience',
+            targetId: exp.id,
+            requestId,
+            metadata: { template: exp.templateKey },
+          },
+          tx,
+        );
+      });
+    }
+    return this.detail(principal, exp.id);
+  }
+
   async detail(principal: Principal, experienceId: string) {
     const exp = await requireOwnedExperience(this.prisma, principal, experienceId);
     const [draft, active, stats] = await Promise.all([
@@ -250,9 +348,14 @@ export class ExperiencesService {
         : Promise.resolve(null),
       this.stats([exp.id]),
     ]);
-    const tier = await this.entitlements.tierState(exp, toDraftSteps(draft.steps));
+    const [tier, template] = await Promise.all([
+      this.entitlements.tierState(exp, toDraftSteps(draft.steps)),
+      this.templateOf(exp.templateKey),
+    ]);
     return {
       ...this.toSummary(exp, stats.get(exp.id)!),
+      mode: exp.mode,
+      template,
       settings: { responseVisibility: draft.responseVisibility },
       publishedVersion: active?.number ?? null,
       hasUnpublishedChanges:
@@ -265,6 +368,8 @@ export class ExperiencesService {
 
   async getDraft(principal: Principal, experienceId: string) {
     const exp = await requireOwnedExperience(this.prisma, principal, experienceId);
+    // Opening an unfinished surprise keeps it (see RetentionService.touchOwner).
+    await this.retention.touchExperience(exp.id);
     const draft = await this.draftVersion(exp.id);
     const gifts = await this.prisma.gift.findMany({
       where: { versionId: draft.id },
@@ -274,6 +379,8 @@ export class ExperiencesService {
     const steps = toDraftSteps(draft.steps);
     return {
       experienceId: exp.id,
+      mode: exp.mode,
+      template: await this.templateOf(exp.templateKey),
       revision: draft.revision,
       title: draft.title,
       theme: ThemeSchema.parse(draft.theme),
@@ -340,6 +447,7 @@ export class ExperiencesService {
         slug: body.slug !== undefined,
       },
     });
+    await this.markEdited(exp.id);
     return accessOf(updated);
   }
 
@@ -382,6 +490,9 @@ export class ExperiencesService {
       });
       if (!source) throw Problem.notFound('Version');
       const draft = await this.draftVersion(exp.id, tx);
+      if (exp.mode === 'TEMPLATE') {
+        this.assertStructureKept(toDraftSteps(draft.steps), toDraftSteps(source.steps));
+      }
       const saved = await tx.experienceVersion.update({
         where: { id: draft.id },
         data: {
@@ -420,6 +531,7 @@ export class ExperiencesService {
    */
   async updateDraft(principal: Principal, experienceId: string, body: UpdateDraftRequest) {
     const exp = await requireOwnedExperience(this.prisma, principal, experienceId);
+    await this.retention.touchExperience(exp.id);
     const keys = new Set<string>();
     for (const step of body.steps) {
       if (keys.has(step.key))
@@ -444,6 +556,7 @@ export class ExperiencesService {
 
     return this.prisma.$transaction(async (tx) => {
       const draft = await this.draftVersion(exp.id, tx);
+      if (exp.mode === 'TEMPLATE') this.assertStructureKept(toDraftSteps(draft.steps), body.steps);
       const updated = await tx.experienceVersion.updateMany({
         where: { id: draft.id, state: 'DRAFT', revision: body.revision },
         data: {
@@ -469,7 +582,7 @@ export class ExperiencesService {
       await this.gifts.pruneDraftGifts(tx, draft.id, giftKinds);
       await tx.experience.update({
         where: { id: exp.id },
-        data: { title: body.title.trim() || exp.title },
+        data: { title: body.title.trim() || exp.title, editedAt: exp.editedAt ?? new Date() },
       });
       const saved = await tx.experienceVersion.findUniqueOrThrow({ where: { id: draft.id } });
       return { revision: saved.revision, updatedAt: saved.updatedAt.toISOString() };

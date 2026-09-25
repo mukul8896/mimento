@@ -81,7 +81,10 @@ export class PaymentsReconciler implements OnApplicationBootstrap, OnModuleDestr
           paymentId: order.providerPaymentId,
         });
         const status = await this.payments.apply(order, gateway, result, null);
-        if (status === 'PAID') stats.paid += 1;
+        if (status === 'PAID') {
+          stats.paid += 1;
+          await this.payments.publishIfRequested(order.id);
+        }
         // Rotate through the queue instead of re-asking about the same orders first.
         await this.prisma.paymentOrder.updateMany({
           where: { id: order.id, status: 'CREATED' },

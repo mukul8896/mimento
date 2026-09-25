@@ -12,6 +12,13 @@ export interface DialogProps {
   children?: ReactNode;
   footer?: ReactNode;
   className?: string;
+  /**
+   * Focus the first control on open (default). Turn off for sheets whose first control is a
+   * date or text input: on a phone that would pop up the keyboard before anything is read.
+   */
+  autoFocus?: boolean;
+  /** A lighter backdrop, for sheets that edit something the person should still see. */
+  lightOverlay?: boolean;
 }
 
 /** Accessible modal (focus trap, Escape to close, labelled). Sheet-style on phones. */
@@ -23,12 +30,17 @@ export function Dialog({
   children,
   footer,
   className,
+  autoFocus = true,
+  lightOverlay = false,
 }: DialogProps) {
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 z-50 bg-ink-950/40" />
+        <RadixDialog.Overlay
+          className={cx('fixed inset-0 z-50', lightOverlay ? 'bg-ink-950/15' : 'bg-ink-950/40')}
+        />
         <RadixDialog.Content
+          onOpenAutoFocus={autoFocus ? undefined : (e) => e.preventDefault()}
           className={cx(
             'fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] overflow-y-auto rounded-t-3xl bg-white p-5 shadow-xl',
             'sm:inset-auto sm:top-1/2 sm:left-1/2 sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:p-6',
@@ -48,7 +60,8 @@ export function Dialog({
           )}
           <div className="mt-4">{children}</div>
           {footer ? (
-            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            // Stays in view while the sheet scrolls, so the main action is never below the fold.
+            <div className="sticky -bottom-[max(1.25rem,env(safe-area-inset-bottom))] -mx-5 mt-6 flex flex-col-reverse gap-2 border-t border-ink-100 bg-white px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:-bottom-6 sm:-mx-6 sm:flex-row sm:justify-end sm:px-6 sm:pb-6">
               {footer}
             </div>
           ) : null}

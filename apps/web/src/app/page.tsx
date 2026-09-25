@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { hasSession, publicServerApi } from '@/lib/api/server';
+import { publicServerApi } from '@/lib/api/server';
+import { SiteNav } from '@/components/site/site-nav';
 import { SiteFooter } from '@/components/site/site-shell';
 import { FloatingBackground } from '@/components/site/landing/floating-bg';
 import { GiftHero } from '@/components/site/landing/gift-hero';
@@ -11,8 +12,8 @@ export const dynamic = 'force-dynamic';
 
 const STEPS = [
   ['🎨', 'Pick a template', 'Birthdays, Diwali, proposals, apologies — 25+ ready to go.'],
-  ['✍️', 'Add their name', 'Personalise in seconds. Add photos or a voice note if you like.'],
-  ['🔗', 'Share one link', 'Send it on WhatsApp. They play it on their phone, no app needed.'],
+  ['✍️', 'Make it personal', 'Tap any words, photos or music in the preview to change them.'],
+  ['🔗', 'Share the moment', 'Send one link on WhatsApp. Keep your private link to manage it.'],
 ] as const;
 
 const FEATURES = [
@@ -27,45 +28,26 @@ const FEATURES = [
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ manage?: string; recover?: string }>;
+  searchParams: Promise<{ manage?: string }>;
 }) {
-  const [signedIn, params, templates] = await Promise.all([
-    hasSession(),
+  const [params, templates] = await Promise.all([
     searchParams,
     publicServerApi().GET('/api/v1/templates'),
   ]);
   return (
     <div className="min-h-dvh overflow-x-hidden bg-gradient-to-b from-brand-50 via-white to-white">
-      <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-        <span className="text-lg font-bold tracking-tight text-brand-700">🎁 Wish Revealer</span>
-        <nav className="flex items-center gap-3 text-sm">
-          <a href="#templates" className="hidden text-ink-600 hover:underline sm:inline">
-            Templates
-          </a>
-          <Link href="/pricing" className="text-ink-600 hover:underline">
-            Pricing
-          </Link>
-          {signedIn ? null : (
-            <Link href="/signin" className="text-ink-600 hover:underline">
-              Sign in
-            </Link>
-          )}
-          <Link
-            href={signedIn ? '/dashboard' : '/new'}
-            className="rounded-xl bg-brand-600 px-4 py-2 font-medium text-white shadow-sm"
-          >
-            {signedIn ? 'Dashboard' : 'Get started'}
-          </Link>
-        </nav>
+      <header className="relative z-10 mx-auto h-16 max-w-6xl px-4 sm:px-6">
+        <SiteNav cta />
       </header>
 
       <main className="relative mx-auto max-w-6xl px-4 pb-16 sm:px-6">
-        {params.manage === 'invalid' || params.recover === 'invalid' ? (
+        {params.manage === 'invalid' ? (
           <p
             role="alert"
             className="relative z-10 mb-6 rounded-xl bg-red-50 p-3 text-sm text-red-900 ring-1 ring-red-200"
           >
-            That link is not valid. Check you copied the whole thing, including the end.
+            That private management link does not work. Check you copied the whole thing, including
+            the end — it is in the details you saved when you published.
           </p>
         ) : null}
 
@@ -107,7 +89,7 @@ export default async function Home({
 
         <TemplateGallery templates={templates.data?.items ?? []} />
 
-        <section aria-labelledby="how-heading" className="py-12">
+        <section id="how" aria-labelledby="how-heading" className="scroll-mt-4 py-12">
           <h2
             id="how-heading"
             className="text-center text-3xl font-bold tracking-tight text-ink-900"

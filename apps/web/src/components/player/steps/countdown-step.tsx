@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { RichText } from '@/components/rich-text';
 import { accentButton } from '../theme';
 import type { StepProps } from './types';
+import { Editable } from '../editable';
 
 function parts(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -30,37 +31,45 @@ export function CountdownStep({ step, busy, submit }: StepProps<'COUNTDOWN'>) {
 
   return (
     <div className="space-y-6 text-center">
-      <h2 className="text-[1.5em] font-bold leading-tight">{step.config.title}</h2>
-      <div
-        role="timer"
-        aria-live="off"
-        aria-label={
-          arrived ? 'Time is up' : `${days} days, ${hours} hours, ${minutes} minutes left`
-        }
-        className="grid grid-cols-4 gap-2"
-        data-testid="countdown"
-      >
-        {[
-          [days, 'days'],
-          [hours, 'hours'],
-          [minutes, 'min'],
-          [seconds, 'sec'],
-        ].map(([value, unit]) => (
-          <div key={unit} className="rounded-2xl bg-black/5 py-3">
-            <span className="block text-[1.75em] font-bold tabular-nums">{value}</span>
-            <span className="text-xs uppercase tracking-wide opacity-70">{unit}</span>
-          </div>
-        ))}
-      </div>
-      <RichText doc={step.config.message} className="space-y-3 leading-relaxed" />
-      <button
-        type="button"
-        className={`${accentButton} w-full sm:w-auto`}
-        disabled={busy || locked}
-        onClick={() => void submit({ kind: 'ACK' })}
-      >
-        {locked ? 'Not yet…' : step.config.buttonLabel}
-      </button>
+      <Editable field="Title" block>
+        <h2 className="text-[1.5em] font-bold leading-tight">{step.config.title}</h2>
+      </Editable>
+      <Editable field="Count down to" block>
+        <div
+          role="timer"
+          aria-live="off"
+          aria-label={
+            arrived ? 'Time is up' : `${days} days, ${hours} hours, ${minutes} minutes left`
+          }
+          className="grid grid-cols-4 gap-2"
+          data-testid="countdown"
+        >
+          {[
+            [days, 'days'],
+            [hours, 'hours'],
+            [minutes, 'min'],
+            [seconds, 'sec'],
+          ].map(([value, unit]) => (
+            <div key={unit} className="rounded-2xl bg-black/5 py-3">
+              <span className="block text-[1.75em] font-bold tabular-nums">{value}</span>
+              <span className="text-xs uppercase tracking-wide opacity-70">{unit}</span>
+            </div>
+          ))}
+        </div>
+      </Editable>
+      <Editable field="Message" block>
+        <RichText doc={step.config.message} className="space-y-3 leading-relaxed" />
+      </Editable>
+      <Editable field="Button label" block>
+        <button
+          type="button"
+          className={`${accentButton} w-full sm:w-auto`}
+          disabled={busy || locked}
+          onClick={() => void submit({ kind: 'ACK' })}
+        >
+          {locked ? 'Not yet…' : step.config.buttonLabel}
+        </button>
+      </Editable>
     </div>
   );
 }

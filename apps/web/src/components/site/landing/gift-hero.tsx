@@ -38,10 +38,10 @@ export function GiftHero() {
       data-testid="gift-hero"
     >
       <p className="text-sm font-medium uppercase tracking-widest text-brand-700">
-        Interactive surprises · free to start
+        No account needed · start in seconds
       </p>
       <h1 className="mt-3 max-w-2xl text-4xl font-extrabold tracking-tight text-ink-900 sm:text-6xl">
-        Turn a message into a <span className="wr-shine">moment they unwrap</span>
+        Create a surprise. Make it personal. <span className="wr-shine">Share the moment.</span>
       </h1>
 
       <div className="relative mt-8 h-56 w-56">
@@ -128,7 +128,7 @@ export function GiftHero() {
         >
           <p className="text-lg text-ink-700">
             Messages, photos, quizzes, a No button that runs away — and a gift they unlock at the
-            end. Pick a ready-made template, add their name, and share one private link.
+            end. Pick a template, make it theirs right in the preview, and share one link.
           </p>
           <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
             <Link
@@ -144,7 +144,9 @@ export function GiftHero() {
               Try one yourself ↓
             </a>
           </div>
-          <p className="text-sm text-ink-500">No account. No app. Free templates.</p>
+          <p className="text-sm text-ink-500">
+            No sign-up. No app. Nothing to remember but one link.
+          </p>
         </motion.div>
       ) : (
         <p className="mt-4 animate-pulse text-base font-semibold text-brand-700">

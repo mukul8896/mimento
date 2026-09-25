@@ -518,6 +518,27 @@
         ]
       }
     },
+    "/api/v1/experiences/in-progress": {
+      "get": {
+        "operationId": "ExperiencesController_inProgress",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InProgressResponseDto_Output"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "experiences"
+        ]
+      }
+    },
     "/api/v1/experiences/{id}/manage-link": {
       "get": {
         "operationId": "ExperiencesController_manageLink",
@@ -601,6 +622,36 @@
         "responses": {
           "204": {
             "description": ""
+          }
+        },
+        "tags": [
+          "experiences"
+        ]
+      }
+    },
+    "/api/v1/experiences/{id}/customize": {
+      "post": {
+        "operationId": "ExperiencesController_customize",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExperienceDetailDto_Output"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2012,13 +2063,26 @@
           },
           "isAdmin": {
             "type": "boolean"
+          },
+          "managedExperienceId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "id",
           "email",
           "displayName",
-          "isAdmin"
+          "isAdmin",
+          "managedExperienceId"
         ],
         "additionalProperties": false
       },
@@ -4647,6 +4711,63 @@
         ],
         "additionalProperties": false
       },
+      "InProgressResponseDto_Output": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "templateKey": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 60
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "TEMPLATE",
+                    "CUSTOM"
+                  ]
+                },
+                "title": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "editedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                }
+              },
+              "required": [
+                "id",
+                "templateKey",
+                "mode",
+                "title",
+                "editedAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
       "CreateExperienceRequestDto": {
         "type": "object",
         "properties": {
@@ -4773,6 +4894,47 @@
             ],
             "additionalProperties": false
           },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "TEMPLATE",
+              "CUSTOM"
+            ]
+          },
+          "template": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "maxLength": 60
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 120
+                  },
+                  "tier": {
+                    "type": "string",
+                    "enum": [
+                      "FREE",
+                      "PLUS",
+                      "PRO"
+                    ]
+                  }
+                },
+                "required": [
+                  "key",
+                  "name",
+                  "tier"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "settings": {
             "type": "object",
             "properties": {
@@ -4894,6 +5056,8 @@
           "expiresAt",
           "keptUntil",
           "stats",
+          "mode",
+          "template",
           "settings",
           "publishedVersion",
           "hasUnpublishedChanges",
@@ -5067,6 +5231,47 @@
             "format": "uuid",
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "TEMPLATE",
+              "CUSTOM"
+            ]
+          },
+          "template": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "maxLength": 60
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 120
+                  },
+                  "tier": {
+                    "type": "string",
+                    "enum": [
+                      "FREE",
+                      "PLUS",
+                      "PRO"
+                    ]
+                  }
+                },
+                "required": [
+                  "key",
+                  "name",
+                  "tier"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "revision": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -5176,6 +5381,8 @@
         },
         "required": [
           "experienceId",
+          "mode",
+          "template",
           "revision",
           "title",
           "theme",
@@ -8509,6 +8716,9 @@
               "RAZORPAY",
               "DODO"
             ]
+          },
+          "publish": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -8595,13 +8805,17 @@
               "satisfied"
             ],
             "additionalProperties": false
+          },
+          "published": {
+            "type": "boolean"
           }
         },
         "required": [
           "orderId",
           "status",
           "attemptFailed",
-          "tier"
+          "tier",
+          "published"
         ],
         "additionalProperties": false
       },

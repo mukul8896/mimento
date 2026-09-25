@@ -49,9 +49,10 @@ export default function PrivacyPage() {
       </PolicySection>
       <PolicySection title="Cookies">
         <p>
-          One functional cookie remembers which surprises this browser created. It is not used for
-          advertising or tracking and is not shared with anyone. Clearing it is like losing a key:
-          use your saved manage or recovery link to get back in.
+          Functional cookies let this browser keep working on the surprise you are making, and keep
+          a private management link you opened working. They are not used for advertising or
+          tracking and are not shared with anyone. After clearing them, open your private management
+          link again to manage a published surprise.
         </p>
       </PolicySection>
       <PolicySection title="Who else handles your data">
@@ -74,12 +75,14 @@ export default function PrivacyPage() {
       <PolicySection title="How long we keep it">
         <p>
           Until you delete the surprise, or delete everything from this browser on the account page.
-          A surprise that nobody — neither you nor the people you sent it to — has opened for a year
-          is deleted automatically; each visit keeps it for another year. The key in your browser
-          stops working once everything it made has gone and it has not been used for a year.
-          Deleting removes the content, photos and answers. Recipients&apos; answers are deleted
-          automatically 180 days after they were given. Payment records are kept as long as the law
-          requires for accounting, without the surprise&apos;s content.
+          An unfinished surprise (never published) is temporary: it is deleted automatically after
+          30 days without being opened. A published surprise that nobody — neither you nor the
+          people you sent it to — has opened for a year is deleted automatically; each visit keeps
+          it for another year. The key in your browser stops working once everything it made has
+          gone and it has not been used for a year. Deleting removes the content, photos and
+          answers. Recipients&apos; answers are deleted automatically 180 days after they were
+          given. Payment records are kept as long as the law requires for accounting, without the
+          surprise&apos;s content.
         </p>
       </PolicySection>
       <PolicySection title="Your rights">

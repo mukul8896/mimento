@@ -215,6 +215,103 @@ describe('Razorpay', () => {
   });
 });
 
+describe('Publish → Payment → Published', () => {
+  const linkFor = (orderId: string) =>
+    [...fake.links.values()].find((l) => l.reference_id === orderId)!;
+  const statusOf = async (id: string) => (await alice.get(`/experiences/${id}`)).body.status;
+
+  it('publishes as soon as the creator comes back from a paid checkout', async () => {
+    const id = await paidDraft();
+    const checkout = await alice.post(`/experiences/${id}/checkout`, {
+      provider: 'RAZORPAY',
+      publish: true,
+    });
+    expect(checkout.status).toBe(201);
+
+    // Leaving checkout without paying keeps the draft exactly as it was.
+    const early = await alice.post(
+      `/experiences/${id}/checkout/${checkout.body.orderId}/confirm`,
+      {},
+    );
+    expect(early.body).toMatchObject({ status: 'CREATED', published: false });
+    expect(await statusOf(id)).toBe('DRAFT');
+
+    fake.payLink(linkFor(checkout.body.orderId).id);
+    const paid = await alice.post(
+      `/experiences/${id}/checkout/${checkout.body.orderId}/confirm`,
+      {},
+    );
+    expect(paid.body).toMatchObject({ status: 'PAID', published: true });
+    expect(await statusOf(id)).toBe('PUBLISHED');
+    expect((await alice.get(`/experiences/${id}/share-link`)).status).toBe(200);
+
+    // Coming back twice, or a late webhook, does not publish a second version.
+    const link = linkFor(checkout.body.orderId);
+    await webhook('razorpay', fake.razorpayWebhook('payment_link.paid', link, `evt_p_${link.id}`));
+    await alice.post(`/experiences/${id}/checkout/${checkout.body.orderId}/confirm`, {});
+    const versions = await ctx.prisma.experienceVersion.count({
+      where: { experienceId: id, state: 'PUBLISHED' },
+    });
+    expect(versions).toBe(1);
+  });
+
+  it('publishes from the webhook when the creator closes the tab after paying', async () => {
+    const id = await paidDraft();
+    const checkout = await alice.post(`/experiences/${id}/checkout`, {
+      provider: 'RAZORPAY',
+      publish: true,
+    });
+    const link = fake.payLink(linkFor(checkout.body.orderId).id);
+    await webhook('razorpay', fake.razorpayWebhook('payment_link.paid', link, `evt_w_${link.id}`));
+    expect(await statusOf(id)).toBe('PUBLISHED');
+  });
+
+  it('only unlocks when checkout was opened without Publish', async () => {
+    const id = await paidDraft();
+    const checkout = await alice.post(`/experiences/${id}/checkout`, { provider: 'RAZORPAY' });
+    fake.payLink(linkFor(checkout.body.orderId).id);
+    const paid = await alice.post(
+      `/experiences/${id}/checkout/${checkout.body.orderId}/confirm`,
+      {},
+    );
+    expect(paid.body).toMatchObject({ status: 'PAID', published: false });
+    expect(await statusOf(id)).toBe('DRAFT');
+  });
+
+  it('keeps the payment when publishing afterwards is blocked, so one tap finishes it', async () => {
+    const id = await paidDraft();
+    const checkout = await alice.post(`/experiences/${id}/checkout`, {
+      provider: 'RAZORPAY',
+      publish: true,
+    });
+    // The creator empties a required field in another tab while paying.
+    const draft = (await alice.get(`/experiences/${id}/draft`)).body;
+    const broken = structuredClone(draft.steps);
+    const question = broken.find((s: { type: string }) => s.type === 'YES_NO_CHOICE');
+    question.config.question = '';
+    const saved = await alice.put(`/experiences/${id}/draft`, {
+      revision: draft.revision,
+      title: draft.title,
+      theme: draft.theme,
+      settings: draft.settings,
+      steps: broken,
+    });
+    expect(saved.status).toBe(200);
+
+    fake.payLink(linkFor(checkout.body.orderId).id);
+    const paid = await alice.post(
+      `/experiences/${id}/checkout/${checkout.body.orderId}/confirm`,
+      {},
+    );
+    expect(paid.body).toMatchObject({
+      status: 'PAID',
+      published: false,
+      tier: { held: 'PLUS', satisfied: true },
+    });
+    expect(await statusOf(id)).toBe('DRAFT');
+  });
+});
+
 describe('Dodo', () => {
   it('unlocks with the payment id from the return URL, allowing for added tax', async () => {
     const id = await paidDraft();

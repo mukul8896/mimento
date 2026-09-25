@@ -212,6 +212,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/experiences/in-progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExperiencesController_inProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/experiences/{id}/manage-link": {
         parameters: {
             query?: never;
@@ -239,6 +255,22 @@ export interface paths {
         put?: never;
         post?: never;
         delete: operations["ExperiencesController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/experiences/{id}/customize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ExperiencesController_customize"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -801,6 +833,7 @@ export interface components {
             email: string | null;
             displayName: string | null;
             isAdmin: boolean;
+            managedExperienceId: string | null;
         };
         PasskeyListResponseDto_Output: {
             items: {
@@ -1458,6 +1491,18 @@ export interface components {
             }[];
             nextCursor: string | null;
         };
+        InProgressResponseDto_Output: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                templateKey: string | null;
+                /** @enum {string} */
+                mode: "TEMPLATE" | "CUSTOM";
+                title: string;
+                /** Format: date-time */
+                editedAt: string;
+            }[];
+        };
         CreateExperienceRequestDto: {
             title?: string;
             templateKey?: string | null;
@@ -1484,6 +1529,14 @@ export interface components {
                 started: number;
                 completed: number;
             };
+            /** @enum {string} */
+            mode: "TEMPLATE" | "CUSTOM";
+            template: {
+                key: string;
+                name: string;
+                /** @enum {string} */
+                tier: "FREE" | "PLUS" | "PRO";
+            } | null;
             settings: {
                 /** @enum {string} */
                 responseVisibility: "FULL" | "AGGREGATE_ONLY";
@@ -1534,6 +1587,14 @@ export interface components {
         DraftDocumentDto_Output: {
             /** Format: uuid */
             experienceId: string;
+            /** @enum {string} */
+            mode: "TEMPLATE" | "CUSTOM";
+            template: {
+                key: string;
+                name: string;
+                /** @enum {string} */
+                tier: "FREE" | "PLUS" | "PRO";
+            } | null;
             revision: number;
             title: string;
             theme: components["schemas"]["Theme_Output"];
@@ -2345,6 +2406,7 @@ export interface components {
         CreateCheckoutRequestDto: {
             /** @enum {string} */
             provider: "RAZORPAY" | "DODO";
+            publish?: boolean;
         };
         CheckoutResponseDto_Output: {
             /** Format: uuid */
@@ -2368,6 +2430,7 @@ export interface components {
                 held: "FREE" | "PLUS" | "PRO";
                 satisfied: boolean;
             };
+            published: boolean;
         };
         PricingResponseDto_Output: {
             billingEnabled: boolean;
@@ -2745,6 +2808,25 @@ export interface operations {
             };
         };
     };
+    ExperiencesController_inProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InProgressResponseDto_Output"];
+                };
+            };
+        };
+    };
     ExperiencesController_manageLink: {
         parameters: {
             query?: never;
@@ -2806,6 +2888,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ExperiencesController_customize: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperienceDetailDto_Output"];
+                };
             };
         };
     };

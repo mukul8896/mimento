@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { publicServerApi } from '@/lib/api/server';
 import { formatPrice } from '@/lib/payments';
 import { SiteShell } from '@/components/site/site-shell';
+import { PlusProCompare } from '@/components/creator/plus-pro';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Pricing' };
@@ -10,18 +11,19 @@ const PLANS = [
   {
     tier: 'FREE',
     name: 'Free',
-    blurb:
-      'Free templates, fully personalised: rewrite every word, add your photos, change the look.',
+    blurb: 'A free template to try it: change the words, photos and music right in its preview.',
   },
   {
     tier: 'PLUS',
-    name: 'Plus',
-    blurb: 'Richer templates with more steps — quizzes, scratch cards and a gift reveal.',
+    name: 'PLUS',
+    blurb:
+      'Personalise any ready-made template: the words, photos, button labels, music and your gift. One price for every template.',
   },
   {
     tier: 'PRO',
-    name: 'Custom',
-    blurb: 'Build your own sequence: add, remove and reorder steps, or start from blank.',
+    name: 'PRO',
+    blurb:
+      'Change the experience itself: add, remove and reorder steps, change the flow, or create from scratch.',
   },
 ] as const;
 
@@ -66,13 +68,14 @@ export default async function PricingPage() {
       <p className="text-sm text-ink-600">
         Prices in rupees are paid through Razorpay (UPI, cards, net banking, wallets). Prices in US
         dollars are paid through Dodo Payments, which is the seller for customers outside India and
-        may add local sales tax at checkout. Upgrading a surprise from Plus to Custom costs the
+        may add local sales tax at checkout. Moving a surprise from PLUS to PRO costs the
         difference. See our{' '}
         <Link href="/refunds" className="underline">
           refund policy
         </Link>
         .
       </p>
+      <PlusProCompare className="mt-2" />
     </SiteShell>
   );
 }

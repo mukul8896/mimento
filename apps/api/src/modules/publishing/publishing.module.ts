@@ -8,5 +8,6 @@ import { PublishingService } from './publishing.service';
   imports: [WorkflowModule, GiftsModule],
   controllers: [PublishingController],
   providers: [PublishingService],
+  exports: [PublishingService],
 })
 export class PublishingModule {}

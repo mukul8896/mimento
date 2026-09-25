@@ -3,33 +3,35 @@ import { createPublished, creatorApi } from './helpers';
 import { authFile } from './users';
 
 /**
- * Without accounts the browser is the only thing that remembers a creator, so the recovery links
- * are the product's answer to "I cleared my browser data". These run in a completely fresh
- * context — no storageState — which is exactly the situation being tested.
+ * No accounts: each published surprise has its own private management link, and that link is
+ * the way back to it. These run in a completely fresh context — no storageState — which is the
+ * situation being tested (a new device, or cleared browser data).
  */
-test('a manage link restores one surprise after browser data is cleared', async ({ browser }) => {
+test('a private management link opens Manage Surprise for that surprise, on any device', async ({
+  browser,
+}) => {
   const alice = await creatorApi('alice');
   const { id } = await createPublished(alice, 'date-invitation');
   const kept = await alice.get(`/bff/api/v1/experiences/${id}/manage-link`);
   expect(kept.status()).toBe(200);
   const { manageToken } = (await kept.json()) as { manageToken: string };
 
-  // A brand-new browser: no cookies, no storage, nothing.
   const fresh = await browser.newContext();
   const page = await fresh.newPage();
   await page.goto(`/m/${manageToken}`);
-  await expect(page).toHaveURL(/\/dashboard/);
-  await expect(page.getByRole('heading', { name: 'Your experiences' })).toBeVisible();
+  // Straight to the surprise: no dashboard or list in between, and the token left the URL.
+  await expect(page).toHaveURL(new RegExp(`/experiences/${id}$`));
+  await expect(page.getByText('Manage Surprise')).toBeVisible();
+  await expect(page.getByTestId('private-link-card')).toContainText('Keep this link safe');
 
-  // The surprise is reachable, and its replies with it.
-  const recovered = await fresh.request.get(`/bff/api/v1/experiences/${id}`);
-  expect(recovered.status()).toBe(200);
-  const results = await fresh.request.get(`/bff/api/v1/experiences/${id}/results`);
-  expect(results.status()).toBe(200);
+  // Its results come with it, but nothing else of the creator's.
+  expect((await fresh.request.get(`/bff/api/v1/experiences/${id}/results`)).status()).toBe(200);
+  const other = await createPublished(alice, 'anniversary');
+  expect((await fresh.request.get(`/bff/api/v1/experiences/${other.id}`)).status()).toBe(404);
   await fresh.close();
 });
 
-test('a browser holding a manage link can still create and open new surprises', async ({
+test('a browser that opened a private link can still create a new surprise', async ({
   browser,
 }) => {
   // Regression: with a manage-link cookie, new surprises were created but then "not found".
@@ -42,53 +44,43 @@ test('a browser holding a manage link can still create and open new surprises', 
   const fresh = await browser.newContext();
   const page = await fresh.newPage();
   await page.goto(`/m/${manageToken}`);
-  await expect(page).toHaveURL(/\/dashboard/);
-  await page.getByRole('link', { name: 'New experience' }).click();
+  await expect(page).toHaveURL(new RegExp(`/experiences/${id}$`));
+  await page.goto('/new');
   await page.getByRole('button', { name: /Birthday surprise/ }).click();
-  await expect(page).toHaveURL(/\/edit$/);
-  await expect(page.getByTestId('step-list')).toBeVisible();
-
-  // The dashboard shows both the managed surprise and the new one.
-  await page.goto('/dashboard');
-  const list = await fresh.request.get('/bff/api/v1/experiences');
-  const ids = ((await list.json()) as { items: { id: string }[] }).items.map((i) => i.id);
-  expect(ids).toContain(id);
-  expect(ids.length).toBeGreaterThanOrEqual(2);
+  await expect(page).toHaveURL(/\/personalize$/);
+  await expect(page.getByTestId('personalize')).toBeVisible();
   await fresh.close();
 });
 
-test('a recovery link restores every surprise the creator made', async ({ browser }) => {
-  const bob = await creatorApi('bob');
-  const first = await createPublished(bob, 'date-invitation');
-  const second = await createPublished(bob, 'anniversary');
-
-  // Read the recovery link the account page shows, from the signed-in context.
-  const signedIn = await browser.newContext({ storageState: authFile('bob') });
-  const account = await signedIn.newPage();
-  await account.goto('/account');
-  await account.getByRole('button', { name: 'Show my recovery link' }).click();
-  const url = await account.getByLabel('Your recovery link').inputValue();
-  expect(url).toContain('/r/');
-  await signedIn.close();
-
+test('an invalid private link is refused rather than silently ignored', async ({ browser }) => {
   const fresh = await browser.newContext();
   const page = await fresh.newPage();
-  await page.goto(url);
-  await expect(page).toHaveURL(/\/dashboard/);
-
-  for (const id of [first.id, second.id]) {
-    expect((await fresh.request.get(`/bff/api/v1/experiences/${id}`)).status()).toBe(200);
-  }
-  await fresh.close();
-});
-
-test('an invalid recovery link is refused rather than silently ignored', async ({ browser }) => {
-  const fresh = await browser.newContext();
-  const page = await fresh.newPage();
-  await page.goto('/r/not-a-real-token');
+  await page.goto(`/m/${'z'.repeat(43)}`);
+  await expect(page).toHaveURL(/\?manage=invalid/);
   // Scoped to main: Next's route announcer is also role="alert".
-  await expect(page.getByRole('main').getByRole('alert')).toContainText('not valid');
+  await expect(page.getByRole('main').getByRole('alert')).toContainText('does not work');
+  expect((await fresh.cookies()).find((c) => c.name === 'mp_manage')).toBeUndefined();
   await fresh.close();
+});
+
+test('old creator-wide recovery links open the home page and grant nothing', async ({
+  browser,
+}) => {
+  const bob = await creatorApi('bob');
+  const { id } = await createPublished(bob, 'date-invitation');
+  const fresh = await browser.newContext();
+  const page = await fresh.newPage();
+  await page.goto(`/r/${'a'.repeat(43)}`);
+  await expect(page.getByTestId('gift-hero')).toBeVisible();
+  expect((await fresh.request.get(`/bff/api/v1/experiences/${id}`)).status()).not.toBe(200);
+  await fresh.close();
+});
+
+test('the account pages are gone', async ({ page }) => {
+  for (const path of ['/dashboard', '/account', '/signin']) {
+    const res = await page.goto(path);
+    expect(res?.status(), path).toBe(404);
+  }
 });
 
 test('a saved key that no longer works is replaced instead of locking the creator out', async ({
@@ -104,9 +96,9 @@ test('a saved key that no longer works is replaced instead of locking the creato
     },
   ]);
   const page = await context.newPage();
-  await page.goto('/dashboard');
-  await expect(page).toHaveURL(/\/dashboard/);
-  await expect(page.getByRole('link', { name: 'New experience' })).toBeVisible();
+  await page.goto('/new');
+  await expect(page).toHaveURL(/\/new/);
+  await expect(page.getByRole('heading', { name: 'Create Experience' })).toBeVisible();
   const owner = (await context.cookies()).find((c) => c.name === 'mp_owner');
   expect(owner?.value).not.toBe('x'.repeat(43));
   await context.close();

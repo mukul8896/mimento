@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useId, useRef, useState } from 'react';
 import { noButtonState } from '@momentpath/contracts';
 import { useFx } from '../fx/fx';
 import { accentButton, outlineButton } from '../theme';
 import type { StepProps } from './types';
+import { EditContext, Editable } from '../editable';
 
 interface Position {
   left: number;
@@ -29,6 +30,8 @@ export function YesNoStep({ step, busy, submit, reducedMotion }: StepProps<'YES_
   const suppressClick = useRef(false);
   const hintId = useId();
   const fx = useFx();
+  // While personalising, a tap on No edits its label instead of teasing.
+  const editing = useContext(EditContext) !== null;
 
   const state = noButtonState(cfg.noButton, { attempts, elapsedMs: now - startedAt });
 
@@ -39,6 +42,7 @@ export function YesNoStep({ step, busy, submit, reducedMotion }: StepProps<'YES_
   }, [cfg.noButton.mode, state.clickable]);
 
   const evade = useCallback(() => {
+    if (editing) return;
     setAttempts((a) => a + 1);
     setMessage(cfg.evasiveMessage);
     fx.effect('BOING');
@@ -63,7 +67,7 @@ export function YesNoStep({ step, busy, submit, reducedMotion }: StepProps<'YES_
         return;
       }
     }
-  }, [cfg.evasiveMessage, reducedMotion, fx]);
+  }, [cfg.evasiveMessage, reducedMotion, fx, editing]);
 
   // Once No becomes a normal button it returns to its natural place and the teasing stops.
   const floating = state.clickable ? null : position;
@@ -80,67 +84,75 @@ export function YesNoStep({ step, busy, submit, reducedMotion }: StepProps<'YES_
 
   return (
     <div className="space-y-6">
-      <h2 className="text-center text-[1.75em] font-bold leading-tight">{cfg.question}</h2>
+      <Editable field="Question" block>
+        <h2 className="text-center text-[1.75em] font-bold leading-tight">{cfg.question}</h2>
+      </Editable>
       <div
         ref={arena}
         className="relative min-h-44 w-full overflow-hidden rounded-3xl p-1"
         data-testid="choice-arena"
       >
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <button
-            ref={yesRef}
-            type="button"
-            className={`${accentButton} min-w-28`}
-            disabled={busy}
-            onClick={() => void submit({ kind: 'CHOICE', value: 'YES' })}
-          >
-            {cfg.yesLabel}
-          </button>
-          {cfg.maybeEnabled ? (
+          <Editable field="Yes label">
             <button
+              ref={yesRef}
               type="button"
-              className={`${outlineButton} min-w-28`}
+              className={`${accentButton} min-w-28`}
               disabled={busy}
-              onClick={() => void submit({ kind: 'CHOICE', value: 'MAYBE' })}
+              onClick={() => void submit({ kind: 'CHOICE', value: 'YES' })}
             >
-              {cfg.maybeLabel}
+              {cfg.yesLabel}
             </button>
+          </Editable>
+          {cfg.maybeEnabled ? (
+            <Editable field="Maybe label">
+              <button
+                type="button"
+                className={`${outlineButton} min-w-28`}
+                disabled={busy}
+                onClick={() => void submit({ kind: 'CHOICE', value: 'MAYBE' })}
+              >
+                {cfg.maybeLabel}
+              </button>
+            </Editable>
           ) : null}
           {/* Placeholder keeps the layout stable while No is floating. */}
           {floating ? <span aria-hidden="true" className="min-h-12 min-w-28" /> : null}
-          <button
-            ref={noRef}
-            type="button"
-            data-testid="no-button"
-            data-clickable={state.clickable}
-            aria-disabled={!state.clickable || undefined}
-            aria-describedby={noHint ? hintId : undefined}
-            className={`${outlineButton} min-w-28 ${state.clickable ? '' : 'opacity-80'} ${
-              floating ? 'absolute transition-[left,top] duration-200 ease-out' : ''
-            }`}
-            style={floating ? { left: floating.left, top: floating.top } : undefined}
-            disabled={busy}
-            onPointerEnter={(e) => {
-              if (!state.clickable && e.pointerType === 'mouse') evade();
-            }}
-            onPointerDown={(e) => {
-              if (!state.clickable && e.pointerType !== 'mouse') {
-                e.preventDefault();
-                suppressClick.current = true;
-                evade();
-              }
-            }}
-            onClick={() => {
-              if (suppressClick.current) {
-                suppressClick.current = false;
-                return;
-              }
-              if (state.clickable) void submit({ kind: 'CHOICE', value: 'NO' });
-              else evade();
-            }}
-          >
-            {cfg.noLabel}
-          </button>
+          <Editable field="No label">
+            <button
+              ref={noRef}
+              type="button"
+              data-testid="no-button"
+              data-clickable={state.clickable}
+              aria-disabled={!state.clickable || undefined}
+              aria-describedby={noHint ? hintId : undefined}
+              className={`${outlineButton} min-w-28 ${state.clickable ? '' : 'opacity-80'} ${
+                floating ? 'absolute transition-[left,top] duration-200 ease-out' : ''
+              }`}
+              style={floating ? { left: floating.left, top: floating.top } : undefined}
+              disabled={busy}
+              onPointerEnter={(e) => {
+                if (!state.clickable && e.pointerType === 'mouse') evade();
+              }}
+              onPointerDown={(e) => {
+                if (!state.clickable && e.pointerType !== 'mouse') {
+                  e.preventDefault();
+                  suppressClick.current = true;
+                  evade();
+                }
+              }}
+              onClick={() => {
+                if (suppressClick.current) {
+                  suppressClick.current = false;
+                  return;
+                }
+                if (state.clickable) void submit({ kind: 'CHOICE', value: 'NO' });
+                else evade();
+              }}
+            >
+              {cfg.noLabel}
+            </button>
+          </Editable>
         </div>
       </div>
       <p id={hintId} className="sr-only">

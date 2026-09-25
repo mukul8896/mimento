@@ -3,6 +3,7 @@ import {
   CreateExperienceRequestSchema,
   DraftDocumentSchema,
   ExperienceDetailSchema,
+  InProgressResponseSchema,
   ExperienceListQuerySchema,
   ExperienceListResponseSchema,
   ManageLinkResponseSchema,
@@ -19,6 +20,7 @@ export class CreateExperienceRequestDto extends createZodDto(CreateExperienceReq
 export class ExperienceListQueryDto extends createZodDto(ExperienceListQuerySchema) {}
 export class ExperienceListResponseDto extends createZodDto(ExperienceListResponseSchema) {}
 export class ExperienceDetailDto extends createZodDto(ExperienceDetailSchema) {}
+export class InProgressResponseDto extends createZodDto(InProgressResponseSchema) {}
 export class DraftDocumentDto extends createZodDto(DraftDocumentSchema) {}
 export class UpdateDraftRequestDto extends createZodDto(UpdateDraftRequestSchema) {}
 export class UpdateDraftResponseDto extends createZodDto(UpdateDraftResponseSchema) {}

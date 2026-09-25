@@ -7,6 +7,7 @@ import {
   ThemeSchema,
   themeMediaIds,
   type DraftStep,
+  type ExperienceMode,
   type PublishIssue,
 } from '@momentpath/contracts';
 import { PrismaService, type Tx } from '../../prisma/prisma.service';
@@ -21,6 +22,8 @@ export interface DraftSnapshot {
   steps: DraftStep[];
   /** The template this experience started from; null for a blank, fully custom build. */
   templateKey?: string | null;
+  /** CUSTOM once the creator moved to the full builder; see contracts/structure.ts. */
+  mode?: ExperienceMode;
 }
 
 /**
@@ -115,7 +118,7 @@ export class PublishValidatorService {
       }
     }
     const tier = await this.entitlements.tierState(
-      { id: draft.experienceId, templateKey: draft.templateKey ?? null },
+      { id: draft.experienceId, templateKey: draft.templateKey ?? null, mode: draft.mode },
       draft.steps,
       client,
     );
@@ -125,8 +128,8 @@ export class PublishValidatorService {
         field: 'tier',
         message:
           tier.required === 'PRO'
-            ? 'Building your own sequence of steps needs the custom plan.'
-            : 'This template needs an upgrade before you can share it.',
+            ? 'Your own custom experience needs PRO.'
+            : 'This template needs PLUS before you can share it.',
       });
     }
 

@@ -21,8 +21,9 @@ export default function ContactPage() {
       </PolicySection>
       <PolicySection title="Lost access to a surprise you made">
         <p>
-          We cannot look you up — there are no accounts. Open the manage link or recovery link you
-          saved; see the{' '}
+          We cannot look you up — there are no accounts. Open the private management link you saved
+          when you published it (it is also in the details file you could download). We may not be
+          able to restore access without it; see the{' '}
           <Link href="/privacy" className="underline">
             privacy policy
           </Link>{' '}

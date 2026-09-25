@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { TIERS } from './tiers';
+import { EXPERIENCE_MODES } from './structure';
 import { TemplateFieldSchema, TemplateFieldValuesSchema } from './template-fields';
 import { AnswerSchema } from './answers';
 import { GiftSecretSchema, RevealedGiftSchema } from './gifts';
@@ -85,6 +86,8 @@ export const MeResponseSchema = z.object({
   email: z.string().max(2000).nullable(),
   displayName: z.string().max(2000).nullable(),
   isAdmin: z.boolean(),
+  /** The surprise a private management link opens, when that link authorised the request. */
+  managedExperienceId: Uuid.nullable(),
 });
 
 // ---------------------------------------------------------------------------------------
@@ -148,6 +151,20 @@ export const ExperienceSummarySchema = z.object({
   stats: ExperienceStatsSchema,
 });
 export type ExperienceSummary = z.infer<typeof ExperienceSummarySchema>;
+
+/**
+ * A surprise this browser has started and changed but not published: at most one per template,
+ * plus one built from scratch (templateKey null). Untouched ones are not listed — they are not
+ * kept at all.
+ */
+export const InProgressItemSchema = z.object({
+  id: Uuid,
+  templateKey: z.string().max(60).nullable(),
+  mode: z.enum(['TEMPLATE', 'CUSTOM']),
+  title: z.string().max(200),
+  editedAt: IsoDateTime,
+});
+export const InProgressResponseSchema = z.object({ items: z.array(InProgressItemSchema) });
 
 export const ExperienceListQuerySchema = z.object({
   cursor: z.string().max(200).optional(),
@@ -216,7 +233,16 @@ export const TierStateSchema = z.object({
   satisfied: z.boolean(),
 });
 
+export const ExperienceModeSchema = z.enum(EXPERIENCE_MODES);
+
+/** The ready-made template an experience started from (null: built from scratch). */
+export const ExperienceTemplateSchema = z
+  .object({ key: z.string().max(60), name: z.string().max(120), tier: TierSchema })
+  .nullable();
+
 export const ExperienceDetailSchema = ExperienceSummarySchema.extend({
+  mode: ExperienceModeSchema,
+  template: ExperienceTemplateSchema,
   settings: ExperienceSettingsSchema,
   publishedVersion: z.number().int().nullable(),
   hasUnpublishedChanges: z.boolean(),
@@ -235,6 +261,9 @@ export const DraftGiftStatusSchema = z.object({ stepKey: StepKeySchema, hasSecre
 
 export const DraftDocumentSchema = z.object({
   experienceId: Uuid,
+  /** TEMPLATE drafts keep their structure; saving a structural change is refused. */
+  mode: ExperienceModeSchema,
+  template: ExperienceTemplateSchema,
   revision: z.number().int(),
   title: z.string(),
   theme: ThemeSchema,
@@ -542,6 +571,8 @@ export const CheckoutOptionsResponseSchema = z.object({
 
 export const CreateCheckoutRequestSchema = z.strictObject({
   provider: PaymentProviderSchema,
+  /** Started from Publish: publish the experience as soon as the payment is confirmed. */
+  publish: z.boolean().optional(),
 });
 
 export const CheckoutResponseSchema = z.object({
@@ -563,6 +594,8 @@ export const ConfirmCheckoutResponseSchema = z.object({
   /** The provider declined the buyer's last try; the checkout can be retried. */
   attemptFailed: z.boolean(),
   tier: TierStateSchema,
+  /** The experience went live after this payment (Publish → Payment → Published). */
+  published: z.boolean(),
 });
 
 /** Public price list. A currency is null when no provider can charge it right now. */

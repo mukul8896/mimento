@@ -6,6 +6,7 @@ import {
   stepTypesOf,
   tierAtLeast,
   type DraftStep,
+  type ExperienceMode,
   type Tier,
 } from '@momentpath/contracts';
 import { APP_ENV, type AppEnv } from '../../config/env';
@@ -33,7 +34,7 @@ export class EntitlementsService {
    * draft is treated as satisfied, so the product runs end to end before payments exist.
    */
   async tierState(
-    experience: { id: string; templateKey: string | null },
+    experience: { id: string; templateKey: string | null; mode?: ExperienceMode },
     steps: DraftStep[],
     client: PrismaService | Tx = this.prisma,
   ): Promise<TierState> {
@@ -48,6 +49,7 @@ export class EntitlementsService {
       templateStepTypes: templateSteps ? templateSteps.map((s) => s.type) : null,
       stepTypes: stepTypesOf(steps),
       hasRouting: hasRouting(flowSteps(steps)),
+      customized: experience.mode === 'CUSTOM',
     });
 
     const entitlement = await client.entitlement.findUnique({

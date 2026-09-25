@@ -5,8 +5,8 @@ const WEB = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
 const root = path.resolve(__dirname, '../..');
 
 /**
- * E2E runs against the real stack: Next.js web + NestJS API + PostgreSQL + Keycloak.
- * PostgreSQL and Keycloak must already be running (CI services, docker compose, or the
+ * E2E runs against the real stack: Next.js web + NestJS API + PostgreSQL.
+ * PostgreSQL must already be running (CI services, docker compose, or the
  * no-Docker fallbacks described in docs/runbook.md). The API and web are started here unless
  * already running (reused locally).
  */

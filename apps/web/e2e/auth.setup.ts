@@ -13,9 +13,9 @@ for (const name of Object.keys(USERS) as UserName[]) {
       await page.getByRole('button', { name: 'Continue' }).click();
       await expect(page).toHaveURL(/\/admin/);
     } else {
-      await page.goto('/dashboard');
-      await expect(page).toHaveURL(/\/dashboard/);
-      await expect(page.getByRole('heading', { name: 'Your experiences' })).toBeVisible();
+      // Starting to create is what gives a browser its private key.
+      await page.goto('/new');
+      await expect(page.getByRole('heading', { name: 'Create Experience' })).toBeVisible();
     }
     await page.context().storageState({ path: authFile(name) });
   });

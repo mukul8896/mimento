@@ -277,8 +277,8 @@ export function RouteEditor({
 
       {routing.rules.length > 0 || routing.otherwise !== null ? (
         <p className="text-xs text-ink-500">
-          Otherwise people go to {describeTarget(steps, routing.otherwise)}. Branching makes this a
-          custom build.
+          Otherwise people go to {describeTarget(steps, routing.otherwise)}. Branching is a PRO
+          feature.
         </p>
       ) : null}
 

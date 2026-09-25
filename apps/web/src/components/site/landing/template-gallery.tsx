@@ -111,13 +111,18 @@ export function TemplateGallery({ templates }: { templates: TemplateSummary[] })
   const [occasion, setOccasion] = useState('All');
   const [preview, setPreview] = useState<TemplateSummary | null>(null);
   const occasions = useMemo(() => occasionsOf(templates), [templates]);
-  const shown = occasion === 'All' ? templates : templates.filter((t) => t.occasion === occasion);
+  // Free templates first: the easiest way to try it.
+  const ordered = useMemo(
+    () => [...templates].sort((a, b) => Number(a.tier !== 'FREE') - Number(b.tier !== 'FREE')),
+    [templates],
+  );
+  const shown = occasion === 'All' ? ordered : ordered.filter((t) => t.occasion === occasion);
   const use = (t: TemplateSummary) => (
     <Link
       href={`/new?template=${encodeURIComponent(t.key)}`}
       className="block w-full rounded-2xl bg-brand-600 px-4 py-3 text-center text-sm font-semibold text-white shadow hover:bg-brand-700"
     >
-      Use this template
+      Use Template
     </Link>
   );
 
@@ -127,7 +132,8 @@ export function TemplateGallery({ templates }: { templates: TemplateSummary[] })
         Ready-made for every moment
       </h2>
       <p className="mt-2 text-ink-600">
-        Add their name, press publish. Tap any card to play it first.
+        Tap any card to play it first. Then make it theirs — change the words, photos and music
+        right in the preview — and publish.
       </p>
       <div className="mt-5">
         <OccasionChips occasions={occasions} value={occasion} onChange={setOccasion} />

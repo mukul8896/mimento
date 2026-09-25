@@ -5,7 +5,7 @@ import type { Schemas } from '@momentpath/api-client';
 
 export type TemplateSummary = Schemas['TemplateListResponseDto_Output']['items'][number];
 
-const TIER_TAG = { FREE: 'Free', PLUS: 'Plus', PRO: 'Custom' } as const;
+const TIER_TAG = { FREE: 'Free to try', PLUS: 'PLUS', PRO: 'PRO' } as const;
 
 /** A template drawn in its own colours, so the gallery feels like a wall of cards to open. */
 export function TemplateCard({
@@ -14,8 +14,11 @@ export function TemplateCard({
   hint,
   action,
   busy,
+  progress = null,
 }: {
   template: TemplateSummary;
+  /** Shown when this browser already changed this template: "✎ In progress · edited …". */
+  progress?: string | null;
   /** What tapping the card does: play the demo (landing) or start using it (new page). */
   onSelect: () => void;
   hint: string;
@@ -27,7 +30,9 @@ export function TemplateCard({
   return (
     <motion.article
       whileHover={reduced ? undefined : { y: -6 }}
-      className="flex h-full flex-col overflow-hidden rounded-3xl shadow-md ring-1 ring-black/5"
+      className={`flex h-full flex-col overflow-hidden rounded-3xl shadow-md ${
+        progress ? 'ring-2 ring-brand-500' : 'ring-1 ring-black/5'
+      }`}
       style={{ background: p.background, color: p.text }}
       data-testid={`template-${template.key}`}
     >
@@ -48,12 +53,26 @@ export function TemplateCard({
             {template.emoji}
           </motion.span>
           <span
-            className="rounded-full px-2.5 py-1 text-xs font-semibold"
-            style={{ background: p.accent, color: p.accentText }}
+            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+              template.tier === 'FREE' ? 'bg-emerald-700 text-white shadow-sm' : ''
+            }`}
+            style={
+              template.tier === 'FREE' ? undefined : { background: p.accent, color: p.accentText }
+            }
           >
+            {template.tier === 'FREE' ? '✓ ' : ''}
             {TIER_TAG[template.tier]}
           </span>
         </span>
+        {progress ? (
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-brand-700 shadow-sm ring-1 ring-brand-200"
+            data-testid="in-progress-badge"
+            suppressHydrationWarning
+          >
+            <span aria-hidden="true">✎</span> {progress}
+          </span>
+        ) : null}
         <span className="text-lg font-bold leading-tight">{template.name}</span>
         <span className="text-sm opacity-80">{template.description}</span>
         <span className="mt-auto text-sm font-semibold underline decoration-2 underline-offset-4">

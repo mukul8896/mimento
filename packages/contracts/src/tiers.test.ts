@@ -49,4 +49,15 @@ describe('requiredTier', () => {
       }),
     ).toBe('PRO');
   });
+
+  it('charges PRO once the creator customises a template, even before changing anything', () => {
+    expect(
+      requiredTier({
+        templateTier: 'PLUS',
+        templateStepTypes: TEMPLATE,
+        stepTypes: [...TEMPLATE],
+        customized: true,
+      }),
+    ).toBe('PRO');
+  });
 });

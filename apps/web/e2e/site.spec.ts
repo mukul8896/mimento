@@ -45,7 +45,11 @@ test.describe('checkout return page', () => {
       `/experiences/${id}/checkout?order=00000000-0000-4000-8000-000000000000&email=someone%40example.com`,
     );
     await expect(page.getByTestId('checkout-return')).toHaveAttribute('data-state', 'error');
-    await expect(page.getByRole('link', { name: 'Back to your surprise' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Back to my surprise' })).toHaveAttribute(
+      'href',
+      `/experiences/${id}/personalize`,
+    );
+    await expect(page.getByTestId('checkout-return')).toContainText('Nothing is lost');
     // The provider-appended email does not stay in the address bar.
     expect(page.url()).not.toContain('email');
   });

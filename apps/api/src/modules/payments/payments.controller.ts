@@ -71,7 +71,13 @@ export class CheckoutController {
     @Body() body: CreateCheckoutRequestDto,
     @Req() req: Request,
   ) {
-    return this.payments.createCheckout(p, id, body.provider, requestId(req));
+    return this.payments.createCheckout(
+      p,
+      id,
+      body.provider,
+      requestId(req),
+      body.publish ?? false,
+    );
   }
 
   @Post(':orderId/confirm')

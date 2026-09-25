@@ -1,10 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { motion, useReducedMotion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import { suggestedDate, type TemplateField } from '@momentpath/contracts';
 import { Alert, Button, Dialog, Field, Input } from '@momentpath/design-system';
 import { ApiError, browserApi, unwrap } from '@/lib/api/browser';
+import { PlusProCompare } from './plus-pro';
 import { TemplateCard, type TemplateSummary } from '@/components/site/landing/template-card';
 import {
   OccasionChips,
@@ -27,7 +29,7 @@ function initialValues(fields: TemplateField[]): Record<string, string> {
 
 /**
  * The few details a template needs ("Their name", "From", a date). Everything else is ready;
- * the surprise opens in the editor afterwards, where anything can still be changed.
+ * the surprise then opens in its preview, where every word, photo and button can be changed.
  */
 function PersonaliseSheet({
   template,
@@ -57,7 +59,7 @@ function PersonaliseSheet({
       open={template !== null}
       onOpenChange={(open) => !open && onClose()}
       title={template ? `${template.emoji} ${template.name}` : ''}
-      description="Just the personal bits — you can change anything later."
+      description="Just the personal bits to start. Next you will see it exactly as they will."
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -78,7 +80,7 @@ function PersonaliseSheet({
               )
             }
           >
-            Create my surprise
+            Continue
           </Button>
         </>
       }
@@ -110,31 +112,83 @@ function PersonaliseSheet({
           </Field>
         ))}
         <p className="rounded-xl bg-brand-50 p-3 text-sm text-brand-900">
-          💡 Make it yours: in the editor you can add a photo gallery, a voice note or a video, and
-          put a real e-gift code (Amazon, Flipkart, Swiggy, Zomato…) in the final surprise.
+          💡 Next: tap any words, photos or buttons in the preview to change them, pick the music,
+          and put a real e-gift code (Amazon, Flipkart, Swiggy, Zomato…) in the final surprise.
         </p>
       </form>
     </Dialog>
   );
 }
 
+export interface InProgress {
+  id: string;
+  templateKey: string | null;
+  mode: 'TEMPLATE' | 'CUSTOM';
+  title: string;
+  editedAt: string;
+}
+
+/** A template's own work in progress, or the one built from scratch. */
+const SCRATCH = '__scratch';
+const originOf = (item: InProgress) => item.templateKey ?? SCRATCH;
+
+function editedAgo(iso: string): string {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+  if (minutes < 60) return rtf.format(-minutes, 'minute');
+  if (minutes < 60 * 24) return rtf.format(-Math.round(minutes / 60), 'hour');
+  return rtf.format(-Math.round(minutes / (60 * 24)), 'day');
+}
+
+const pathOf = (item: InProgress) =>
+  `/experiences/${item.id}/${item.mode === 'TEMPLATE' ? 'personalize' : 'edit'}`;
+
+/**
+ * Create Experience. Browsing is free: opening a template and leaving it unchanged leaves
+ * nothing behind. Once something is changed it is kept — at most one per template plus one
+ * from scratch — and coming back to that template asks "Continue, or start over?".
+ */
 export function NewExperience({
   templates,
   initialTemplate,
+  inProgress: initialInProgress = [],
 }: {
   templates: TemplateSummary[];
   initialTemplate?: string;
+  /** This browser's changed-but-unpublished surprises, newest first. */
+  inProgress?: InProgress[];
 }) {
   const router = useRouter();
+  const reduced = useReducedMotion() ?? false;
+  const [inProgress, setInProgress] = useState<InProgress[]>(initialInProgress);
+  // Newest first, so the first one per origin is the one to continue.
+  const byOrigin = useMemo(() => {
+    const map = new Map<string, InProgress>();
+    for (const item of inProgress) if (!map.has(originOf(item))) map.set(originOf(item), item);
+    return map;
+  }, [inProgress]);
+  const linked = templates.find((t) => t.key === initialTemplate) ?? null;
+  const linkedWork = linked ? (byOrigin.get(linked.key) ?? null) : null;
+  const [personalising, setPersonalising] = useState<TemplateSummary | null>(
+    linked && !linkedWork && linked.fields.length > 0 ? linked : null,
+  );
+  // "You've already started this one": the work, and the template to start fresh (null: scratch).
+  const [resume, setResume] = useState<{
+    item: InProgress;
+    template: TemplateSummary | null;
+  } | null>(linked && linkedWork ? { item: linkedWork, template: linked } : null);
+  const [discarding, setDiscarding] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [occasion, setOccasion] = useState('All');
-  const [personalising, setPersonalising] = useState<TemplateSummary | null>(
-    () => templates.find((t) => t.key === initialTemplate && t.fields.length > 0) ?? null,
-  );
   const [preview, setPreview] = useState<TemplateSummary | null>(null);
   const occasions = useMemo(() => occasionsOf(templates), [templates]);
-  const shown = occasion === 'All' ? templates : templates.filter((t) => t.occasion === occasion);
+  // Free templates first, so trying one costs nothing and is easy to find.
+  const ordered = useMemo(
+    () => [...templates].sort((a, b) => Number(a.tier !== 'FREE') - Number(b.tier !== 'FREE')),
+    [templates],
+  );
+  const shown = occasion === 'All' ? ordered : ordered.filter((t) => t.occasion === occasion);
 
   async function create(templateKey: string | null, fields?: Record<string, string>) {
     setBusy(templateKey ?? 'blank');
@@ -145,7 +199,8 @@ export function NewExperience({
           body: { templateKey, ...(fields ? { fields } : {}) },
         }),
       );
-      router.push(`/experiences/${exp.id}/edit`);
+      // Templates are personalised in their preview; a blank start opens the PRO builder.
+      router.push(`/experiences/${exp.id}/${templateKey ? 'personalize' : 'edit'}`);
     } catch (err) {
       setError(
         err instanceof ApiError
@@ -156,8 +211,34 @@ export function NewExperience({
     }
   }
 
+  /** Start over: that template's earlier work is deleted, then it starts fresh. */
+  async function startOver() {
+    if (!resume) return;
+    setDiscarding(true);
+    try {
+      unwrap(
+        await browserApi().DELETE('/api/v1/experiences/{id}', {
+          params: {
+            path: { id: resume.item.id },
+            header: { 'Idempotency-Key': crypto.randomUUID() },
+          },
+        }),
+      );
+      setInProgress((items) => items.filter((i) => i.id !== resume.item.id));
+      const { template } = resume;
+      setResume(null);
+      if (template) startTemplate(template);
+      else void create(null);
+    } catch {
+      setError('That surprise could not be removed. Please try again.');
+      setResume(null);
+    } finally {
+      setDiscarding(false);
+    }
+  }
+
   // Templates with personal details open the sheet; the rest are created straight away.
-  const use = (t: TemplateSummary) => {
+  const startTemplate = (t: TemplateSummary) => {
     setPreview(null);
     if (t.fields.length > 0) {
       setError(null);
@@ -166,61 +247,160 @@ export function NewExperience({
       void create(t.key);
     }
   };
+  /** Only a template (or scratch) with its own changed work asks anything. */
+  const open = (template: TemplateSummary | null) => {
+    setPreview(null);
+    const item = byOrigin.get(template?.key ?? SCRATCH);
+    if (item) setResume({ item, template });
+    else if (template) startTemplate(template);
+    else void create(null);
+  };
+  const use = (t: TemplateSummary) => open(t);
+  const scratchWork = byOrigin.get(SCRATCH) ?? null;
 
   return (
     <div className="mt-6 space-y-5">
       {error && !personalising ? <Alert tone="danger">{error}</Alert> : null}
+
+      <motion.button
+        type="button"
+        onClick={() => open(null)}
+        disabled={busy !== null}
+        data-testid="create-from-scratch"
+        whileHover={reduced ? undefined : { y: -3 }}
+        whileTap={reduced ? undefined : { scale: 0.985 }}
+        className="group relative w-full overflow-hidden rounded-3xl bg-gradient-to-br from-violet-700 via-fuchsia-700 to-brand-700 p-5 text-left text-white shadow-lg shadow-fuchsia-900/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:opacity-60 sm:p-6"
+      >
+        {/* Decorative: soft light and a few floating pieces of what you can build. */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-16 -right-10 size-48 rounded-full bg-white/15 blur-2xl"
+        />
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0">
+          {[
+            ['🧩', 'right-6 top-5 text-3xl', 0],
+            ['✨', 'right-4 top-24 text-xl', 0.6],
+            ['🎁', 'right-8 bottom-16 text-2xl', 1.2],
+          ].map(([glyph, place, delay]) => (
+            <motion.span
+              key={glyph as string}
+              className={`absolute ${place as string} drop-shadow`}
+              animate={reduced ? undefined : { y: [0, -6, 0], rotate: [0, 6, 0] }}
+              transition={{
+                duration: 3.2,
+                repeat: Infinity,
+                ease: 'easeInOut',
+                delay: delay as number,
+              }}
+            >
+              {glyph}
+            </motion.span>
+          ))}
+        </span>
+        <span className="relative block max-w-[16rem] sm:max-w-md">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold tracking-widest ring-1 ring-white/25 backdrop-blur">
+            PRO
+          </span>
+          <span className="mt-3 block text-2xl font-extrabold leading-tight tracking-tight">
+            Create from Scratch
+          </span>
+          <span className="mt-1 block text-sm text-white/85">
+            Your idea, your way — build a surprise step by step.
+          </span>
+        </span>
+        <span className="relative mt-4 flex flex-wrap gap-1.5 text-xs font-medium">
+          {['＋ Any steps', '🧭 Your own flow', '🎨 Your own look'].map((f) => (
+            <span key={f} className="rounded-full bg-white/15 px-2.5 py-1 ring-1 ring-white/20">
+              {f}
+            </span>
+          ))}
+        </span>
+        <span className="relative mt-5 flex flex-wrap items-center justify-between gap-3">
+          <span className="text-xs text-white/85" suppressHydrationWarning>
+            {scratchWork ? `✎ In progress · edited ${editedAgo(scratchWork.editedAt)}` : ''}
+          </span>
+          <span className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 text-sm font-bold text-fuchsia-800 shadow-md transition group-hover:gap-3">
+            {busy === 'blank' ? 'Creating…' : scratchWork ? 'Continue building' : 'Start building'}
+            <span aria-hidden="true">→</span>
+          </span>
+        </span>
+      </motion.button>
+      <h2 className="pt-2 text-lg font-semibold">
+        Or pick a ready-made template{' '}
+        <span className="text-sm font-normal text-ink-500">— personalise it with PLUS</span>
+      </h2>
       <OccasionChips occasions={occasions} value={occasion} onChange={setOccasion} />
       <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {shown.map((t) => (
-          <li key={t.key}>
-            <TemplateCard
-              template={t}
-              busy={busy !== null}
-              onSelect={() => use(t)}
-              hint={busy === t.key ? 'Creating…' : `${t.stepCount} steps · Use this template`}
-              action={
-                <button
-                  type="button"
-                  className="w-full rounded-2xl bg-black/5 px-4 py-2.5 text-sm font-semibold"
-                  onClick={() => setPreview(t)}
-                >
-                  ▶ Play demo
-                </button>
-              }
-            />
-          </li>
-        ))}
-        <li>
-          <button
-            type="button"
-            onClick={() => create(null)}
-            disabled={busy !== null}
-            className="flex h-full min-h-48 w-full flex-col rounded-3xl border-2 border-dashed border-ink-200 p-5 text-left hover:border-brand-300 focus-visible:outline-2 focus-visible:outline-brand-600 disabled:opacity-60"
-          >
-            <span className="text-3xl" aria-hidden="true">
-              ✏️
-            </span>
-            <span className="mt-2 font-semibold">
-              Blank
-              <span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-brand-200">
-                Custom
-              </span>
-            </span>
-            <span className="mt-1 text-sm text-ink-600">
-              Start with an empty sequence and add your own steps.
-            </span>
-            <span className="mt-auto pt-3 text-xs text-ink-500">
-              {busy === 'blank' ? 'Creating…' : 'Start from scratch'}
-            </span>
-          </button>
-        </li>
+        {shown.map((t) => {
+          const work = byOrigin.get(t.key);
+          return (
+            <li key={t.key}>
+              <TemplateCard
+                template={t}
+                busy={busy !== null}
+                onSelect={() => use(t)}
+                progress={work ? `In progress · edited ${editedAgo(work.editedAt)}` : null}
+                hint={
+                  busy === t.key
+                    ? 'Creating…'
+                    : work
+                      ? 'Continue →'
+                      : t.tier === 'FREE'
+                        ? `${t.stepCount} steps · Try it free`
+                        : `${t.stepCount} steps · Use Template`
+                }
+                action={
+                  <button
+                    type="button"
+                    className="w-full rounded-2xl bg-black/5 px-4 py-2.5 text-sm font-semibold"
+                    onClick={() => setPreview(t)}
+                  >
+                    ▶ Play demo
+                  </button>
+                }
+              />
+            </li>
+          );
+        })}
       </ul>
+      <PlusProCompare className="mx-auto max-w-2xl" />
       <TemplatePreviewDialog
         template={preview}
         onClose={() => setPreview(null)}
-        action={(t) => <Button onClick={() => use(t)}>Use this template</Button>}
+        action={(t) => <Button onClick={() => use(t)}>Use Template</Button>}
       />
+      <Dialog
+        open={resume !== null}
+        onOpenChange={(o) => !o && setResume(null)}
+        title="You’ve already started this one"
+        description={
+          resume
+            ? `“${resume.item.title || 'Untitled surprise'}” · edited ${editedAgo(resume.item.editedAt)}. Carry on where you left off, or start it fresh?`
+            : ''
+        }
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              busy={discarding}
+              data-testid="start-over"
+              onClick={() => void startOver()}
+            >
+              Start over
+            </Button>
+            <Button
+              data-testid="continue-in-progress"
+              onClick={() => resume && router.push(pathOf(resume.item))}
+            >
+              Continue
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-ink-600">
+          Starting over removes your changes to this one. Your other surprises stay as they are.
+        </p>
+      </Dialog>
       <PersonaliseSheet
         template={personalising}
         busy={busy !== null}

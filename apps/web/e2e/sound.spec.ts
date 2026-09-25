@@ -41,15 +41,17 @@ test('the recipient hears the music after their first tap and can mute it for go
 test.describe('creator', () => {
   test.use({ storageState: authFile('alice') });
 
-  test('picks background music, sounds and a celebration style', async ({ page, isMobile }) => {
+  test('picks background music, sounds and a celebration style', async ({ page }) => {
     const errors = consoleErrors(page);
     const api = await creatorApi('alice');
     const created = await api.post('/bff/api/v1/experiences', {
       data: { templateKey: 'date-invitation' },
     });
     const { id } = (await created.json()) as { id: string };
+    // Tap sounds and celebrations are builder settings (PRO); templates keep their own.
+    expect((await api.post(`/bff/api/v1/experiences/${id}/customize`)).status()).toBe(200);
     await page.goto(`/experiences/${id}/edit`);
-    if (isMobile) await page.getByRole('button', { name: 'Style', exact: true }).click();
+    await page.getByTestId('build-look').click();
 
     const visible = (testId: string) => page.getByTestId(testId).filter({ visible: true });
     await expect(visible('music-LOVE_PIANO')).toHaveAttribute('aria-checked', 'true');

@@ -1,5 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { highestTier, type PaymentProvider, type Tier } from '@momentpath/contracts';
+import {
+  highestTier,
+  type ExperienceMode,
+  type PaymentProvider,
+  type Tier,
+} from '@momentpath/contracts';
 import { requireOwnedExperience } from '../../common/ownership';
 import { Problem } from '../../common/problem';
 import { APP_ENV, type AppEnv } from '../../config/env';
@@ -15,6 +20,7 @@ import {
 } from '../../providers/payments';
 import { AuditService } from '../audit/audit.service';
 import { EntitlementsService } from '../entitlements/entitlements.service';
+import { PublishingService } from '../publishing/publishing.service';
 import { toDraftSteps } from '../experiences/step-mapping';
 import type { Principal } from '../identity/principal';
 import { offersFor, priceBook } from './pricing';
@@ -34,11 +40,16 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly entitlements: EntitlementsService,
     private readonly audit: AuditService,
+    private readonly publishing: PublishingService,
     @Inject(APP_ENV) private readonly env: AppEnv,
     @Inject(PAYMENT_GATEWAYS) private readonly gateways: PaymentGateways,
   ) {}
 
-  private async tierState(experience: { id: string; templateKey: string | null }) {
+  private async tierState(experience: {
+    id: string;
+    templateKey: string | null;
+    mode: ExperienceMode;
+  }) {
     const draft = await this.prisma.experienceVersion.findFirst({
       where: { experienceId: experience.id, state: 'DRAFT' },
       include: { steps: true },
@@ -94,6 +105,7 @@ export class PaymentsService {
     experienceId: string,
     provider: PaymentProvider,
     requestId: string | null,
+    publish = false,
   ) {
     const exp = await requireOwnedExperience(this.prisma, principal, experienceId);
     if (!this.env.BILLING_ENABLED) {
@@ -119,7 +131,15 @@ export class PaymentsService {
       },
       orderBy: { createdAt: 'desc' },
     });
-    if (recent) return { orderId: recent.id, checkoutUrl: recent.checkoutUrl };
+    if (recent) {
+      if (publish && !recent.publishOnPaid) {
+        await this.prisma.paymentOrder.update({
+          where: { id: recent.id },
+          data: { publishOnPaid: true },
+        });
+      }
+      return { orderId: recent.id, checkoutUrl: recent.checkoutUrl };
+    }
 
     const orderId = crypto.randomUUID();
     const returnUrl = new URL(`/experiences/${experienceId}/checkout`, this.env.WEB_ORIGIN);
@@ -149,6 +169,7 @@ export class PaymentsService {
         currency: offer.currency,
         providerOrderId: checkout.providerOrderId,
         checkoutUrl: checkout.checkoutUrl,
+        publishOnPaid: publish,
         createdById: principal.userId,
       },
     });
@@ -159,7 +180,7 @@ export class PaymentsService {
       targetType: 'experience',
       targetId: experienceId,
       requestId,
-      metadata: { orderId, provider, tier: offer.tier },
+      metadata: { orderId, provider, tier: offer.tier, publish },
     });
     return { orderId, checkoutUrl: checkout.checkoutUrl };
   }
@@ -197,7 +218,51 @@ export class PaymentsService {
       attemptFailed = result.state === 'PENDING' && result.attemptFailed === true;
       status = await this.apply(order, gateway, result, null);
     }
-    return { orderId: order.id, status, attemptFailed, tier: await this.tierState(exp) };
+    if (status === 'PAID') await this.publishIfRequested(order.id);
+    const [paid, now] = await Promise.all([
+      this.prisma.paymentOrder.findUniqueOrThrow({ where: { id: order.id } }),
+      this.prisma.experience.findUniqueOrThrow({ where: { id: exp.id } }),
+    ]);
+    const published =
+      paid.paidAt !== null && now.publishedAt !== null && now.publishedAt >= paid.paidAt;
+    return {
+      orderId: order.id,
+      status,
+      attemptFailed,
+      tier: await this.tierState(now),
+      published,
+    };
+  }
+
+  /**
+   * Publish → Payment → Published. A checkout started from Publish publishes the experience once
+   * it is paid, whichever path confirms the payment first (return page, webhook, reconciler).
+   * Clearing the flag is the claim, so the experience is published once, not once per path.
+   * If publishing fails (say a photo is still being scanned) the payment still stands and the
+   * creator publishes with one tap; nothing is lost.
+   */
+  async publishIfRequested(orderId: string): Promise<void> {
+    const claimed = await this.prisma.paymentOrder.updateMany({
+      where: { id: orderId, status: 'PAID', publishOnPaid: true, experienceId: { not: null } },
+      data: { publishOnPaid: false },
+    });
+    if (claimed.count === 0) return;
+    const order = await this.prisma.paymentOrder.findUniqueOrThrow({ where: { id: orderId } });
+    const exp = await this.prisma.experience.findFirst({
+      where: { id: order.experienceId!, status: { not: 'DELETED' } },
+    });
+    if (!exp) return;
+    try {
+      // Published on the owner's behalf: they asked for it when they pressed Publish.
+      await this.publishing.publish(
+        { userId: exp.ownerId, subject: 'payment', isAdmin: false },
+        exp.id,
+        null,
+      );
+    } catch (err) {
+      const code = err instanceof Problem ? err.code : 'UNEXPECTED';
+      this.logger.warn({ orderId, code }, 'Paid, but publishing after payment failed');
+    }
   }
 
   /**
@@ -210,6 +275,7 @@ export class PaymentsService {
     const event = gateway.parseWebhook(rawBody, headers);
     if (!event) return;
 
+    let paidOrderId: string | null = null;
     await this.prisma.$transaction(async (tx) => {
       // ON CONFLICT DO NOTHING: a concurrent duplicate waits for the first, then does nothing.
       const recorded = await tx.paymentWebhookEvent.createMany({
@@ -222,8 +288,10 @@ export class PaymentsService {
         this.logger.warn({ provider, type: event.type }, 'Webhook for an unknown order');
         return;
       }
-      await this.apply(order, gateway, event.result, tx);
+      paidOrderId =
+        (await this.apply(order, gateway, event.result, tx)) === 'PAID' ? order.id : null;
     });
+    if (paidOrderId) await this.publishIfRequested(paidOrderId);
   }
 
   private async findOrder(

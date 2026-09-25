@@ -89,6 +89,11 @@ export const EnvSchema = z
      * owners with nothing left who have not been back for as long. 0 turns retention off.
      */
     RETENTION_DAYS: z.coerce.number().int().min(0).max(3650).default(365),
+    /**
+     * Unfinished surprises (never published) are temporary: deleted after this many days without
+     * being opened or saved. 0 applies RETENTION_DAYS to them too.
+     */
+    DRAFT_RETENTION_DAYS: z.coerce.number().int().min(0).max(3650).default(30),
     /** How often the worker looks for surprises past retention. 0 disables the sweep. */
     RETENTION_SWEEP_MS: z.coerce.number().int().min(0).default(3_600_000),
 

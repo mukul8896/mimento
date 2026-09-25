@@ -5,6 +5,7 @@ import type { RevealedGift } from '@momentpath/contracts';
 import { RichText } from '@/components/rich-text';
 import { accentButton, outlineButton } from '../theme';
 import type { StepProps } from './types';
+import { Editable } from '../editable';
 
 function GiftDetails({ gift }: { gift: RevealedGift }) {
   const [copied, setCopied] = useState(false);
@@ -106,8 +107,12 @@ export function GiftStep({ step, busy, reveal }: StepProps<'GIFT_REVEAL'>) {
   const waiting = left !== null && left > 0;
   return (
     <div className="space-y-5 text-center">
-      <h2 className="text-[1.75em] font-bold leading-tight">{cfg.title}</h2>
-      <RichText doc={cfg.message} className="space-y-3" />
+      <Editable field="Title" block>
+        <h2 className="text-[1.75em] font-bold leading-tight">{cfg.title}</h2>
+      </Editable>
+      <Editable field="Message before the reveal" block>
+        <RichText doc={cfg.message} className="space-y-3" />
+      </Editable>
       {gift ? (
         <div
           className="rounded-3xl bg-[var(--mp-surface)] p-5 shadow-md"
@@ -126,14 +131,16 @@ export function GiftStep({ step, busy, reveal }: StepProps<'GIFT_REVEAL'>) {
               </span>
             </p>
           ) : null}
-          <button
-            type="button"
-            className={`${accentButton} w-full sm:w-auto`}
-            disabled={busy || waiting}
-            onClick={async () => setGift(await reveal())}
-          >
-            {cfg.revealButtonLabel}
-          </button>
+          <Editable field="Reveal button label" block>
+            <button
+              type="button"
+              className={`${accentButton} w-full sm:w-auto`}
+              disabled={busy || waiting}
+              onClick={async () => setGift(await reveal())}
+            >
+              {cfg.revealButtonLabel}
+            </button>
+          </Editable>
           {cfg.oneTimeReveal ? (
             <p className="text-sm opacity-80">This surprise can only be opened on one device.</p>
           ) : null}

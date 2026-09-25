@@ -1,4 +1,5 @@
 import { CheckoutReturn } from '@/components/creator/checkout-return';
+import { serverApi } from '@/lib/api/server';
 
 export const metadata = { title: 'Payment' };
 
@@ -21,12 +22,17 @@ export default async function CheckoutPage({
   const order = one('order');
   // Dodo appends payment_id; Razorpay appends razorpay_payment_id, which the API does not need.
   const paymentId = one('payment_id');
+  const api = await serverApi();
+  const { data } = await api.GET('/api/v1/experiences/{id}', { params: { path: { id } } });
+  const returnTo =
+    data?.mode === 'TEMPLATE' ? `/experiences/${id}/personalize` : `/experiences/${id}/edit`;
   return (
     <main className="mx-auto max-w-xl space-y-6 px-4 py-10 sm:px-6">
       <CheckoutReturn
         experienceId={id}
         orderId={order && UUID.test(order) ? order : null}
         paymentId={paymentId && PAYMENT_ID.test(paymentId) ? paymentId : null}
+        returnTo={returnTo}
       />
     </main>
   );

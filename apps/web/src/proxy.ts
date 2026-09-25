@@ -9,7 +9,7 @@ import {
 } from '@/lib/auth/owner';
 import { webEnv } from '@/lib/env';
 
-const CREATOR_PREFIXES = ['/dashboard', '/new', '/experiences', '/account', '/admin'];
+const CREATOR_PREFIXES = ['/new', '/experiences', '/admin'];
 
 function contentSecurityPolicy(nonce: string, dev: boolean): string {
   const env = webEnv();

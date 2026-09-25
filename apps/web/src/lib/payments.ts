@@ -39,4 +39,16 @@ export function formatPrice(amountMinor: number, currency: string): string {
   }).format(amountMinor / 100);
 }
 
-export const TIER_NAME = { FREE: 'Free', PLUS: 'Plus', PRO: 'Custom' } as const;
+export const TIER_NAME = { FREE: 'Free', PLUS: 'PLUS', PRO: 'PRO' } as const;
+
+/** One line on what each paid tier buys, used wherever a price is shown. */
+export const TIER_PITCH = {
+  FREE: 'Free to share',
+  PLUS: 'Your personalised template, shared on its own private link',
+  PRO: 'Your own custom experience, built step by step',
+} as const;
+
+export const PAYMENT_METHODS: Record<Provider, string> = {
+  RAZORPAY: 'UPI, cards, net banking or wallets',
+  DODO: 'Card, Apple Pay or Google Pay — local tax may be added',
+};

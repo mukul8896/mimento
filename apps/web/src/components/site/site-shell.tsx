@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { SiteNav } from './site-nav';
 
 const FOOTER_LINKS = [
   { href: '/pricing', label: 'Pricing' },
@@ -38,21 +39,8 @@ export function SiteShell({
 }) {
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
-        <Link href="/" className="text-lg font-semibold tracking-tight text-brand-700">
-          Wish Revealer
-        </Link>
-        <nav className="flex items-center gap-3">
-          <Link href="/signin" className="text-sm font-medium text-ink-700 hover:text-brand-700">
-            Sign in
-          </Link>
-          <Link
-            href="/new"
-            className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white"
-          >
-            Create a surprise
-          </Link>
-        </nav>
+      <header className="mx-auto h-16 w-full max-w-5xl px-4 sm:px-6">
+        <SiteNav cta />
       </header>
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-16 pt-6 sm:px-6">
         <h1 className="text-3xl font-bold tracking-tight text-ink-900">{title}</h1>

@@ -1,6 +1,6 @@
 # INSTRUCTION.md — current application state
 
-_Last updated: 2026-09-25 (Phase 2 live; 1-year retention; passkeys and email sign-in planned)._ Update this file at the end of every session.
+_Last updated: 2026-09-25 (template personalization & PRO; Phase 2 live; 1-year retention; passkeys)._ Update this file at the end of every session.
 
 ## Status snapshot
 
@@ -17,6 +17,117 @@ stages 2 and 3 are not started.**
 | Docker Compose, Dockerfiles                                                             | **Verified 2026-09-23** — services healthy, both images build, API + web serve                     |
 | GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
 | Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
+
+## Create Experience polish (2026-09-26)
+
+- In-progress info is on the template tile itself (badge + "Continue →"); the separate row is
+  gone. Free templates are listed first (also on the landing gallery) with a "✓ Free to try" tag.
+  Create from Scratch is a gradient card with floating pieces, feature chips and a "Start
+  building" button.
+- **Templates shown: 6** (birthday-wish, birthday-surprise, date-invitation, anniversary,
+  proposal, diwali-wishes); the rest were hidden **locally** through the operator API
+  (`isActive=false`, audited, reversible in /admin → Templates). **Production still shows all** —
+  hide them in /admin there after deploying. Local tiers differ from production (locally only
+  date-invitation, birthday-surprise and anniversary are PLUS).
+- Price label next to Publish never says "Free" for a paid surprise (shows the level while the
+  price loads; "free for now" when billing is off; "price at checkout" if no offer loads).
+- Edit markers use a drawn pencil icon (`PencilIcon` in `player/editable.tsx`), also in the hint
+  pill and the mode switch.
+
+## Work in progress per template + one editor for PLUS and PRO (2026-09-26)
+
+Owner feedback after testing: the "You have an unfinished surprise" prompt blocked browsing, and
+the PRO editor looked like a different product.
+
+- **In progress** (migration `20260926090000_edited_at`, `Experience.editedAt`): a surprise only
+  counts once changed — saved content, typed template details, a gift, delivery settings or
+  Customize with PRO (a template's own starter gift does not count). `GET
+/experiences/in-progress` lists them (manage links see none). At most one per template plus one
+  from scratch in the UI; untouched ones are never listed and the sweep removes them a day after
+  creation. `/new`: "Pick up where you left off" chips, "✎ In progress · edited …" on cards, and
+  only a template with its own changed work asks **Continue / Start over** (start over deletes it
+  and starts fresh). No other prompts.
+- **One editor**: `/edit` now renders the same `Personalize` component as `/personalize`, with
+  `draft.mode === 'CUSTOM'` switching on the PRO tools: ＋ in the step strip and an "Add a step"
+  sheet, per-step Earlier / Later / Duplicate / Delete in the step sheet, branching ("What happens
+  next") under the form, Flow sheet (React Flow), Look & feel sheet (ThemePanel), History, a
+  branch marker (↳) on chips, and an empty "Add your first step" state. The old tabbed
+  `editor.tsx` and `preview-pane.tsx` are removed.
+- **Tests**: `in-progress.int.test.ts` (4); retention tests updated; E2E creator (browsing and
+  per-template continue/start over; PRO builder add/move/duplicate/delete/fix-then-publish),
+  branching (route in the step sheet, flow sheet, history), sound (Look & feel), csp. Latest: unit
+  80 + 85 + 40, integration 128 (plus the known intermittent single failures), E2E 78 passed /
+  1 skipped.
+
+## No-account model: one experience, two links (2026-09-25)
+
+See [ADR 0008](docs/decisions/0008-experience-centric-links.md). Owner decisions: remove the
+old access path completely (existing data is test data), keep passkeys hidden/dormant, delete
+unfinished surprises after 30 days unused.
+
+- **API**: `GET /me` → `managedExperienceId`; `DRAFT_RETENTION_DAYS` (default 30) in the sweep and
+  `keptUntil`; `touchOwner` no longer refreshes drafts, `getDraft`/`updateDraft` do.
+- **Web**: removed `(creator)/dashboard`, `(creator)/account`, `/signin`, `/auth/passkey`,
+  `/forget`, `passkeys.tsx`, `recovery-link.tsx`, `delete-account.tsx`, `share-card.tsx`. `/m/<t>`
+  asks the API which surprise it opens and redirects to `/experiences/:id`; `/r/<t>` → home.
+  `SiteNav` (Templates · Create · How it works) on every header. New
+  `/experiences/:id/published` (`published-success.tsx`): confetti, Recipient Link, Private
+  Management Link, Copy / Bookmark (share sheet or drag-to-bookmarks) / Download Details (`.txt`,
+  `lib/surprise-details.ts`), "I've saved my private management link" (first Done without it is
+  a reminder, not a block). Every publish (free, paid via return page) lands there. Manage page is
+  "Manage Surprise" with the private-link card (shown on request) or, before publishing, "Not
+  published yet". `/new` offers unfinished work back (Continue / Start Over; picking another
+  template asks first). Homepage: "Create a surprise. Make it personal. Share the moment." and
+  "No account needed". Policies reworded.
+- **Tests**: API unit 80, integration 124, contracts 85, web 40 (new `surprise-details.test.ts`),
+  E2E 78 passed / 1 skipped (`recovery.spec.ts` rewritten, `passkeys.spec.ts` removed, helper
+  `useTemplate`/`startFresh` answers the unfinished-work question).
+- **Flaky integration runs**: 4 of 10 full runs had 1–2 random failures (different tests each
+  time: passkeys, lifecycle, recipient); the committed baseline also failed 1 of 5
+  (templates). None reproduces alone. Likely test isolation on the shared database — worth a look.
+- **Note**: `BILLING_ENABLED=false pnpm dev` does not reach the apps (turbo filters env); run the
+  built servers directly (as E2E does) to try publishing without payment.
+
+## Template personalization & PRO (2026-09-25)
+
+Owner request: templates are fixed, ready-made experiences you **personalise (PLUS)**; changing the
+experience itself is **PRO**. Owner decisions: one template stays free (Birthday wish); a short
+link still **requires** a PIN; a checkout started from Publish **publishes automatically** once
+paid; PLUS users fill in the template's own gift step (adding gift steps is PRO).
+
+- **Schema** (migration `20260925150000_template_mode`): `Experience.mode` (`TEMPLATE` | `CUSTOM`,
+  backfilled: template drafts whose step types still match their template became TEMPLATE) and
+  `PaymentOrder.publishOnPaid`.
+- **Contracts**: `structure.ts` (`EXPERIENCE_MODES`, `structureOf`, `structureChange`: step keys
+  and order, types, quiz option ids, Maybe on/off, any routing). `requiredTier` takes
+  `customized` → PRO. Detail and draft responses carry `mode` and `template {key,name,tier}`.
+  `CreateCheckoutRequest.publish`, `ConfirmCheckoutResponse.published`.
+- **API**: saving or restoring a structural change to a TEMPLATE draft → 422 `STRUCTURE_LOCKED`.
+  `POST /experiences/:id/customize` (audit `experience.customized`, idempotent, one-way) moves it
+  to the builder; the master template is never written. `PaymentsService.publishIfRequested`
+  runs after every PAID path (return page, webhook, reconciler); clearing `publishOnPaid` is the
+  claim, so it publishes once. If publishing is blocked, the payment stands and the creator
+  publishes with one tap.
+- **Web**: `/experiences/:id/personalize` (`components/creator/personalize.tsx`): the real player
+  with an edit context (`player/editable.tsx` — recipients get plain children, identical DOM);
+  tap a ✎ element → a short sheet with only that field (locked `StepForm`, `ctx.locked` hides
+  answer add/remove, Maybe, No-button modes, wait-for-it), "Show all of this step"; step strip;
+  Play mode; Music and Name sheets; Delivery & Privacy sheet (`AccessPanel bare`, answer
+  visibility); PRO card + comparison (`plus-pro.tsx`); Publish sticky at the bottom (phone) and in
+  the side column (desktop). `PublishFlow` (replaces `editor/publish-dialog.tsx`) is shared with
+  the PRO editor: save → check → fix list / Publish now / price + "Pay & publish" → share card.
+  `/edit` redirects TEMPLATE drafts to `/personalize` and vice versa. Checkout return page:
+  "It's live!" with the share card, "Paid — Publish now", and "Nothing is lost" states, returning
+  to the page the creator was on. `/new` is "Create Experience" with **Create from Scratch (PRO)**
+  first; labels now PLUS / PRO everywhere ("Use Template", no "Custom").
+- **Design system**: `Dialog` footers stay pinned while a sheet scrolls; `autoFocus={false}`
+  (no keyboard/date picker popping up on phones) and `lightOverlay`.
+- **Tests**: contracts 85, web 37, API unit 80, integration 121, E2E 76 passed / 1 skipped
+  (`personalize.mobile.spec.ts` new; creator, branching, csp, landing, recovery, sound, access,
+  site updated). E2E helper `createPublished` customises before a structural mutation.
+- **Not done**: separate PLUS pricing per template is not possible by design (one PLUS price);
+  the PRO editor still shows the old tabs layout (untouched apart from Publish). Real-provider
+  check of `publish: true` pending the next sandbox run.
 
 ## Passkeys: an optional way back in (2026-09-25)
 

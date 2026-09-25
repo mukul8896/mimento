@@ -39,6 +39,7 @@ export class PublishingService {
       ...draft,
       steps: draft.parsedSteps,
       templateKey: exp.templateKey,
+      mode: exp.mode,
     });
     return { ok: issues.length === 0, issues };
   }
@@ -58,7 +59,7 @@ export class PublishingService {
 
         const draft = await this.loadDraft(tx, exp.id);
         const issues = await this.validator.issues(
-          { ...draft, steps: draft.parsedSteps, templateKey: exp.templateKey },
+          { ...draft, steps: draft.parsedSteps, templateKey: exp.templateKey, mode: exp.mode },
           tx,
         );
         if (issues.length > 0) {

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_ENV, type AppEnv } from '../../config/env';
 import { PAYMENT_GATEWAYS } from '../../providers/payments';
 import { EntitlementsModule } from '../entitlements/entitlements.module';
+import { PublishingModule } from '../publishing/publishing.module';
 import { createGateways } from './gateways';
 import {
   CheckoutController,
@@ -12,7 +13,7 @@ import { PaymentsReconciler } from './payments.reconciler';
 import { PaymentsService } from './payments.service';
 
 @Module({
-  imports: [EntitlementsModule],
+  imports: [EntitlementsModule, PublishingModule],
   controllers: [CheckoutController, PaymentWebhooksController, PricingController],
   providers: [
     {

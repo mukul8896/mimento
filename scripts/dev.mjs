@@ -1,6 +1,6 @@
 // One command for local development:
-//   docker compose up (postgres, keycloak, minio) -> wait healthy -> migrate -> seed -> api + web
-// Without Docker, run `pnpm local:postgres` and a native Keycloak, then `pnpm dev:apps` (see docs/runbook.md).
+//   docker compose up (postgres, minio) -> wait healthy -> migrate -> seed -> api + web
+// Without Docker, run `pnpm local:postgres`, then `pnpm dev:apps` (see docs/runbook.md).
 import { spawnSync, spawn } from 'node:child_process';
 import { existsSync, copyFileSync } from 'node:fs';
 
@@ -25,7 +25,7 @@ if (docker.status !== 0) {
   process.exit(1);
 }
 
-run('docker', ['compose', 'up', '-d', '--wait', 'postgres', 'keycloak', 'minio']);
+run('docker', ['compose', 'up', '-d', '--wait', 'postgres', 'minio']);
 run('docker', ['compose', 'run', '--rm', 'minio-init']);
 run('pnpm', ['--filter', '@momentpath/contracts', 'build']);
 run('pnpm', ['exec', 'prisma', 'generate']);

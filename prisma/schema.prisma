@@ -17,6 +17,13 @@ enum UserStatus {
   DELETED
 }
 
+/// TEMPLATE: a ready-made template being personalised; its structure is fixed (PLUS).
+/// CUSTOM: the full builder (PRO), from scratch or from a template (contracts/structure.ts).
+enum ExperienceMode {
+  TEMPLATE
+  CUSTOM
+}
+
 enum ExperienceStatus {
   DRAFT
   PUBLISHED
@@ -176,6 +183,10 @@ model Experience {
   activeVersionId   String?               @unique @db.Uuid
   activeVersion     ExperienceVersion?    @relation("ActiveVersion", fields: [activeVersionId], references: [id], onDelete: Restrict)
   templateKey       String?
+  mode              ExperienceMode        @default(CUSTOM)
+  /// First time the creator changed anything (content, gift, delivery, personal details). Until
+  /// then an unfinished surprise is only a template being looked at, not a draft worth keeping.
+  editedAt          DateTime?             @db.Timestamptz(3)
   publishedAt       DateTime?             @db.Timestamptz(3)
   expiresAt         DateTime?             @db.Timestamptz(3)
   /// Scheduled opening: before this, the link shows a countdown and no session can start.
@@ -397,6 +408,8 @@ model PaymentOrder {
   /// Set once paid: Razorpay or Dodo payment id.
   providerPaymentId String?
   checkoutUrl       String
+  /// Started from Publish: once paid, the experience is published without another click.
+  publishOnPaid     Boolean            @default(false)
   createdById       String?            @db.Uuid
   createdAt         DateTime           @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime           @updatedAt @db.Timestamptz(3)

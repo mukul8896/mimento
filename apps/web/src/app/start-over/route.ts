@@ -15,8 +15,8 @@ export async function GET() {
   // Nothing to clear (minting failed): go home rather than bounce between pages.
   if (!(await hasSession())) return NextResponse.redirect(new URL('/', origin));
   const { response } = await (await serverApi()).GET('/api/v1/me');
-  if (response.status !== 401) return NextResponse.redirect(new URL('/dashboard', origin));
-  const res = NextResponse.redirect(new URL('/dashboard', origin));
+  if (response.status !== 401) return NextResponse.redirect(new URL('/new', origin));
+  const res = NextResponse.redirect(new URL('/new', origin));
   for (const name of [OWNER_COOKIE, MANAGE_COOKIE, ADMIN_COOKIE])
     res.cookies.set(name, '', cookieOptions(0));
   return res;

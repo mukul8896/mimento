@@ -61,6 +61,8 @@ export class GiftsService {
     experienceId: string,
     stepKey: string,
     secret: GiftSecret,
+    /** False for a template's starter gift, which is not the creator changing anything. */
+    options: { byCreator?: boolean } = {},
   ) {
     const { draft, config } = await this.draftGiftStep(principal, experienceId, stepKey);
     if (secret.kind !== config.kind) {
@@ -90,6 +92,12 @@ export class GiftsService {
       },
       update: { kind: secret.kind, payloadEnc, mediaId, oneTimeReveal: config.oneTimeReveal },
     });
+    if (options.byCreator !== false) {
+      await this.prisma.experience.updateMany({
+        where: { id: experienceId, editedAt: null },
+        data: { editedAt: new Date() },
+      });
+    }
     return { secret };
   }
 

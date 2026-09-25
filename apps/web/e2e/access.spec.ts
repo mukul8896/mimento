@@ -12,9 +12,9 @@ test.describe('creator', () => {
     const { id, token } = await createPublished(await creatorApi('alice'), 'date-invitation');
     await page.goto(`/experiences/${id}`);
     const panel = page.getByTestId('access-panel');
-    await panel.getByLabel('PIN').fill('2580');
+    await panel.getByLabel('PIN', { exact: true }).fill('2580');
     await panel.getByRole('button', { name: 'Set PIN' }).click();
-    await expect(panel.getByRole('heading', { name: 'PIN (set)' })).toBeVisible();
+    await expect(panel.getByRole('heading', { name: /PIN · On/ })).toBeVisible();
 
     const slug = `e2e-${Date.now().toString(36)}`;
     await panel.getByLabel('Short link name').fill(slug);

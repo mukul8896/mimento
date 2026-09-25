@@ -8,6 +8,7 @@ import { Alert, Badge, Button, Card, Dialog, Field, Input } from '@momentpath/de
 import { ApiError, browserApi, unwrap } from '@/lib/api/browser';
 import { formatDate, formatDateTime, STATUS_LABEL, STATUS_TONE } from '@/lib/format';
 import { AccessPanel } from './access-panel';
+import { PRIVATE_LINK_WARNING, PrivateLinkActions, type SurpriseLinks } from './private-link';
 import { WhatsAppShare } from './whatsapp-share';
 import { UnlockPanel } from './unlock-panel';
 
@@ -24,9 +25,8 @@ export function ManageExperience({ experience }: { experience: Detail }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
-  const [manageLink, setManageLink] = useState<string | null>(null);
+  const [privateLinks, setPrivateLinks] = useState<SurpriseLinks | null>(null);
   const [copied, setCopied] = useState(false);
-  const [manageCopied, setManageCopied] = useState(false);
   const [confirm, setConfirm] = useState<'disable' | 'expire' | 'delete' | 'rotate' | null>(null);
   const [deleteText, setDeleteText] = useState('');
   const [expiry, setExpiry] = useState(
@@ -71,20 +71,23 @@ export function ManageExperience({ experience }: { experience: Detail }) {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  /** The private management link, shown only on request so it is not on screen by default. */
   async function showManageLink() {
     await run('manage', async () => {
-      const res = unwrap(
-        await api.GET('/api/v1/experiences/{id}/manage-link', { params: { path: { id } } }),
-      );
-      setManageLink(`${window.location.origin}/m/${res.manageToken}`);
+      const path = { params: { path: { id } } };
+      const [manage, share] = await Promise.all([
+        api.GET('/api/v1/experiences/{id}/manage-link', path),
+        api.GET('/api/v1/experiences/{id}/share-link', path),
+      ]);
+      const origin = window.location.origin;
+      setPrivateLinks({
+        title: experience.title,
+        createdAt: experience.createdAt,
+        publishedAt: experience.publishedAt,
+        recipientUrl: `${origin}/e/${unwrap(share).shareToken}`,
+        manageUrl: `${origin}/m/${unwrap(manage).manageToken}`,
+      });
     });
-  }
-
-  async function copyManageLink() {
-    if (!manageLink) return;
-    await navigator.clipboard.writeText(manageLink);
-    setManageCopied(true);
-    setTimeout(() => setManageCopied(false), 2000);
   }
 
   const lifecycle = (path: '/disable' | '/enable' | '/expire') => () =>
@@ -100,9 +103,9 @@ export function ManageExperience({ experience }: { experience: Detail }) {
     <>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <Link href="/dashboard" className="text-sm text-ink-500 hover:underline">
-            ← Dashboard
-          </Link>
+          <p className="text-xs font-bold tracking-widest text-brand-700 uppercase">
+            Manage Surprise
+          </p>
           <h1 className="mt-1 break-words text-2xl font-semibold">
             {experience.title || 'Untitled'}
           </h1>
@@ -117,10 +120,10 @@ export function ManageExperience({ experience }: { experience: Detail }) {
           </div>
         </div>
         <Link
-          href={`/experiences/${id}/edit`}
+          href={`/experiences/${id}/${experience.mode === 'TEMPLATE' ? 'personalize' : 'edit'}`}
           className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-brand-600 px-4 text-sm font-medium text-white sm:w-auto"
         >
-          Edit
+          {experience.mode === 'TEMPLATE' ? 'Personalize' : 'Edit'}
         </Link>
       </div>
 
@@ -137,50 +140,83 @@ export function ManageExperience({ experience }: { experience: Detail }) {
         <Alert tone="info">
           <strong className="font-semibold">
             {experience.tier.required === 'PRO'
-              ? 'This is a custom build'
-              : 'This template is part of Plus'}
+              ? 'This is a PRO experience'
+              : 'This template is part of PLUS'}
           </strong>
           <p className="mt-1 text-sm">
             {experience.tier.required === 'PRO'
-              ? 'You changed which steps this surprise has, so it counts as your own sequence rather than a template. Unlock the custom plan to share it.'
-              : 'Unlock it to share this surprise. Everything you have written is saved either way.'}
+              ? 'You are building your own experience. Publish with PRO to share it — everything you have made is saved either way.'
+              : 'Publish with PLUS to share it. Everything you have personalised is saved either way.'}
           </p>
         </Alert>
       ) : null}
       {!experience.tier.satisfied ? <UnlockPanel experienceId={id} /> : null}
 
-      <Card>
-        <h2 className="font-semibold">Your link back to this surprise</h2>
-        <p className="mt-2 text-sm text-ink-600">
-          You have no account, so this browser is what remembers this surprise. Save this link and
-          you can edit it and see the replies from any device — after clearing your browser, or on
-          your phone. Keep it to yourself: it is not the link you send.
-        </p>
-        <div className="mt-3 space-y-2">
-          {manageLink ? (
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                readOnly
-                value={manageLink}
-                aria-label="Your link back to this surprise"
-                onFocus={(e) => e.target.select()}
-              />
-              <Button onClick={copyManageLink}>{manageCopied ? 'Copied' : 'Copy'}</Button>
-            </div>
-          ) : (
-            <Button busy={busy === 'manage'} onClick={showManageLink}>
-              Show my link
-            </Button>
-          )}
-        </div>
-      </Card>
+      {!everPublished ? (
+        <Card className="bg-gradient-to-br from-brand-50 to-white" data-testid="unpublished-card">
+          <h2 className="font-semibold">Not published yet</h2>
+          <p className="mt-1 text-sm text-ink-600">
+            This surprise is unfinished and only on this device. It is kept for 30 days after you
+            last open it. Publish it to get your recipient link and your private management link.
+          </p>
+          <Link
+            href={`/experiences/${id}/${experience.mode === 'TEMPLATE' ? 'personalize' : 'edit'}`}
+            className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white sm:w-auto"
+          >
+            Continue and publish
+          </Link>
+        </Card>
+      ) : (
+        <section
+          className="rounded-2xl bg-ink-900 p-4 text-white shadow-sm sm:p-6"
+          data-testid="private-link-card"
+        >
+          <h2 className="flex items-center gap-2 font-semibold">
+            <span aria-hidden="true">🔑</span> Your Private Management Link
+          </h2>
+          <p className="mt-1 text-sm text-ink-200">
+            Anyone with this private link may be able to manage your experience. Keep it private —
+            it is not the link you send.
+          </p>
+          <div className="mt-3 space-y-3">
+            {privateLinks ? (
+              <>
+                <div className="flex gap-2">
+                  <Input
+                    readOnly
+                    value={privateLinks.manageUrl}
+                    aria-label="Private management link"
+                    data-testid="private-link"
+                    onFocus={(e) => e.target.select()}
+                  />
+                </div>
+                <div className="[&_button]:bg-white/10 [&_button]:text-white [&_button]:ring-white/20">
+                  <PrivateLinkActions links={privateLinks} />
+                </div>
+              </>
+            ) : (
+              <Button
+                variant="secondary"
+                busy={busy === 'manage'}
+                onClick={showManageLink}
+                data-testid="show-private-link"
+              >
+                Show private link
+              </Button>
+            )}
+            <p className="rounded-xl bg-amber-300/15 p-3 text-sm text-amber-50 ring-1 ring-amber-200/30">
+              {PRIVATE_LINK_WARNING}
+            </p>
+          </div>
+        </section>
+      )}
 
       <Card>
-        <h2 className="font-semibold">Share</h2>
+        <h2 className="flex items-center gap-2 font-semibold">
+          <span aria-hidden="true">💌</span> Recipient Link
+        </h2>
         {!everPublished ? (
-          <p className="mt-2 text-sm text-ink-600">
-            Publish your experience from the editor to get a private link.
-          </p>
+          <p className="mt-2 text-sm text-ink-600">You get it when you publish.</p>
         ) : (
           <div className="mt-3 space-y-3">
             {link ? (
@@ -188,7 +224,7 @@ export function ManageExperience({ experience }: { experience: Detail }) {
                 <Input
                   readOnly
                   value={link}
-                  aria-label="Private link"
+                  aria-label="Recipient link"
                   onFocus={(e) => e.currentTarget.select()}
                 />
                 <Button onClick={copy} variant="secondary" className="shrink-0">
@@ -198,7 +234,7 @@ export function ManageExperience({ experience }: { experience: Detail }) {
               </div>
             ) : (
               <Button onClick={showLink} busy={busy === 'link'} variant="secondary">
-                Show private link
+                Show recipient link
               </Button>
             )}
             <p className="text-xs text-ink-500">
@@ -241,8 +277,9 @@ export function ManageExperience({ experience }: { experience: Detail }) {
         </dl>
         {experience.keptUntil ? (
           <p className="mt-3 text-xs text-ink-500">
-            Surprises nobody has used for a year are deleted. Every time you open your dashboard, or
-            they open the link, it is kept for another year.
+            {everPublished
+              ? 'Surprises nobody has used for a year are deleted. Each time you open your private link, or they open theirs, it is kept for another year.'
+              : 'Unfinished surprises are deleted 30 days after they were last opened.'}
           </p>
         ) : null}
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -402,7 +439,7 @@ export function ManageExperience({ experience }: { experience: Detail }) {
                         params: { path: { id }, header: { 'Idempotency-Key': idempotencyKey() } },
                       }),
                     ),
-                  () => router.push('/dashboard'),
+                  () => router.push('/'),
                 )
               }
             >

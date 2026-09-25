@@ -22,6 +22,8 @@ export interface TierCheckInput {
   stepTypes: readonly string[];
   /** Whether any step branches (see flow.ts). Templates are linear, so branching is custom. */
   hasRouting?: boolean;
+  /** The creator moved to the full builder ("Customize with PRO"); see structure.ts. */
+  customized?: boolean;
 }
 
 /**
@@ -31,10 +33,11 @@ export interface TierCheckInput {
  * changing the theme of a free template stays free, because personalising a template is the
  * whole point of one. Changing which steps exist — adding, removing or reordering types — is
  * building your own sequence, which is the PRO capability. A draft started from blank is
- * custom by definition.
+ * custom by definition, and so is a template the creator chose to customise with PRO.
  */
 export function requiredTier(input: TierCheckInput): Tier {
   if (input.templateTier === null || input.templateStepTypes === null) return 'PRO';
+  if (input.customized) return 'PRO';
   if (input.hasRouting) return 'PRO';
   const sameShape =
     input.templateStepTypes.length === input.stepTypes.length &&

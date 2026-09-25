@@ -94,6 +94,12 @@ describe('manage links', () => {
     );
     const listed = await ctx.http.get(`${API}/experiences`).set(scoped);
     expect(listed.body.items.map((i: { id: string }) => i.id)).toEqual([kept.body.id]);
+
+    // The private link says which surprise it opens (so /m/<token> can go straight there);
+    // the creator's own browser key opens no single surprise.
+    const me = await ctx.http.get(`${API}/me`).set(scoped);
+    expect(me.body.managedExperienceId).toBe(kept.body.id);
+    expect((await alice.get('/me')).body.managedExperienceId).toBeNull();
   });
 
   it('lets a browser with its own owner token and a manage link keep creating (same owner)', async () => {

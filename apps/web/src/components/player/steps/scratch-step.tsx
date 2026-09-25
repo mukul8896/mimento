@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useFx } from '../fx/fx';
 import { accentButton, outlineButton } from '../theme';
 import type { StepProps } from './types';
+import { Editable } from '../editable';
 
 const REVEAL_THRESHOLD = 0.45;
 
@@ -93,60 +94,68 @@ export function ScratchStep({ step, media, busy, submit }: StepProps<'SCRATCH_RE
 
   return (
     <div className="space-y-5 text-center">
-      <h2 className="text-[1.5em] font-bold leading-tight">{cfg.instructions}</h2>
-      <div
-        ref={card}
-        className="relative mx-auto aspect-[4/3] w-full max-w-sm overflow-hidden rounded-3xl bg-[var(--mp-surface)] shadow-md"
-      >
+      <Editable field="Instructions" block>
+        <h2 className="text-[1.5em] font-bold leading-tight">{cfg.instructions}</h2>
+      </Editable>
+      <Editable field="Hidden message" block>
         <div
-          aria-hidden={!revealed}
-          className="flex h-full flex-col items-center justify-center gap-3 p-4"
-          data-testid="scratch-content"
+          ref={card}
+          className="relative mx-auto aspect-[4/3] w-full max-w-sm overflow-hidden rounded-3xl bg-[var(--mp-surface)] shadow-md"
         >
-          {image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={image.url}
-              alt={revealed ? cfg.hiddenMediaAlt : ''}
-              referrerPolicy="no-referrer"
-              className="max-h-40 max-w-full rounded-xl object-contain"
+          <div
+            aria-hidden={!revealed}
+            className="flex h-full flex-col items-center justify-center gap-3 p-4"
+            data-testid="scratch-content"
+          >
+            {image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={image.url}
+                alt={revealed ? cfg.hiddenMediaAlt : ''}
+                referrerPolicy="no-referrer"
+                className="max-h-40 max-w-full rounded-xl object-contain"
+              />
+            ) : null}
+            {cfg.hiddenText ? (
+              <p className="text-[1.25em] font-semibold">{cfg.hiddenText}</p>
+            ) : null}
+          </div>
+          {!revealed ? (
+            <canvas
+              ref={canvas}
+              aria-hidden="true"
+              className="absolute inset-0 size-full touch-none cursor-crosshair"
+              onPointerDown={(e) => {
+                drawing.current = true;
+                e.currentTarget.setPointerCapture(e.pointerId);
+                scratch(e);
+              }}
+              onPointerMove={scratch}
+              onPointerUp={() => {
+                drawing.current = false;
+                checkCleared();
+              }}
+              onPointerCancel={() => {
+                drawing.current = false;
+              }}
             />
           ) : null}
-          {cfg.hiddenText ? <p className="text-[1.25em] font-semibold">{cfg.hiddenText}</p> : null}
         </div>
-        {!revealed ? (
-          <canvas
-            ref={canvas}
-            aria-hidden="true"
-            className="absolute inset-0 size-full touch-none cursor-crosshair"
-            onPointerDown={(e) => {
-              drawing.current = true;
-              e.currentTarget.setPointerCapture(e.pointerId);
-              scratch(e);
-            }}
-            onPointerMove={scratch}
-            onPointerUp={() => {
-              drawing.current = false;
-              checkCleared();
-            }}
-            onPointerCancel={() => {
-              drawing.current = false;
-            }}
-          />
-        ) : null}
-      </div>
+      </Editable>
       <div aria-live="polite" className="sr-only">
         {revealed ? `Revealed: ${cfg.hiddenText || cfg.hiddenMediaAlt}` : ''}
       </div>
       {revealed ? (
-        <button
-          type="button"
-          className={`${accentButton} w-full sm:w-auto`}
-          disabled={busy}
-          onClick={() => void submit({ kind: 'ACK' })}
-        >
-          {cfg.buttonLabel}
-        </button>
+        <Editable field="Button label" block>
+          <button
+            type="button"
+            className={`${accentButton} w-full sm:w-auto`}
+            disabled={busy}
+            onClick={() => void submit({ kind: 'ACK' })}
+          >
+            {cfg.buttonLabel}
+          </button>
+        </Editable>
       ) : (
         <button
           type="button"

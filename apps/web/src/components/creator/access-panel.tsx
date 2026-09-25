@@ -5,7 +5,7 @@ import type { Schemas } from '@momentpath/api-client';
 import { Alert, Button, Card, Field, Input } from '@momentpath/design-system';
 import { ApiError, browserApi, unwrap } from '@/lib/api/browser';
 
-type Access = Schemas['AccessSettingsDto_Output'];
+export type Access = Schemas['AccessSettingsDto_Output'];
 
 function toLocalInput(iso: string | null): string {
   if (!iso) return '';
@@ -14,17 +14,42 @@ function toLocalInput(iso: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+export function formatOpensAt(iso: string): string {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
+    new Date(iso),
+  );
+}
+
+function Saved({ show }: { show: boolean }) {
+  return show ? (
+    <span role="status" className="self-center text-sm font-medium text-emerald-700">
+      ✓ Saved
+    </span>
+  ) : null;
+}
+
 /**
  * Scheduled opening, PIN and short link for one surprise. Every rule (a short link needs a PIN,
  * names are unique, PINs are 4–8 digits) is enforced by the API; this only collects input.
+ * `bare` drops the card so it can sit inside the Personalize page's Delivery & Privacy sheet.
  */
-export function AccessPanel({ experienceId, initial }: { experienceId: string; initial: Access }) {
+export function AccessPanel({
+  experienceId,
+  initial,
+  bare = false,
+  onChange,
+}: {
+  experienceId: string;
+  initial: Access;
+  bare?: boolean;
+  onChange?: (access: Access) => void;
+}) {
   const [access, setAccess] = useState(initial);
   const [opensAt, setOpensAt] = useState(toLocalInput(initial.opensAt));
   const [pin, setPin] = useState('');
   const [slug, setSlug] = useState(initial.slug ?? '');
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ section: string; message: string } | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -43,34 +68,41 @@ export function AccessPanel({ experienceId, initial }: { experienceId: string; i
       setSlug(next.slug ?? '');
       setPin('');
       setSaved(name);
+      onChange?.(next);
     } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? (err.problem.issues?.[0]?.message ?? err.problem.detail ?? err.problem.title)
-          : 'Something went wrong.',
-      );
+      setError({
+        section: name,
+        message:
+          err instanceof ApiError
+            ? (err.problem.issues?.[0]?.message ?? err.problem.detail ?? err.problem.title)
+            : 'Something went wrong. Please try again.',
+      });
     } finally {
       setBusy(null);
     }
   }
 
+  const problem = (section: string) =>
+    error?.section === section ? <Alert tone="danger">{error.message}</Alert> : null;
+
   // Relative while rendering (the server has no window); made absolute when copied.
   const shortPath = access.slug ? `/p/${access.slug}` : null;
+  const buttons = 'grid gap-2 sm:flex sm:flex-wrap';
 
-  return (
-    <Card data-testid="access-panel">
-      <h2 className="font-semibold">Opening, PIN and short link</h2>
-      {error ? (
-        <div className="mt-3">
-          <Alert tone="danger">{error}</Alert>
+  const body = (
+    <div className="space-y-6">
+      <section className="space-y-3" aria-labelledby={`${experienceId}-opens`}>
+        <div>
+          <h3 id={`${experienceId}-opens`} className="font-semibold">
+            ⏰ Opens at
+          </h3>
+          <p className="mt-1 text-sm text-ink-600">
+            {access.opensAt
+              ? `Opens ${formatOpensAt(access.opensAt)}. Until then they see a countdown and nothing else.`
+              : 'Opens as soon as they get the link. Pick a time to make them wait for it — they see a countdown until then.'}
+          </p>
         </div>
-      ) : null}
-
-      <section className="mt-4 space-y-2">
-        <Field
-          label="Opens at (optional)"
-          hint="Before this, the link shows a countdown and nothing can be opened."
-        >
+        <Field label="Opening date and time (optional)">
           {(p) => (
             <Input
               type="datetime-local"
@@ -80,10 +112,11 @@ export function AccessPanel({ experienceId, initial }: { experienceId: string; i
             />
           )}
         </Field>
-        <div className="flex flex-wrap gap-2">
+        {problem('opening')}
+        <div className={buttons}>
           <Button
-            size="sm"
             busy={busy === 'opening'}
+            disabled={opensAt === toLocalInput(access.opensAt)}
             onClick={() =>
               save('opening', { opensAt: opensAt ? new Date(opensAt).toISOString() : null })
             }
@@ -92,8 +125,7 @@ export function AccessPanel({ experienceId, initial }: { experienceId: string; i
           </Button>
           {access.opensAt ? (
             <Button
-              size="sm"
-              variant="ghost"
+              variant="secondary"
               onClick={() => {
                 setOpensAt('');
                 void save('opening', { opensAt: null });
@@ -102,31 +134,42 @@ export function AccessPanel({ experienceId, initial }: { experienceId: string; i
               Open now
             </Button>
           ) : null}
-          {saved === 'opening' ? (
-            <span role="status" className="self-center text-sm text-emerald-700">
-              Saved
-            </span>
-          ) : null}
+          <Saved show={saved === 'opening'} />
         </div>
       </section>
 
-      <section className="mt-6 space-y-2 border-t border-ink-100 pt-4">
-        <h3 className="text-sm font-medium">PIN {access.hasPin ? '(set)' : '(none)'}</h3>
-        <p className="text-sm text-ink-600">
-          Recipients enter it before anything is shown, even the title. Ten wrong tries lock the
-          surprise for 15 minutes. Tell them the PIN separately from the link.
+      <section
+        className="space-y-3 border-t border-ink-100 pt-5"
+        aria-labelledby={`${experienceId}-pin`}
+      >
+        <div>
+          <h3 id={`${experienceId}-pin`} className="font-semibold">
+            🔒 PIN {access.hasPin ? <span className="text-emerald-700">· On</span> : null}
+          </h3>
+          <p className="mt-1 text-sm text-ink-600">
+            They type it before anything is shown, even the title. Ten wrong tries lock the surprise
+            for 15 minutes, then they can try again.
+          </p>
+        </div>
+        <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 ring-1 ring-amber-200">
+          Share the PIN separately from the link.
         </p>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            aria-label={access.hasPin ? 'New PIN' : 'PIN'}
-            inputMode="numeric"
-            placeholder="4–8 digits"
-            maxLength={8}
-            value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-          />
+        <Field label={access.hasPin ? 'New PIN' : 'PIN'} hint="4 to 8 digits">
+          {(p) => (
+            <Input
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="e.g. 2412"
+              maxLength={8}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+              {...p}
+            />
+          )}
+        </Field>
+        {problem('pin')}
+        <div className={buttons}>
           <Button
-            size="sm"
             busy={busy === 'pin'}
             disabled={!/^\d{4,8}$/.test(pin)}
             onClick={() => save('pin', { pin })}
@@ -134,35 +177,52 @@ export function AccessPanel({ experienceId, initial }: { experienceId: string; i
             {access.hasPin ? 'Change PIN' : 'Set PIN'}
           </Button>
           {access.hasPin ? (
-            <Button size="sm" variant="ghost" onClick={() => save('pin', { pin: null })}>
+            <Button variant="secondary" onClick={() => save('pin', { pin: null })}>
               Remove PIN
             </Button>
           ) : null}
+          <Saved show={saved === 'pin'} />
         </div>
-        {saved === 'pin' ? (
-          <p role="status" className="text-sm text-emerald-700">
-            Saved
-          </p>
-        ) : null}
       </section>
 
-      <section className="mt-6 space-y-2 border-t border-ink-100 pt-4">
-        <h3 className="text-sm font-medium">Short link</h3>
-        <p className="text-sm text-ink-600">
-          An easy address to write on a card. Anyone could guess it, so it only works with the PIN.
+      <section
+        className="space-y-3 border-t border-ink-100 pt-5"
+        aria-labelledby={`${experienceId}-slug`}
+      >
+        <div>
+          <h3 id={`${experienceId}-slug`} className="font-semibold">
+            🔗 Short link
+          </h3>
+          <p className="mt-1 text-sm text-ink-600">
+            An easy address to write on a card, like wishrevealer.com/p/happy-birthday-priya.
+          </p>
+        </div>
+        <p className="rounded-xl bg-ink-50 px-3 py-2 text-sm text-ink-700 ring-1 ring-ink-100">
+          Anyone could guess this address, so a short link only works together with a PIN.
         </p>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <span className="text-sm text-ink-500">/p/</span>
-          <Input
-            aria-label="Short link name"
-            placeholder="priya-birthday"
-            maxLength={40}
-            value={slug}
-            disabled={!access.hasPin}
-            onChange={(e) => setSlug(e.target.value.toLowerCase())}
-          />
+        <Field
+          label="Short link name"
+          hint={access.hasPin ? 'Letters, numbers and dashes.' : 'Set a PIN first.'}
+        >
+          {(p) => (
+            <div className="flex items-center gap-2">
+              <span className="shrink-0 text-sm text-ink-500">/p/</span>
+              <Input
+                placeholder="happy-birthday-priya"
+                autoCapitalize="none"
+                autoComplete="off"
+                maxLength={40}
+                value={slug}
+                disabled={!access.hasPin}
+                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                {...p}
+              />
+            </div>
+          )}
+        </Field>
+        {problem('slug')}
+        <div className={buttons}>
           <Button
-            size="sm"
             busy={busy === 'slug'}
             disabled={!access.hasPin || slug.trim() === '' || slug === access.slug}
             onClick={() => save('slug', { slug })}
@@ -170,17 +230,23 @@ export function AccessPanel({ experienceId, initial }: { experienceId: string; i
             Save link
           </Button>
           {access.slug ? (
-            <Button size="sm" variant="ghost" onClick={() => save('slug', { slug: null })}>
-              Remove
+            <Button variant="secondary" onClick={() => save('slug', { slug: null })}>
+              Remove link
             </Button>
           ) : null}
+          <Saved show={saved === 'slug'} />
         </div>
-        {!access.hasPin ? <p className="text-xs text-ink-500">Set a PIN first.</p> : null}
         {shortPath ? (
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input readOnly value={shortPath} aria-label="Short link" data-testid="short-link" />
+          <div className="flex gap-2 rounded-xl bg-brand-50 p-2 ring-1 ring-brand-100">
+            <Input
+              readOnly
+              value={shortPath}
+              aria-label="Short link"
+              data-testid="short-link"
+              className="bg-white"
+              onFocus={(e) => e.currentTarget.select()}
+            />
             <Button
-              size="sm"
               variant="secondary"
               onClick={async () => {
                 await navigator.clipboard.writeText(`${window.location.origin}${shortPath}`);
@@ -192,6 +258,14 @@ export function AccessPanel({ experienceId, initial }: { experienceId: string; i
           </div>
         ) : null}
       </section>
+    </div>
+  );
+
+  if (bare) return <div data-testid="access-panel">{body}</div>;
+  return (
+    <Card data-testid="access-panel">
+      <h2 className="mb-4 font-semibold">Delivery & Privacy</h2>
+      {body}
     </Card>
   );
 }

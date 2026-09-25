@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { expectAccessible, expectNoHorizontalScroll } from './helpers';
+import { expectAccessible, expectNoHorizontalScroll, startFresh } from './helpers';
 import { authFile } from './users';
 
 function consoleErrors(page: Page): string[] {
@@ -39,7 +39,7 @@ test('landing: open the gift, play the demo, browse and play a template', async 
   await gallery.getByTestId('template-diwali-wishes').getByRole('button').first().click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('heading', { name: /Happy Diwali, Anjali/ })).toBeVisible();
-  await expect(dialog.getByRole('link', { name: 'Use this template' })).toHaveAttribute(
+  await expect(dialog.getByRole('link', { name: 'Use Template' })).toHaveAttribute(
     'href',
     '/new?template=diwali-wishes',
   );
@@ -52,22 +52,18 @@ test('landing: open the gift, play the demo, browse and play a template', async 
 test.describe('creator', () => {
   test.use({ storageState: authFile('alice') });
 
-  test('personalises a template from a deep link and lands in the editor', async ({
-    page,
-    isMobile,
-  }) => {
-    await page.goto('/new?template=diwali-wishes');
+  test('personalises a template from a deep link and lands in its preview', async ({ page }) => {
+    await startFresh(page, async () => {
+      await page.goto('/new?template=diwali-wishes');
+    });
     const form = page.getByTestId('personalise-form');
     await expect(form).toBeVisible();
     await expect(page.getByTestId('personalise-create')).toBeDisabled(); // name is required
     await form.getByLabel('Their name').fill('Asha');
     await form.getByLabel('Your name (optional)').fill('Dev');
     await page.getByTestId('personalise-create').click();
-    await expect(page).toHaveURL(/\/edit$/);
-    if (isMobile) await page.getByRole('button', { name: 'Steps', exact: true }).click();
-    await expect(page.getByTestId('step-list')).toContainText('Happy Diwali, Asha!');
-    await expect(page.getByRole('textbox', { name: 'Experience title' })).toHaveValue(
-      'Happy Diwali, Asha!',
-    );
+    await expect(page).toHaveURL(/\/personalize$/);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Happy Diwali, Asha!');
+    await expect(page.getByTestId('preview')).toContainText('Asha');
   });
 });

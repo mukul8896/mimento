@@ -282,3 +282,26 @@ body {
     height: 60%;
   }
 }
+
+/* Personalize: what can be tapped to edit in the preview. */
+.mp-player .mp-editable {
+  cursor: pointer;
+  border-radius: 14px;
+  outline: 2px dashed color-mix(in srgb, var(--color-brand-500) 75%, transparent);
+  outline-offset: 5px;
+  transition: outline-color 0.15s ease;
+}
+.mp-player .mp-editable:hover,
+.mp-player .mp-editable:focus-within {
+  outline-style: solid;
+  outline-color: var(--color-brand-600);
+}
+/* In edit mode the call-to-action glow would compete with the edit markers. */
+.mp-player .mp-editable .mp-cta {
+  animation: none;
+}
+
+/* Personalize: tap-to-edit shows only the tapped field of a step. */
+[data-focus-hide] {
+  display: none !important;
+}

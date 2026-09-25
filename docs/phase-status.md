@@ -1,6 +1,6 @@
 # Phase status
 
-_Updated 22 Sep 2026._ Phase 1 implemented; awaiting owner review before Phase 2.
+_Updated 25 Sep 2026._ Phase 1 implemented; awaiting owner review before Phase 2.
 
 ## Phase 1 — Basic usable MVP
 
@@ -60,6 +60,19 @@ _Updated 22 Sep 2026._ Phase 1 implemented; awaiting owner review before Phase 2
 | 2b Media and workers  | Worker process (Postgres jobs, no Redis: ADR 0007), ClamAV scanning, WebP/GIF metadata, re-encoded copies | **Built and tested**; real clamd verified locally                                                                                  |
 | 2c Branching          | Answer-based routing, React Flow editor, graph validation, draft version history                          | **Built and tested** (form-based routes + React Flow view; history/restore)                                                        |
 | 2d Richer experiences | New step types, scheduled publish/reveal, PIN, email notifications, multilingual, analytics, custom slugs | **Built and tested** (2d-1 step types; 2d-2 scheduling, PIN, short links, analytics). Email and translations deferred by the owner |
+
+## Template personalization & PRO — requested 25 Sep 2026
+
+| Area                                     | Evidence                                                                                 |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Templates keep their structure (API)     | `tiers.int.test.ts` (STRUCTURE_LOCKED on add/remove/reorder/branch), `structure.test.ts` |
+| Customize with PRO; template untouched   | `tiers.int.test.ts`, `e2e/creator.spec.ts`                                               |
+| Personalize in the preview (tap to edit) | `e2e/creator.spec.ts`, `e2e/personalize.mobile.spec.ts` (desktop + 360px touch)          |
+| Delivery & Privacy on the same page      | `e2e/personalize.mobile.spec.ts` (opening time, PIN, short link, countdown)              |
+| Publish always in view                   | `e2e/personalize.mobile.spec.ts`                                                         |
+| Publish → Payment → Published            | `payments.int.test.ts` (return page, webhook, once only, paid-but-blocked keeps payment) |
+| Draft kept when payment fails            | `payments.int.test.ts`, `e2e/site.spec.ts` (return page)                                 |
+| Create from Scratch (PRO)                | `e2e/creator.spec.ts`                                                                    |
 
 ### 2a acceptance
 

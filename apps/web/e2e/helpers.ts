@@ -14,6 +14,7 @@ interface Step {
   key: string;
   type: string;
   config: Json;
+  next?: unknown;
 }
 interface Draft {
   revision: number;
@@ -42,7 +43,15 @@ export async function createPublished(
   const { id } = (await created.json()) as { id: string };
   let draft = (await (await api.get(`/bff/api/v1/experiences/${id}/draft`)).json()) as Draft;
   if (mutate) {
+    const shape = (d: Draft) => d.steps.map((s) => `${s.key}:${s.type}`).join(',');
+    const before = shape(draft);
     mutate(draft);
+    // Changing which steps exist, their order or the flow is PRO: "Customize with PRO" first,
+    // exactly as a creator would. Rewording a template needs nothing.
+    if (shape(draft) !== before || draft.steps.some((s) => 'next' in s && s.next)) {
+      const customized = await api.post(`/bff/api/v1/experiences/${id}/customize`);
+      expect(customized.status(), await customized.text()).toBe(200);
+    }
     const saved = await api.put(`/bff/api/v1/experiences/${id}/draft`, {
       data: {
         revision: draft.revision,
@@ -122,4 +131,23 @@ export async function expectAccessible(page: Page, include?: string) {
 /** Clicks through a message-type step. */
 export async function continueStep(page: Page, label: RegExp | string = /continue|let’s go/i) {
   await page.getByRole('button', { name: label }).click();
+}
+
+/**
+ * Starts something on /new the way a creator does. A template this browser already changed asks
+ * "Continue, or start over?" first; tests want a fresh one, so they start over.
+ */
+export async function startFresh(page: Page, start: () => Promise<void>) {
+  await start();
+  const discard = page.getByTestId('start-over');
+  await Promise.race([
+    page.waitForURL(/\/(personalize|edit)$/),
+    discard.waitFor({ state: 'visible' }),
+    page.getByTestId('personalise-form').waitFor({ state: 'visible' }),
+  ]);
+  if (await discard.isVisible()) await discard.click();
+}
+
+export function useTemplate(page: Page, name: RegExp) {
+  return startFresh(page, () => page.getByRole('button', { name }).first().click());
 }

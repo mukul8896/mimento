@@ -16,9 +16,10 @@ export default function TermsPage() {
       <PolicySection title="The service">
         <p>
           Wish Revealer lets you build an interactive surprise and share it with a private link. You
-          do not need an account: this browser, and the manage and recovery links we give you, are
-          how you get back to what you made. Keep those links safe — we cannot recover access
-          without them.
+          do not need an account. When you publish, you get a recipient link to share and a private
+          management link for you. Keep the private link safe: WishRevealer does not require an
+          account, so this private link is how you access and manage your surprise. We may not be
+          able to restore access if you lose it.
         </p>
       </PolicySection>
       <PolicySection title="What you may not create">

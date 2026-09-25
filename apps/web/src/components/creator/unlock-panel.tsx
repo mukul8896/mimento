@@ -67,7 +67,8 @@ export function UnlockPanel({ experienceId }: { experienceId: string }) {
       const res = unwrap(
         await api.POST('/api/v1/experiences/{id}/checkout', {
           params: { path: { id: experienceId } },
-          body: { provider: offer.provider },
+          // Paying here is for sharing it, so it goes live as soon as the payment is confirmed.
+          body: { provider: offer.provider, publish: true },
         }),
       );
       window.location.assign(res.checkoutUrl);
@@ -83,7 +84,7 @@ export function UnlockPanel({ experienceId }: { experienceId: string }) {
 
   return (
     <Card id="unlock" data-testid="unlock-panel">
-      <h2 className="font-semibold">Unlock {TIER_NAME[options.tier.required]}</h2>
+      <h2 className="font-semibold">Publish with {TIER_NAME[options.tier.required]}</h2>
       {offer ? (
         <div className="mt-3 space-y-3">
           <p className="text-3xl font-semibold" data-testid="unlock-price">
@@ -95,7 +96,7 @@ export function UnlockPanel({ experienceId }: { experienceId: string }) {
           <p className="text-sm text-ink-600">{METHODS[offer.provider]}</p>
           {error ? <Alert tone="danger">{error}</Alert> : null}
           <Button busy={busy} onClick={pay} className="w-full sm:w-auto" data-testid="unlock-pay">
-            Pay {formatPrice(offer.amountMinor, offer.currency)}
+            Pay {formatPrice(offer.amountMinor, offer.currency)} & publish
           </Button>
           {other ? (
             <p className="text-sm">

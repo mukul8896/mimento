@@ -28,6 +28,12 @@ export interface StepFormContext {
   flush: () => Promise<boolean>;
   hasGiftSecret: (stepKey: string) => boolean;
   setGiftSecretSaved: (stepKey: string, saved: boolean) => void;
+  /**
+   * Personalising a template (PLUS): words, photos, labels and the gift can change; controls
+   * that change how the experience works — answer choices, Maybe, No-button behaviour, waiting
+   * for a countdown — are hidden. The API refuses structural changes regardless.
+   */
+  locked?: boolean;
 }
 
 interface FormProps<T extends StepType> {
@@ -210,7 +216,7 @@ function ImageForm({ step, onChange, ctx }: FormProps<'IMAGE'>) {
   );
 }
 
-function MultipleChoiceForm({ step, onChange }: FormProps<'MULTIPLE_CHOICE'>) {
+function MultipleChoiceForm({ step, onChange, ctx }: FormProps<'MULTIPLE_CHOICE'>) {
   const c = step.config;
   const setOptions = (options: typeof c.options) => {
     const correctOptionId = options.some((o) => o.id === c.correctOptionId)
@@ -269,18 +275,20 @@ function MultipleChoiceForm({ step, onChange }: FormProps<'MULTIPLE_CHOICE'>) {
                 }
               />
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label={`Remove answer ${i + 1}`}
-              disabled={c.options.length <= 2}
-              onClick={() => setOptions(c.options.filter((x) => x.id !== o.id))}
-            >
-              ✕
-            </Button>
+            {ctx.locked ? null : (
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`Remove answer ${i + 1}`}
+                disabled={c.options.length <= 2}
+                onClick={() => setOptions(c.options.filter((x) => x.id !== o.id))}
+              >
+                ✕
+              </Button>
+            )}
           </div>
         ))}
-        {c.options.length < 6 ? (
+        {c.options.length < 6 && !ctx.locked ? (
           <Button
             variant="secondary"
             size="sm"
@@ -354,7 +362,7 @@ const NO_MODES: { mode: NoButtonConfig['mode']; title: string; text: string }[] 
   { mode: 'EVASIVE', title: 'Always dodges', text: 'No can never be chosen.' },
 ];
 
-function YesNoForm({ step, onChange }: FormProps<'YES_NO_CHOICE'>) {
+function YesNoForm({ step, onChange, ctx }: FormProps<'YES_NO_CHOICE'>) {
   const c = step.config;
   const setMode = (mode: NoButtonConfig['mode']) => {
     const noButton: NoButtonConfig =
@@ -390,11 +398,13 @@ function YesNoForm({ step, onChange }: FormProps<'YES_NO_CHOICE'>) {
           onChange={(noLabel) => onChange({ ...c, noLabel })}
         />
       </div>
-      <Switch
-        label="Show a Maybe option"
-        checked={c.maybeEnabled}
-        onChange={(maybeEnabled) => onChange({ ...c, maybeEnabled })}
-      />
+      {ctx.locked ? null : (
+        <Switch
+          label="Show a Maybe option"
+          checked={c.maybeEnabled}
+          onChange={(maybeEnabled) => onChange({ ...c, maybeEnabled })}
+        />
+      )}
       {c.maybeEnabled ? (
         <TextField
           label="Maybe label"
@@ -403,7 +413,7 @@ function YesNoForm({ step, onChange }: FormProps<'YES_NO_CHOICE'>) {
           onChange={(maybeLabel) => onChange({ ...c, maybeLabel })}
         />
       ) : null}
-      <fieldset>
+      <fieldset hidden={ctx.locked}>
         <legend className="text-sm font-medium text-ink-800">No button behaviour</legend>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {NO_MODES.map((m) => (
@@ -426,7 +436,7 @@ function YesNoForm({ step, onChange }: FormProps<'YES_NO_CHOICE'>) {
           ))}
         </div>
       </fieldset>
-      {c.noButton.mode === 'AFTER_ATTEMPTS' ? (
+      {c.noButton.mode === 'AFTER_ATTEMPTS' && !ctx.locked ? (
         <Field
           label="Dodges before No can be clicked"
           hint={`Between ${NO_BUTTON_LIMITS.attempts.min} and ${NO_BUTTON_LIMITS.attempts.max}.`}
@@ -456,7 +466,7 @@ function YesNoForm({ step, onChange }: FormProps<'YES_NO_CHOICE'>) {
           )}
         </Field>
       ) : null}
-      {c.noButton.mode === 'AFTER_DELAY' ? (
+      {c.noButton.mode === 'AFTER_DELAY' && !ctx.locked ? (
         <Field
           label="Seconds before No can be clicked"
           hint={`Between ${NO_BUTTON_LIMITS.delaySeconds.min} and ${NO_BUTTON_LIMITS.delaySeconds.max}.`}
@@ -689,7 +699,7 @@ function ButtonLabel({ value, onChange }: { value: string; onChange: (v: string)
   return <TextField label="Button label" value={value} maxLength={40} onChange={onChange} />;
 }
 
-function CountdownForm({ step, onChange }: FormProps<'COUNTDOWN'>) {
+function CountdownForm({ step, onChange, ctx }: FormProps<'COUNTDOWN'>) {
   const c = step.config;
   return (
     <div className="space-y-4">
@@ -711,12 +721,14 @@ function CountdownForm({ step, onChange }: FormProps<'COUNTDOWN'>) {
         value={c.message}
         onChange={(message) => onChange({ ...c, message })}
       />
-      <Switch
-        label="Wait for it"
-        description="They can only continue once the countdown reaches zero."
-        checked={c.waitForIt}
-        onChange={(waitForIt) => onChange({ ...c, waitForIt })}
-      />
+      {ctx.locked ? null : (
+        <Switch
+          label="Wait for it"
+          description="They can only continue once the countdown reaches zero."
+          checked={c.waitForIt}
+          onChange={(waitForIt) => onChange({ ...c, waitForIt })}
+        />
+      )}
       <ButtonLabel
         value={c.buttonLabel}
         onChange={(buttonLabel) => onChange({ ...c, buttonLabel })}

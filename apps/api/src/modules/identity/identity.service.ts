@@ -160,6 +160,8 @@ export class IdentityService {
       email: null,
       displayName: null,
       isAdmin: principal.isAdmin,
+      // Set when a private management link authorised this request: the one surprise it opens.
+      managedExperienceId: principal.scopeExperienceId ?? null,
     };
   }
 }

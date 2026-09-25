@@ -26,9 +26,9 @@ async function ownerOf(token: string) {
 }
 
 describe('activity', () => {
-  it('a returning creator keeps themselves and all their surprises active', async () => {
+  it('a returning creator keeps themselves and their published surprises active', async () => {
     const alice = await creator(ctx);
-    const { body: exp } = await alice.post('/experiences', { templateKey: 'date-invitation' });
+    const exp = await publishedFromTemplate(ctx, alice);
     const owner = await ownerOf(alice.token);
     await ctx.prisma.userProfile.update({
       where: { id: owner.id },
@@ -45,8 +45,10 @@ describe('activity', () => {
     expect(after.lastActivityAt.getTime()).toBeGreaterThan(daysAgo(1).getTime());
     expect(after.retentionWarnedAt).toBeNull();
     expect((await ownerOf(alice.token)).lastSeenAt.getTime()).toBeGreaterThan(daysAgo(1).getTime());
-    // The dashboard says how long it is kept: a year from the last use.
-    const keptUntil = new Date(list.body.items[0].keptUntil).getTime();
+    // The manage page says how long it is kept: a year from the last use.
+    const keptUntil = new Date(
+      list.body.items.find((i: { id: string }) => i.id === exp.id).keptUntil,
+    ).getTime();
     expect(Math.abs(keptUntil - (Date.now() + 365 * DAY))).toBeLessThan(DAY);
   });
 
@@ -113,7 +115,7 @@ describe('retention sweep', () => {
 
   it('never touches the operator or surprises used within the year', async () => {
     const dave = await creator(ctx);
-    const { body: exp } = await dave.post('/experiences', {});
+    const exp = await publishedFromTemplate(ctx, dave);
     await ctx.prisma.experience.update({
       where: { id: exp.id },
       data: { lastActivityAt: daysAgo(364) },
@@ -123,5 +125,66 @@ describe('retention sweep', () => {
     expect(still.status).not.toBe('DELETED');
     const operator = await ctx.prisma.userProfile.findUnique({ where: { subject: 'operator' } });
     if (operator) expect(operator.status).toBe('ACTIVE');
+  });
+});
+
+describe('unfinished surprises', () => {
+  it('are temporary: deleted after 30 days nobody opened them, and say so', async () => {
+    const erin = await creator(ctx);
+    const { body: old } = await erin.post('/experiences', { templateKey: 'date-invitation' });
+    const { body: recent } = await erin.post('/experiences', { templateKey: 'anniversary' });
+    const keptUntil = new Date(old.keptUntil).getTime();
+    expect(Math.abs(keptUntil - (Date.now() + 30 * DAY))).toBeLessThan(DAY);
+
+    await ctx.prisma.experience.update({
+      where: { id: old.id },
+      data: { lastActivityAt: daysAgo(31) },
+    });
+    await ctx.prisma.experience.update({
+      where: { id: recent.id },
+      data: { lastActivityAt: daysAgo(29) },
+    });
+    await retention.sweep();
+    expect((await ctx.prisma.experience.findUniqueOrThrow({ where: { id: old.id } })).status).toBe(
+      'DELETED',
+    );
+    expect(
+      (await ctx.prisma.experience.findUniqueOrThrow({ where: { id: recent.id } })).status,
+    ).toBe('DRAFT');
+  });
+
+  it('are kept alive by being opened or saved, not by visiting the site', async () => {
+    const fay = await creator(ctx);
+    const { body: exp } = await fay.post('/experiences', { templateKey: 'date-invitation' });
+    const owner = await ownerOf(fay.token);
+    const age = async (days: number) => {
+      await ctx.prisma.experience.update({
+        where: { id: exp.id },
+        data: { lastActivityAt: daysAgo(days) },
+      });
+      await ctx.prisma.userProfile.update({
+        where: { id: owner.id },
+        data: { lastSeenAt: daysAgo(days) },
+      });
+    };
+
+    await age(20);
+    await fay.get('/me');
+    const visited = await ctx.prisma.experience.findUniqueOrThrow({ where: { id: exp.id } });
+    expect(visited.lastActivityAt.getTime()).toBeLessThan(daysAgo(19).getTime());
+
+    await fay.get(`/experiences/${exp.id}/draft`);
+    const opened = await ctx.prisma.experience.findUniqueOrThrow({ where: { id: exp.id } });
+    expect(opened.lastActivityAt.getTime()).toBeGreaterThan(daysAgo(1).getTime());
+  });
+
+  it('a published surprise keeps the year even if its draft was old', async () => {
+    const gus = await creator(ctx);
+    const { id } = await publishedFromTemplate(ctx, gus);
+    await ctx.prisma.experience.update({ where: { id }, data: { lastActivityAt: daysAgo(40) } });
+    await retention.sweep();
+    expect((await ctx.prisma.experience.findUniqueOrThrow({ where: { id } })).status).toBe(
+      'PUBLISHED',
+    );
   });
 });

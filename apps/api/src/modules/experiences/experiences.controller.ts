@@ -26,6 +26,7 @@ import {
   ExperienceDetailDto,
   ExperienceListQueryDto,
   ExperienceListResponseDto,
+  InProgressResponseDto,
   AccessSettingsDto,
   ManageLinkResponseDto,
   UpdateAccessRequestDto,
@@ -52,6 +53,14 @@ export class ExperiencesController {
     return this.experiences.list(principal, query);
   }
 
+  /** Surprises this browser started and changed but has not published (see in-progress rules). */
+  @Get('in-progress')
+  @Header('cache-control', 'no-store')
+  @ZodResponse({ status: 200, type: InProgressResponseDto })
+  inProgress(@CurrentPrincipal() principal: Principal) {
+    return this.experiences.inProgress(principal);
+  }
+
   @Post()
   @ZodResponse({ status: 201, type: ExperienceDetailDto })
   create(
@@ -74,6 +83,18 @@ export class ExperiencesController {
   @ZodResponse({ status: 200, type: ExperienceDetailDto })
   detail(@CurrentPrincipal() principal: Principal, @Param('id', ParseUUIDPipe) id: string) {
     return this.experiences.detail(principal, id);
+  }
+
+  /** "Customize with PRO": unlocks the full builder for a template-based draft. */
+  @Post(':id/customize')
+  @HttpCode(200)
+  @ZodResponse({ status: 200, type: ExperienceDetailDto })
+  customize(
+    @CurrentPrincipal() principal: Principal,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
+  ) {
+    return this.experiences.customize(principal, id, requestId(req));
   }
 
   /** Scheduled opening, recipient PIN and short link. */

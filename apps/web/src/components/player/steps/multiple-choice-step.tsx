@@ -5,6 +5,7 @@ import { emojiOnly } from '@momentpath/contracts';
 import { useFx } from '../fx/fx';
 import { accentButton } from '../theme';
 import type { StepProps } from './types';
+import { Editable } from '../editable';
 
 export function MultipleChoiceStep({ step, busy, submit }: StepProps<'MULTIPLE_CHOICE'>) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -22,43 +23,46 @@ export function MultipleChoiceStep({ step, busy, submit }: StepProps<'MULTIPLE_C
   return (
     <form onSubmit={onSubmit} className="space-y-5">
       <fieldset className="space-y-3">
-        <legend className="mb-4 text-center text-[1.5em] font-bold leading-tight">
-          {step.config.question}
+        <legend className="mb-4 w-full text-center text-[1.5em] font-bold leading-tight">
+          <Editable field="Question" block>
+            {step.config.question}
+          </Editable>
         </legend>
-        {step.config.options.map((option) => {
+        {step.config.options.map((option, i) => {
           const checked = selected === option.id;
           const emoji = emojiOnly(option.emoji);
           return (
-            <label
-              key={option.id}
-              className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl bg-[var(--mp-surface)] px-4 py-3 ring-2 ring-inset transition ${
-                checked ? 'ring-[var(--mp-accent)]' : 'ring-black/10'
-              } has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[var(--mp-accent)]`}
-            >
-              <input
-                type="radio"
-                name={id}
-                value={option.id}
-                checked={checked}
-                onChange={(e) => {
-                  setSelected(option.id);
-                  setWrong(false);
-                  fx.effect('POP');
-                  if (emoji) fx.burst({ emoji, at: e.currentTarget.parentElement });
-                }}
-                className="size-5 accent-[var(--mp-accent)]"
-              />
-              <span className="min-w-0 flex-1 break-words">{option.label}</span>
-              {/* Shown beside the answer unless the answer text already contains it. */}
-              {emoji && !option.label.includes(emoji) ? (
-                <span
-                  aria-hidden="true"
-                  className={`shrink-0 transition ${checked ? 'scale-125' : ''}`}
-                >
-                  {emoji}
-                </span>
-              ) : null}
-            </label>
+            <Editable key={option.id} field={`Answer ${i + 1}`} block>
+              <label
+                className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl bg-[var(--mp-surface)] px-4 py-3 ring-2 ring-inset transition ${
+                  checked ? 'ring-[var(--mp-accent)]' : 'ring-black/10'
+                } has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[var(--mp-accent)]`}
+              >
+                <input
+                  type="radio"
+                  name={id}
+                  value={option.id}
+                  checked={checked}
+                  onChange={(e) => {
+                    setSelected(option.id);
+                    setWrong(false);
+                    fx.effect('POP');
+                    if (emoji) fx.burst({ emoji, at: e.currentTarget.parentElement });
+                  }}
+                  className="size-5 accent-[var(--mp-accent)]"
+                />
+                <span className="min-w-0 flex-1 break-words">{option.label}</span>
+                {/* Shown beside the answer unless the answer text already contains it. */}
+                {emoji && !option.label.includes(emoji) ? (
+                  <span
+                    aria-hidden="true"
+                    className={`shrink-0 transition ${checked ? 'scale-125' : ''}`}
+                  >
+                    {emoji}
+                  </span>
+                ) : null}
+              </label>
+            </Editable>
           );
         })}
       </fieldset>

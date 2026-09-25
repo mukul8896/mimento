@@ -23,6 +23,7 @@ import { FxContext, SoundToggle, type Fx } from './fx/fx';
 import { ParticleLayer, type Point } from './fx/particles';
 import { ReportDialog } from './report-dialog';
 import { OpeningSoon, PinGate } from './access-screens';
+import { EditContext, type EditTarget } from './editable';
 import { CountdownStep } from './steps/countdown-step';
 import { GalleryStep } from './steps/gallery-step';
 import { GiftStep } from './steps/gift-step';
@@ -127,13 +128,23 @@ export interface PlayerProps {
   initialTheme: Theme;
   /** Preview frames are contained, not full-screen. */
   embedded?: boolean;
+  /** Personalize page: taps on editable text, photos and buttons open their editor instead. */
+  onEdit?: (stepKey: string, field: string) => void;
+  /** Hides the "your answers will be shared" note, which the creator does not need to see. */
+  hideIntro?: boolean;
 }
 
 /**
  * Recipient experience. The Close control is rendered outside the step area on every screen
  * and is never covered, disabled or moved by any step behaviour. Closing records no answer.
  */
-export function Player({ backend, initialTheme, embedded = false }: PlayerProps) {
+export function Player({
+  backend,
+  initialTheme,
+  embedded = false,
+  onEdit,
+  hideIntro = false,
+}: PlayerProps) {
   const [state, setState] = useState<PlayerState | null>(null);
   const [error, setError] = useState<PlayerError | null>(null);
   const [closed, setClosed] = useState(false);
@@ -371,6 +382,12 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
     setClosed(true);
   }
 
+  const currentKey = current?.key ?? null;
+  const editTarget: EditTarget | null = useMemo(
+    () => (onEdit && currentKey ? { onEdit: (field: string) => onEdit(currentKey, field) } : null),
+    [onEdit, currentKey],
+  );
+
   const variants = reducedMotion ? VARIANTS.NONE : VARIANTS[theme.animation];
   const transition = reducedMotion ? TRANSITIONS.NONE : TRANSITIONS[theme.animation];
   const shell = embedded ? 'relative h-full min-h-full' : 'relative min-h-dvh';
@@ -502,7 +519,7 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
           </div>
         ) : (
           <>
-            {position === 1 ? (
+            {position === 1 && !hideIntro ? (
               <p className="mb-4 rounded-2xl bg-black/5 px-3 py-2 text-center text-sm">
                 {state.experience.responsesVisibleToCreator
                   ? 'Your answers will be shared with the person who sent this.'
@@ -523,15 +540,17 @@ export function Player({ backend, initialTheme, embedded = false }: PlayerProps)
                 className={`rounded-3xl bg-[var(--mp-surface)] p-5 shadow-lg sm:p-7 ${theme.animation === 'NONE' ? '' : 'mp-stagger'}`}
               >
                 <FxContext.Provider value={fx}>
-                  <StepView
-                    step={current}
-                    media={state.experience.media}
-                    busy={busy}
-                    reducedMotion={reducedMotion}
-                    submit={submit}
-                    reveal={reveal}
-                    preview={backend.mode === 'preview'}
-                  />
+                  <EditContext.Provider value={editTarget}>
+                    <StepView
+                      step={current}
+                      media={state.experience.media}
+                      busy={busy}
+                      reducedMotion={reducedMotion}
+                      submit={submit}
+                      reveal={reveal}
+                      preview={backend.mode === 'preview'}
+                    />
+                  </EditContext.Provider>
                 </FxContext.Provider>
               </motion.section>
             </AnimatePresence>
