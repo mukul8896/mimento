@@ -15,9 +15,14 @@ export default async function NewPage({
     api.GET('/api/v1/experiences/in-progress'),
   ]);
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-      <h1 className="text-2xl font-bold sm:text-3xl">Create Experience</h1>
-      <p className="mt-1 text-ink-600">Templates are for personalising. PRO is for creating.</p>
+    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
+      <p className="text-sm font-semibold tracking-widest text-brand-700 uppercase">
+        Who is it for?
+      </p>
+      <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">Create Experience</h1>
+      <p className="mt-2 text-ink-600">
+        Pick a moment and make it theirs — or build your own from scratch.
+      </p>
       <NewExperience
         templates={data?.items ?? []}
         inProgress={progress.data?.items ?? []}

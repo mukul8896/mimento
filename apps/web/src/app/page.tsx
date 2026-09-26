@@ -1,136 +1,187 @@
 import Link from 'next/link';
+import type { PublicExperience } from '@momentpath/contracts';
 import { publicServerApi } from '@/lib/api/server';
 import { SiteNav } from '@/components/site/site-nav';
 import { SiteFooter } from '@/components/site/site-shell';
-import { FloatingBackground } from '@/components/site/landing/floating-bg';
-import { GiftHero } from '@/components/site/landing/gift-hero';
+import { DEMO_EXPERIENCE, DEMO_GIFT } from '@/components/site/landing/demo-experience';
+import { Hero } from '@/components/site/landing/hero';
 import { Reveal } from '@/components/site/landing/reveal';
 import { TemplateGallery } from '@/components/site/landing/template-gallery';
-import { TryIt } from '@/components/site/landing/try-it';
 
 export const dynamic = 'force-dynamic';
 
-const STEPS = [
-  ['🎨', 'Pick a template', 'Birthdays, Diwali, proposals, apologies — 25+ ready to go.'],
-  ['✍️', 'Make it personal', 'Tap any words, photos or music in the preview to change them.'],
-  ['🔗', 'Share the moment', 'Send one link on WhatsApp. Keep your private link to manage it.'],
+const JOURNEY = [
+  [
+    '🎨',
+    'Pick a moment',
+    'A birthday, a proposal, Diwali, a date — each one a ready-made little story.',
+  ],
+  [
+    '✍️',
+    'Make it theirs',
+    'Tap any words, photos or music right in the preview to change them. What you see is what they get.',
+  ],
+  [
+    '🔗',
+    'Share one link',
+    'Send it on WhatsApp. They open it on their phone — and you keep a private link to see how it went.',
+  ],
 ] as const;
 
-const FEATURES = [
-  ['🙈', 'A No button that runs away', 'They can say anything — except no.'],
-  ['🪄', 'Scratch cards & reveals', 'Hide a message and let them uncover it.'],
-  ['⏰', 'Countdowns', 'Unlock the gift at midnight on their birthday.'],
-  ['🧩', 'Puzzles & quizzes', '“Where did we first meet?” — only they know.'],
-  ['🎙️', 'Voice notes & videos', 'Say it in your own voice.'],
-  ['🔒', 'Private by design', 'Unguessable link, optional PIN, hidden from search.'],
+const MOMENTS = [
+  ['💌', 'Words that land', 'Messages that arrive slowly, word by word.'],
+  ['🧩', 'A memory only they know', 'A question or a puzzle about the two of you.'],
+  ['🪄', 'Something to uncover', 'Scratch cards and reveals they open with a finger.'],
+  ['🎁', 'One last reveal', 'A letter, a plan or a gift — saved for the very end.'],
 ] as const;
+
+/** The Proposal template, playing in the hero; falls back to the built-in demo. */
+async function heroDemo(): Promise<{ experience: PublicExperience; gift?: string }> {
+  try {
+    const { data } = await publicServerApi().GET('/api/v1/templates/{key}/preview', {
+      params: { path: { key: 'proposal' } },
+    });
+    if (data) {
+      return {
+        experience: {
+          ...(data as unknown as Omit<
+            PublicExperience,
+            'versionNumber' | 'responsesVisibleToCreator' | 'branded'
+          >),
+          versionNumber: 0,
+          responsesVisibleToCreator: false,
+          branded: false,
+        },
+        gift: 'You have made me the happiest person alive. Every day from now on, I choose you.\n\n— Rahul',
+      };
+    }
+  } catch {
+    /* the built-in demo below */
+  }
+  return { experience: DEMO_EXPERIENCE, gift: DEMO_GIFT };
+}
 
 export default async function Home({
   searchParams,
 }: {
   searchParams: Promise<{ manage?: string }>;
 }) {
-  const [params, templates] = await Promise.all([
+  const [params, templates, demo] = await Promise.all([
     searchParams,
     publicServerApi().GET('/api/v1/templates'),
+    heroDemo(),
   ]);
   return (
-    <div className="min-h-dvh overflow-x-hidden bg-gradient-to-b from-brand-50 via-white to-white">
-      <header className="relative z-10 mx-auto h-16 max-w-6xl px-4 sm:px-6">
-        <SiteNav cta />
-      </header>
-
-      <main className="relative mx-auto max-w-6xl px-4 pb-16 sm:px-6">
-        {params.manage === 'invalid' ? (
-          <p
-            role="alert"
-            className="relative z-10 mb-6 rounded-xl bg-red-50 p-3 text-sm text-red-900 ring-1 ring-red-200"
-          >
-            That private management link does not work. Check you copied the whole thing, including
-            the end — it is in the details you saved when you published.
-          </p>
-        ) : null}
-
-        <div className="relative">
-          <FloatingBackground />
-          <GiftHero />
+    <div className="min-h-dvh overflow-x-hidden">
+      <div className="wr-glow">
+        <header className="relative z-10 mx-auto h-16 max-w-6xl px-4 sm:px-6">
+          <SiteNav cta />
+        </header>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          {params.manage === 'invalid' ? (
+            <p
+              role="alert"
+              data-testid="manage-invalid"
+              className="relative z-10 mt-2 rounded-xl bg-red-50 p-3 text-sm text-red-900 ring-1 ring-red-200"
+            >
+              That private management link does not work. Check you copied the whole thing,
+              including the end — it is in the details you saved when you published.
+            </p>
+          ) : null}
+          <Hero demo={demo.experience} demoGift={demo.gift} />
         </div>
+      </div>
 
-        <section id="try" aria-labelledby="try-heading" className="scroll-mt-4 py-12">
-          <div className="grid items-center gap-10 lg:grid-cols-2">
-            <Reveal>
-              <h2 id="try-heading" className="text-3xl font-bold tracking-tight text-ink-900">
-                Go on — play one
-              </h2>
-              <p className="mt-3 text-lg text-ink-600">
-                This is what they get: a little journey that ends in a reveal. Try pressing
-                <strong> No</strong>.
-              </p>
-              <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-                {FEATURES.map(([emoji, title, text]) => (
-                  <li
-                    key={title}
-                    className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-ink-100"
-                  >
-                    <span className="text-2xl" aria-hidden="true">
+      <main className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+        <section aria-labelledby="moments-heading" className="py-12">
+          <Reveal>
+            <p className="text-center text-sm font-semibold tracking-widest text-brand-700 uppercase">
+              Not a card. A little journey.
+            </p>
+            <h2
+              id="moments-heading"
+              className="mt-2 text-center text-3xl font-semibold text-ink-900 sm:text-4xl"
+            >
+              Every surprise is a small story they play
+            </h2>
+          </Reveal>
+          <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {MOMENTS.map(([emoji, title, text], i) => (
+              <li key={title}>
+                <Reveal delay={i * 0.08} className="h-full">
+                  <div className="h-full rounded-3xl bg-white/80 p-5 shadow-sm ring-1 ring-ink-100 backdrop-blur">
+                    <span
+                      aria-hidden="true"
+                      className="inline-flex size-12 items-center justify-center rounded-2xl bg-rose-100 text-2xl"
+                    >
                       {emoji}
                     </span>
-                    <span className="mt-1 block font-semibold text-ink-900">{title}</span>
-                    <span className="text-sm text-ink-600">{text}</span>
-                  </li>
-                ))}
-              </ul>
-            </Reveal>
-            <Reveal delay={0.15} className="flex justify-center">
-              <TryIt />
-            </Reveal>
-          </div>
+                    <p className="mt-3 font-semibold text-ink-900">{title}</p>
+                    <p className="mt-1 text-sm text-ink-600">{text}</p>
+                  </div>
+                </Reveal>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <TemplateGallery templates={templates.data?.items ?? []} />
 
         <section id="how" aria-labelledby="how-heading" className="scroll-mt-4 py-12">
-          <h2
-            id="how-heading"
-            className="text-center text-3xl font-bold tracking-tight text-ink-900"
-          >
-            Ready in two minutes
-          </h2>
-          <ol className="mt-8 grid gap-5 sm:grid-cols-3">
-            {STEPS.map(([emoji, title, text], i) => (
-              <li key={title}>
-                <Reveal
-                  delay={i * 0.1}
-                  className="h-full rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-ink-100"
-                >
-                  <span className="text-4xl" aria-hidden="true">
+          <Reveal>
+            <h2
+              id="how-heading"
+              className="text-center text-3xl font-semibold text-ink-900 sm:text-4xl"
+            >
+              Ready in two minutes
+            </h2>
+            <p className="mt-2 text-center text-ink-600">
+              No sign-up, no app — just three moments.
+            </p>
+          </Reveal>
+          <ol className="relative mx-auto mt-10 max-w-2xl space-y-6 before:absolute before:top-6 before:bottom-6 before:left-6 before:w-px before:bg-gradient-to-b before:from-rose-300 before:via-gold-300 before:to-rose-300 sm:before:left-7">
+            {JOURNEY.map(([emoji, title, text], i) => (
+              <li key={title} className="relative">
+                <Reveal delay={i * 0.1} className="flex gap-4 sm:gap-5">
+                  <span
+                    aria-hidden="true"
+                    className="relative z-10 inline-flex size-12 shrink-0 items-center justify-center rounded-full bg-white text-2xl shadow-md ring-4 ring-ink-50 sm:size-14"
+                  >
                     {emoji}
                   </span>
-                  <span className="mt-3 block text-sm font-semibold text-brand-700">
-                    Step {i + 1}
-                  </span>
-                  <span className="mt-1 block text-lg font-bold text-ink-900">{title}</span>
-                  <span className="mt-1 block text-sm text-ink-600">{text}</span>
+                  <div className="rounded-3xl bg-white/80 p-5 shadow-sm ring-1 ring-ink-100">
+                    <p className="text-xs font-bold tracking-widest text-brand-700 uppercase">
+                      Moment {i + 1}
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-ink-900">{title}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-ink-600">{text}</p>
+                  </div>
                 </Reveal>
               </li>
             ))}
           </ol>
         </section>
 
-        <Reveal className="mt-4 rounded-3xl bg-gradient-to-br from-brand-600 to-fuchsia-600 p-8 text-center text-white shadow-xl sm:p-12">
-          <h2 className="text-3xl font-bold tracking-tight">Someone deserves a smile today</h2>
-          <p className="mx-auto mt-2 max-w-md text-white/90">
+        <Reveal className="relative mt-6 overflow-hidden rounded-[2rem] bg-gradient-to-br from-ink-950 via-ink-900 to-[#4a1f3d] p-8 text-center text-white shadow-xl sm:p-14">
+          <div
+            aria-hidden="true"
+            className="wr-halo wr-breathe absolute -top-24 left-1/2 size-80 -translate-x-1/2 rounded-full opacity-70"
+          />
+          <h2 className="relative text-3xl font-semibold sm:text-4xl">
+            Someone deserves a smile today
+          </h2>
+          <p className="relative mx-auto mt-3 max-w-md text-white/80">
             Make it in minutes. They will remember it for much longer.
           </p>
           <Link
             href="/new"
-            className="mt-6 inline-block rounded-2xl bg-white px-8 py-3.5 font-semibold text-brand-700 shadow-lg transition active:scale-[0.98]"
+            className="wr-press relative mt-7 inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl bg-white px-8 font-semibold text-brand-700 shadow-lg"
           >
-            Create a surprise
+            Create a surprise <span aria-hidden="true">→</span>
           </Link>
         </Reveal>
 
-        <section className="mt-12 rounded-2xl bg-white p-5 text-sm text-ink-600 shadow-sm ring-1 ring-ink-100 sm:p-6">
+        <section className="mt-12 rounded-3xl bg-white/70 p-5 text-sm text-ink-600 ring-1 ring-ink-100 sm:p-6">
           <h2 className="text-base font-semibold text-ink-900">
             Private by design, honest about limits
           </h2>

@@ -13,6 +13,7 @@ const experience = {
   theme: {} as never,
   versionNumber: 0,
   responsesVisibleToCreator: false,
+  branded: true,
   steps,
   media: [],
 };

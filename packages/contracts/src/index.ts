@@ -12,3 +12,4 @@ export * from './flow';
 export * from './template-fields';
 export * from './template-content';
 export * from './structure';
+export * from './scene';

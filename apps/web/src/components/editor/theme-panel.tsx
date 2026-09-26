@@ -7,6 +7,8 @@ import {
   MUSIC_LIBRARY,
   MUSIC_TRACKS,
   NO_MUSIC,
+  RECORDED_LIBRARY,
+  RECORDED_TRACKS,
   PALETTE_PRESETS,
   themeContrastIssues,
   type Celebration,
@@ -29,7 +31,7 @@ const COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
 ];
 
 function musicKey(m: Music): string {
-  return m.source === 'LIBRARY' ? m.track : m.source;
+  return m.source === 'LIBRARY' ? m.track : m.source === 'RECORDED' ? `rec:${m.track}` : m.source;
 }
 
 /**
@@ -90,6 +92,43 @@ export function MusicPicker({
           </span>
           <span className="text-sm font-medium">No music</span>
         </button>
+        {/* Recorded instrumentals first: real performances, streamed only when chosen. */}
+        {RECORDED_TRACKS.map((track) => {
+          const info = RECORDED_LIBRARY[track];
+          const music: Music = { source: 'RECORDED', track };
+          const key = `rec:${track}`;
+          return (
+            <div key={key} className="relative">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={current === key}
+                data-testid={`music-rec-${track}`}
+                className={`${card(current === key)} pr-14`}
+                onClick={() => {
+                  choose(music);
+                  if (listening !== key) listen(key, music);
+                }}
+              >
+                <span className="text-2xl" aria-hidden="true">
+                  {info.emoji}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium">{info.name}</span>
+                  <span className="block text-xs text-ink-600">{info.mood} · recorded</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                aria-label={listening === key ? `Stop ${info.name}` : `Listen to ${info.name}`}
+                className="absolute top-1/2 right-2 inline-flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-ink-900/5 text-sm hover:bg-ink-900/10"
+                onClick={() => listen(key, music)}
+              >
+                {listening === key ? '■' : '▶'}
+              </button>
+            </div>
+          );
+        })}
         {MUSIC_TRACKS.map((track) => {
           const info = MUSIC_LIBRARY[track];
           const music: Music = { source: 'LIBRARY', track };

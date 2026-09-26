@@ -120,7 +120,11 @@ export function PublishedSuccess({
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 z-40 size-full"
       />
-      <div className="text-center">
+      <div
+        aria-hidden="true"
+        className={`wr-halo pointer-events-none absolute top-0 left-1/2 size-72 -translate-x-1/2 rounded-full opacity-70 ${reduced ? '' : 'wr-breathe'}`}
+      />
+      <div className="relative text-center">
         <motion.p
           aria-hidden="true"
           className="text-6xl"
@@ -134,7 +138,7 @@ export function PublishedSuccess({
         >
           🎉
         </motion.p>
-        <motion.h1 className="mt-3 text-3xl font-extrabold tracking-tight" {...rise(0.05)}>
+        <motion.h1 className="mt-3 text-4xl font-semibold text-ink-900" {...rise(0.05)}>
           Your Surprise Is Ready!
         </motion.h1>
         <motion.p className="mt-2 text-ink-600" {...rise(0.1)}>
@@ -197,7 +201,7 @@ export function PublishedSuccess({
           <motion.section
             {...rise(0.3)}
             aria-labelledby="private-heading"
-            className="rounded-3xl bg-ink-900 p-5 text-white shadow-lg"
+            className="rounded-3xl bg-gradient-to-br from-ink-950 via-ink-900 to-[#4a1f3d] p-5 text-white shadow-lg"
           >
             <h2 id="private-heading" className="flex items-center gap-2 font-semibold">
               <span aria-hidden="true">🔑</span> Your Private Management Link

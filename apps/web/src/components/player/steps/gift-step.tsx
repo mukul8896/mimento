@@ -1,7 +1,9 @@
 'use client';
 
+import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import type { RevealedGift } from '@momentpath/contracts';
+import { SceneHeading, useScene } from '../motion/scene';
 import { RichText } from '@/components/rich-text';
 import { accentButton, outlineButton } from '../theme';
 import type { StepProps } from './types';
@@ -79,6 +81,32 @@ function GiftDetails({ gift }: { gift: RevealedGift }) {
   }
 }
 
+/**
+ * A written reveal (a message or instructions) in a premium scene opens as a letter: paper
+ * unfolding from its top edge, then the words. A voucher or a link keeps its own treatment.
+ */
+function Letter({ text, reducedMotion }: { text: string; reducedMotion: boolean }) {
+  return (
+    <motion.div
+      className="mx-auto w-full max-w-sm rounded-2xl bg-[#fffaf1] px-6 py-7 text-left text-[#3a2a22] shadow-[0_18px_40px_-18px_rgba(0,0,0,0.55)] ring-1 ring-black/5"
+      style={{ transformOrigin: 'top center', fontFamily: 'Georgia, "Times New Roman", serif' }}
+      initial={reducedMotion ? { opacity: 0 } : { opacity: 0, rotateX: -70, y: -8 }}
+      animate={{ opacity: 1, rotateX: 0, y: 0 }}
+      transition={{ duration: reducedMotion ? 0.3 : 1.1, ease: [0.16, 1, 0.3, 1] }}
+      data-testid="gift-letter"
+    >
+      <motion.p
+        className="whitespace-pre-line text-[1.15em] leading-relaxed"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: reducedMotion ? 0 : 0.7, duration: 0.8 }}
+      >
+        {text}
+      </motion.p>
+    </motion.div>
+  );
+}
+
 /** Ticks every second until `at`, then stops; null when there is nothing to wait for. */
 function useTimeLeft(at: string | null): number | null {
   const target = at ? new Date(at).getTime() : null;
@@ -105,15 +133,29 @@ export function GiftStep({ step, busy, reveal }: StepProps<'GIFT_REVEAL'>) {
   // Scheduled reveal: the server refuses early reveals too; this only explains the wait.
   const left = useTimeLeft(cfg.revealAt);
   const waiting = left !== null && left > 0;
+  const scene = useScene();
+  const letter =
+    scene && gift && (gift.kind === 'PHYSICAL_MESSAGE' || gift.kind === 'INSTRUCTION')
+      ? gift.kind === 'PHYSICAL_MESSAGE'
+        ? gift.message
+        : gift.instructions
+      : null;
   return (
     <div className="space-y-5 text-center">
       <Editable field="Title" block>
-        <h2 className="text-[1.75em] font-bold leading-tight">{cfg.title}</h2>
+        <SceneHeading className="text-[1.75em] font-bold leading-tight">{cfg.title}</SceneHeading>
       </Editable>
-      <Editable field="Message before the reveal" block>
-        <RichText doc={cfg.message} className="space-y-3" />
-      </Editable>
-      {gift ? (
+      {/* Once a letter opens, it has the stage to itself. */}
+      {letter === null ? (
+        <Editable field="Message before the reveal" block>
+          <RichText doc={cfg.message} className="space-y-3" />
+        </Editable>
+      ) : null}
+      {letter !== null ? (
+        <div data-testid="gift-revealed" aria-live="polite" className="[perspective:900px]">
+          <Letter text={letter} reducedMotion={scene?.reducedMotion ?? false} />
+        </div>
+      ) : gift ? (
         <div
           className="rounded-3xl bg-[var(--mp-surface)] p-5 shadow-md"
           data-testid="gift-revealed"

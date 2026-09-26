@@ -2357,6 +2357,18 @@
               "SNOW",
               "NONE"
             ]
+          },
+          "motionProfile": {
+            "type": "string",
+            "enum": [
+              "PLAYFUL",
+              "ROMANTIC",
+              "CINEMATIC",
+              "FESTIVE",
+              "ELEGANT",
+              "WARM",
+              "NOSTALGIC"
+            ]
           }
         },
         "required": [
@@ -2403,6 +2415,26 @@
                   "AULD_LANG_SYNE",
                   "DREAMY",
                   "PLAYFUL"
+                ]
+              }
+            },
+            "required": [
+              "source",
+              "track"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "const": "RECORDED"
+              },
+              "track": {
+                "type": "string",
+                "enum": [
+                  "CLAIR_DE_LUNE"
                 ]
               }
             },
@@ -2609,6 +2641,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting_Output"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene_Output"
               }
             },
             "required": [
@@ -2673,6 +2708,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting_Output"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene_Output"
               }
             },
             "required": [
@@ -2764,6 +2802,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting_Output"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene_Output"
               }
             },
             "required": [
@@ -3019,6 +3060,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting_Output"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene_Output"
               }
             },
             "required": [
@@ -3096,6 +3140,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting_Output"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene_Output"
               }
             },
             "required": [
@@ -3171,6 +3218,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting_Output"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene_Output"
               }
             },
             "required": [
@@ -3233,6 +3283,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting_Output"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene_Output"
               }
             },
             "required": [
@@ -3309,6 +3362,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting_Output"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene_Output"
               }
             },
             "required": [
@@ -3373,6 +3429,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting_Output"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene_Output"
               }
             },
             "required": [
@@ -3429,6 +3488,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting_Output"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene_Output"
               }
             },
             "required": [
@@ -3512,6 +3574,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting_Output"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene_Output"
               }
             },
             "required": [
@@ -3599,6 +3664,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting_Output"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene_Output"
               }
             },
             "required": [
@@ -4047,6 +4115,70 @@
         "required": [
           "rules",
           "otherwise"
+        ],
+        "additionalProperties": false
+      },
+      "Scene_Output": {
+        "type": "object",
+        "properties": {
+          "layout": {
+            "default": "CARD",
+            "type": "string",
+            "enum": [
+              "CARD",
+              "FLOAT",
+              "FOCUS"
+            ]
+          },
+          "entrance": {
+            "type": "string",
+            "enum": [
+              "FADE",
+              "FADE_UP",
+              "SOFT_SCALE",
+              "BLUR_REVEAL",
+              "WORD_REVEAL",
+              "LIGHT_REVEAL"
+            ]
+          },
+          "transition": {
+            "type": "string",
+            "enum": [
+              "CROSSFADE",
+              "SOFT_SLIDE",
+              "BLUR",
+              "ZOOM_THROUGH",
+              "FADE_THROUGH_DARK",
+              "FADE_THROUGH_LIGHT"
+            ]
+          },
+          "reaction": {
+            "default": "",
+            "type": "string",
+            "maxLength": 120
+          },
+          "music": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "climax": {
+            "default": "NONE",
+            "type": "string",
+            "enum": [
+              "NONE",
+              "ROMANTIC",
+              "PROPOSAL",
+              "BIRTHDAY",
+              "FESTIVAL",
+              "LIGHT_BURST"
+            ]
+          }
+        },
+        "required": [
+          "layout",
+          "reaction",
+          "climax"
         ],
         "additionalProperties": false
       },
@@ -5481,6 +5613,18 @@
               "SNOW",
               "NONE"
             ]
+          },
+          "motionProfile": {
+            "type": "string",
+            "enum": [
+              "PLAYFUL",
+              "ROMANTIC",
+              "CINEMATIC",
+              "FESTIVE",
+              "ELEGANT",
+              "WARM",
+              "NOSTALGIC"
+            ]
           }
         },
         "required": [
@@ -5524,6 +5668,26 @@
                   "AULD_LANG_SYNE",
                   "DREAMY",
                   "PLAYFUL"
+                ]
+              }
+            },
+            "required": [
+              "source",
+              "track"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string",
+                "const": "RECORDED"
+              },
+              "track": {
+                "type": "string",
+                "enum": [
+                  "CLAIR_DE_LUNE"
                 ]
               }
             },
@@ -5598,6 +5762,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene"
               }
             },
             "required": [
@@ -5656,6 +5823,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene"
               }
             },
             "required": [
@@ -5742,6 +5912,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene"
               }
             },
             "required": [
@@ -5985,6 +6158,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene"
               }
             },
             "required": [
@@ -6054,6 +6230,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene"
               }
             },
             "required": [
@@ -6122,6 +6301,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene"
               }
             },
             "required": [
@@ -6177,6 +6359,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene"
               }
             },
             "required": [
@@ -6246,6 +6431,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene"
               }
             },
             "required": [
@@ -6304,6 +6492,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene"
               }
             },
             "required": [
@@ -6354,6 +6545,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene"
               }
             },
             "required": [
@@ -6428,6 +6622,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene"
               }
             },
             "required": [
@@ -6507,6 +6704,9 @@
               },
               "next": {
                 "$ref": "#/components/schemas/StepRouting"
+              },
+              "scene": {
+                "$ref": "#/components/schemas/Scene"
               }
             },
             "required": [
@@ -6954,6 +7154,65 @@
         },
         "additionalProperties": false
       },
+      "Scene": {
+        "type": "object",
+        "properties": {
+          "layout": {
+            "default": "CARD",
+            "type": "string",
+            "enum": [
+              "CARD",
+              "FLOAT",
+              "FOCUS"
+            ]
+          },
+          "entrance": {
+            "type": "string",
+            "enum": [
+              "FADE",
+              "FADE_UP",
+              "SOFT_SCALE",
+              "BLUR_REVEAL",
+              "WORD_REVEAL",
+              "LIGHT_REVEAL"
+            ]
+          },
+          "transition": {
+            "type": "string",
+            "enum": [
+              "CROSSFADE",
+              "SOFT_SLIDE",
+              "BLUR",
+              "ZOOM_THROUGH",
+              "FADE_THROUGH_DARK",
+              "FADE_THROUGH_LIGHT"
+            ]
+          },
+          "reaction": {
+            "default": "",
+            "type": "string",
+            "maxLength": 120
+          },
+          "music": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "climax": {
+            "default": "NONE",
+            "type": "string",
+            "enum": [
+              "NONE",
+              "ROMANTIC",
+              "PROPOSAL",
+              "BIRTHDAY",
+              "FESTIVAL",
+              "LIGHT_BURST"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "UpdateDraftRequestDto": {
         "type": "object",
         "properties": {
@@ -7245,6 +7504,10 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "branded": {
+                "default": true,
+                "type": "boolean"
               }
             },
             "required": [
@@ -7253,7 +7516,8 @@
               "versionNumber",
               "responsesVisibleToCreator",
               "steps",
-              "media"
+              "media",
+              "branded"
             ],
             "additionalProperties": false
           },
@@ -7752,6 +8016,10 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "branded": {
+                "default": true,
+                "type": "boolean"
               }
             },
             "required": [
@@ -7760,7 +8028,8 @@
               "versionNumber",
               "responsesVisibleToCreator",
               "steps",
-              "media"
+              "media",
+              "branded"
             ],
             "additionalProperties": false
           },
@@ -8483,6 +8752,10 @@
               ],
               "additionalProperties": false
             }
+          },
+          "branded": {
+            "type": "boolean",
+            "default": true
           }
         },
         "required": [
@@ -8491,7 +8764,8 @@
           "versionNumber",
           "responsesVisibleToCreator",
           "steps",
-          "media"
+          "media",
+          "branded"
         ],
         "additionalProperties": false
       },

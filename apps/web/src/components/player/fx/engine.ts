@@ -1,5 +1,5 @@
-import type { Music, SoundEffect } from '@momentpath/contracts';
-import { playEffect } from './effects';
+import { RECORDED_LIBRARY, type Music, type SoundEffect } from '@momentpath/contracts';
+import { playCue, playEffect, type Cue } from './effects';
 import { song, type Song } from './songs';
 import { makeImpulse, makeNoise, playNote, type Out } from './synth';
 
@@ -34,11 +34,16 @@ export class AudioEngine {
   private master: GainNode | null = null;
   private musicBus: GainNode | null = null;
   private musicOut: Out | null = null;
+  /** Listens to the music (never to effects), so the scene can move with it. */
+  private analyser: AnalyserNode | null = null;
+  private samples: Uint8Array<ArrayBuffer> | null = null;
   private sfxOut: Out | null = null;
   private wanted: { music: Music; url: string | null } = { music: { source: 'NONE' }, url: null };
   private playing: Playing | null = null;
   private muted = false;
   private ducked = false;
+  /** The current scene's music level, 0–1 (scene.music); ducking still applies on top. */
+  private level = 1;
   private onVisibility = () => {
     if (!this.ctx) return;
     if (document.hidden) void this.ctx.suspend().catch(() => {});
@@ -81,12 +86,22 @@ export class AudioEngine {
           reverb.connect(wetLevel).connect(dry);
           return { dry, reverb };
         };
-        const music = bus(this.ducked ? DUCKED_LEVEL : MUSIC_LEVEL);
+        const music = bus(this.musicLevel());
         const sfx = bus(0.9);
         this.ctx = ctx;
         this.master = master;
         this.musicBus = music.dry;
         this.musicOut = { ctx, dry: music.dry, wet: music.reverb, noise };
+        // A tap on the music bus for energy(); it leads to a silent output so it keeps running.
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        analyser.smoothingTimeConstant = 0.6;
+        const sink = ctx.createGain();
+        sink.gain.value = 0;
+        music.dry.connect(analyser);
+        analyser.connect(sink).connect(ctx.destination);
+        this.analyser = analyser;
+        this.samples = new Uint8Array(new ArrayBuffer(analyser.fftSize));
         this.sfxOut = { ctx, dry: sfx.dry, wet: sfx.reverb, noise };
         document.addEventListener('visibilitychange', this.onVisibility);
       }
@@ -115,20 +130,64 @@ export class AudioEngine {
     this.sync();
   }
 
-  /** Quietens the music while a voice note or video plays. */
-  setDucked(ducked: boolean): void {
-    this.ducked = ducked;
+  private musicLevel(): number {
+    return this.ducked ? DUCKED_LEVEL : MUSIC_LEVEL * this.level;
+  }
+
+  private applyLevel(seconds: number): void {
     try {
       if (this.musicBus && this.ctx)
-        this.musicBus.gain.setTargetAtTime(
-          ducked ? DUCKED_LEVEL : MUSIC_LEVEL,
-          this.ctx.currentTime,
-          0.3,
-        );
+        this.musicBus.gain.setTargetAtTime(this.musicLevel(), this.ctx.currentTime, seconds);
     } catch {
       /* ignore */
     }
+  }
+
+  /** Quietens the music while a voice note or video plays. */
+  setDucked(ducked: boolean): void {
+    this.ducked = ducked;
+    this.applyLevel(0.3);
     this.sync();
+  }
+
+  /**
+   * The scene's music level (1 = full). Changes glide over about a second, so music can soften
+   * before an important question and bloom again after it.
+   */
+  setLevel(level: number): void {
+    const next = Math.max(0, Math.min(1, level));
+    if (next === this.level) return;
+    this.level = next;
+    this.applyLevel(0.6);
+  }
+
+  /**
+   * How loud the music is right now, 0–1 (0 when muted, silent or not yet allowed). Cheap: one
+   * small time-domain read. The player uses it to let buttons move with the music.
+   */
+  energy(): number {
+    if (this.muted || !this.analyser || !this.samples || !this.playing) return 0;
+    try {
+      this.analyser.getByteTimeDomainData(this.samples);
+      let sum = 0;
+      for (const v of this.samples) {
+        const x = (v - 128) / 128;
+        sum += x * x;
+      }
+      return Math.min(1, Math.sqrt(sum / this.samples.length) * 6);
+    } catch {
+      return 0;
+    }
+  }
+
+  /** A climax sound (heartbeat, swell, reveal shimmer). Silent when muted or not yet allowed. */
+  cue(cue: Cue, delaySeconds = 0): void {
+    if (this.muted || !this.ctx || !this.sfxOut) return;
+    try {
+      playCue(this.sfxOut, cue, this.ctx.currentTime + 0.01 + delaySeconds);
+    } catch {
+      /* ignore */
+    }
   }
 
   effect(effect: SoundEffect): void {
@@ -148,6 +207,8 @@ export class AudioEngine {
     const ctx = this.ctx;
     this.ctx = null;
     this.master = this.musicBus = null;
+    this.analyser = null;
+    this.samples = null;
     this.musicOut = this.sfxOut = null;
     void ctx?.close().catch(() => {});
   }
@@ -155,12 +216,14 @@ export class AudioEngine {
   /** Starts, switches or stops the music to match what is wanted. */
   private sync(): void {
     const { music, url } = this.wanted;
-    const key =
-      music.source === 'LIBRARY'
-        ? `lib:${music.track}`
-        : music.source === 'UPLOAD' && url
-          ? `url:${url}`
-          : '';
+    // Recorded tracks stream from the web app itself, like an uploaded song.
+    const stream =
+      music.source === 'RECORDED'
+        ? RECORDED_LIBRARY[music.track].file
+        : music.source === 'UPLOAD'
+          ? url
+          : null;
+    const key = music.source === 'LIBRARY' ? `lib:${music.track}` : stream ? `url:${stream}` : '';
     const active = key && this.ctx && !this.muted ? key : '';
     if ((this.playing?.key ?? '') === active) {
       if (this.playing && this.ctx?.state === 'suspended' && !document.hidden)
@@ -174,7 +237,7 @@ export class AudioEngine {
       this.playing =
         music.source === 'LIBRARY'
           ? { key: active, stop: this.startSong(song(music.track)) }
-          : { key: active, stop: this.startElement(url!) };
+          : { key: active, stop: this.startElement(stream!) };
     } catch {
       this.playing = null;
     }
@@ -240,8 +303,20 @@ export class AudioEngine {
     el.loop = true;
     el.preload = 'auto';
     el.crossOrigin = null;
-    const level = () => (this.ducked ? 0.08 : 0.7);
+    const level = () => (this.ducked ? 0.08 : 0.7 * this.level);
     el.volume = 0;
+    // Our own recorded tracks (same origin) can be listened to for energy(). Uploads come from
+    // another origin without CORS, where routing through Web Audio would silence them.
+    let source: MediaElementAudioSourceNode | null = null;
+    if (url.startsWith('/') && this.ctx && this.master && this.analyser) {
+      try {
+        source = this.ctx.createMediaElementSource(el);
+        source.connect(this.master);
+        source.connect(this.analyser);
+      } catch {
+        source = null;
+      }
+    }
     void el.play().catch(() => {});
     let raf = 0;
     const started = performance.now();
@@ -252,12 +327,15 @@ export class AudioEngine {
     };
     raf = requestAnimationFrame(fadeIn);
     const follow = window.setInterval(() => {
-      if (performance.now() - started > 2000) el.volume = level();
+      // Glide towards the level the scene asks for, so softening never sounds like a cut.
+      if (performance.now() - started > 2000)
+        el.volume = Math.max(0, Math.min(1, el.volume + (level() - el.volume) * 0.2));
     }, 250);
     return () => {
       cancelAnimationFrame(raf);
       window.clearInterval(follow);
       el.pause();
+      source?.disconnect();
       el.removeAttribute('src');
       el.load();
     };

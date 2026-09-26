@@ -422,6 +422,11 @@ export const PublicExperienceSchema = z.object({
   responsesVisibleToCreator: z.boolean(),
   steps: z.array(DraftStepSchema),
   media: z.array(PublicMediaSchema),
+  /**
+   * Free surprises end with a gentle "make one yourself" screen and a small credit; paid ones
+   * finish cleanly with no Wish Revealer branding at all.
+   */
+  branded: z.boolean().default(true),
 });
 export type PublicExperience = z.infer<typeof PublicExperienceSchema>;
 

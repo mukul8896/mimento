@@ -22,7 +22,7 @@ export function PuzzleStep({ step, busy, submit }: StepProps<'PUZZLE'>) {
   return (
     <form onSubmit={onSubmit} className="space-y-5 text-center">
       <Editable field="Riddle or question" block>
-        <label htmlFor={id} className="block text-[1.4em] font-bold leading-tight">
+        <label htmlFor={id} className="mp-prompt block text-[1.4em] font-bold leading-tight">
           {step.config.prompt}
         </label>
       </Editable>

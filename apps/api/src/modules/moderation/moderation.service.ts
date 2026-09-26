@@ -170,6 +170,7 @@ export class ModerationService {
       theme,
       versionNumber: version.number,
       responsesVisibleToCreator: version.responseVisibility === 'FULL',
+      branded: true,
       steps: steps.map(publicStep),
       media: await this.media.publicMedia(
         [...steps.flatMap(referencedMediaIds), ...themeMediaIds(theme)],

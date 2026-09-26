@@ -57,8 +57,8 @@ test('an invalid private link is refused rather than silently ignored', async ({
   const page = await fresh.newPage();
   await page.goto(`/m/${'z'.repeat(43)}`);
   await expect(page).toHaveURL(/\?manage=invalid/);
-  // Scoped to main: Next's route announcer is also role="alert".
-  await expect(page.getByRole('main').getByRole('alert')).toContainText('does not work');
+  // By test id: Next's route announcer is also role="alert".
+  await expect(page.getByTestId('manage-invalid')).toContainText('does not work');
   expect((await fresh.cookies()).find((c) => c.name === 'mp_manage')).toBeUndefined();
   await fresh.close();
 });
@@ -71,7 +71,7 @@ test('old creator-wide recovery links open the home page and grant nothing', asy
   const fresh = await browser.newContext();
   const page = await fresh.newPage();
   await page.goto(`/r/${'a'.repeat(43)}`);
-  await expect(page.getByTestId('gift-hero')).toBeVisible();
+  await expect(page.getByTestId('hero')).toBeVisible();
   expect((await fresh.request.get(`/bff/api/v1/experiences/${id}`)).status()).not.toBe(200);
   await fresh.close();
 });

@@ -32,10 +32,30 @@ export const MUSIC_LIBRARY: Record<MusicTrack, { name: string; emoji: string; mo
   PLAYFUL: { name: 'Playful plucks', emoji: '🎈', mood: 'Fun · cheeky' },
 };
 
+/**
+ * Recorded instrumentals for premium templates, served from the web app (public/audio) and
+ * loaded only when an experience uses them. Sources and licences: apps/web/public/audio/LICENSES.md.
+ */
+export const RECORDED_TRACKS = ['CLAIR_DE_LUNE'] as const;
+export const RecordedTrackSchema = z.enum(RECORDED_TRACKS);
+export type RecordedTrack = z.infer<typeof RecordedTrackSchema>;
+export const RECORDED_LIBRARY: Record<
+  RecordedTrack,
+  { name: string; emoji: string; mood: string; file: string }
+> = {
+  CLAIR_DE_LUNE: {
+    name: 'Clair de lune',
+    emoji: '🌙',
+    mood: 'Romantic · solo piano',
+    file: '/audio/romantic-clair-de-lune.m4a',
+  },
+};
+
 export const MusicSchema = z
   .discriminatedUnion('source', [
     z.strictObject({ source: z.literal('NONE') }),
     z.strictObject({ source: z.literal('LIBRARY'), track: MusicTrackSchema }),
+    z.strictObject({ source: z.literal('RECORDED'), track: RecordedTrackSchema }),
     /** The creator's own track: an audio file uploaded to this experience. */
     z.strictObject({ source: z.literal('UPLOAD'), mediaId: z.uuid() }),
   ])

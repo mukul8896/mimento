@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { StepRoutingSchema } from './flow';
 import { EMPTY_RICH_TEXT, RichTextDocSchema } from './rich-text';
 import { DEFAULT_REACTIONS, ReactionSchema } from './sound';
+import { SceneSchema } from './scene';
 
 /**
  * Step configuration is stored as JSONB but always passes through these discriminated
@@ -243,6 +244,8 @@ export const StepKeySchema = z.uuid();
 
 /** Optional branching after the step (see flow.ts); absent means "continue to the next step". */
 const Next = StepRoutingSchema.optional();
+/** Optional presentation (see scene.ts); absent means the classic card. */
+const SceneOptional = SceneSchema.optional();
 
 export const DraftStepSchema = z
   .discriminatedUnion('type', [
@@ -251,72 +254,84 @@ export const DraftStepSchema = z
       type: z.literal('MESSAGE'),
       config: MessageConfigSchema,
       next: Next,
+      scene: SceneOptional,
     }),
     z.strictObject({
       key: StepKeySchema,
       type: z.literal('IMAGE'),
       config: ImageConfigSchema,
       next: Next,
+      scene: SceneOptional,
     }),
     z.strictObject({
       key: StepKeySchema,
       type: z.literal('MULTIPLE_CHOICE'),
       config: MultipleChoiceConfigSchema,
       next: Next,
+      scene: SceneOptional,
     }),
     z.strictObject({
       key: StepKeySchema,
       type: z.literal('YES_NO_CHOICE'),
       config: YesNoConfigSchema,
       next: Next,
+      scene: SceneOptional,
     }),
     z.strictObject({
       key: StepKeySchema,
       type: z.literal('SCRATCH_REVEAL'),
       config: ScratchRevealConfigSchema,
       next: Next,
+      scene: SceneOptional,
     }),
     z.strictObject({
       key: StepKeySchema,
       type: z.literal('COUNTDOWN'),
       config: CountdownConfigSchema,
       next: Next,
+      scene: SceneOptional,
     }),
     z.strictObject({
       key: StepKeySchema,
       type: z.literal('PUZZLE'),
       config: PuzzleConfigSchema,
       next: Next,
+      scene: SceneOptional,
     }),
     z.strictObject({
       key: StepKeySchema,
       type: z.literal('PHOTO_GALLERY'),
       config: PhotoGalleryConfigSchema,
       next: Next,
+      scene: SceneOptional,
     }),
     z.strictObject({
       key: StepKeySchema,
       type: z.literal('VOICE_NOTE'),
       config: VoiceNoteConfigSchema,
       next: Next,
+      scene: SceneOptional,
     }),
     z.strictObject({
       key: StepKeySchema,
       type: z.literal('VIDEO'),
       config: VideoConfigSchema,
       next: Next,
+      scene: SceneOptional,
     }),
     z.strictObject({
       key: StepKeySchema,
       type: z.literal('PLACE_REVEAL'),
       config: PlaceRevealConfigSchema,
       next: Next,
+      scene: SceneOptional,
     }),
     z.strictObject({
       key: StepKeySchema,
       type: z.literal('GIFT_REVEAL'),
       config: GiftRevealConfigSchema,
       next: Next,
+      scene: SceneOptional,
     }),
   ])
   .meta({ id: 'Step' });

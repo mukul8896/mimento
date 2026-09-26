@@ -70,6 +70,7 @@ export function TemplatePreviewDialog({
               ...p,
               versionNumber: 0,
               responsesVisibleToCreator: false,
+              branded: false,
             } as PublicExperience,
           });
         }

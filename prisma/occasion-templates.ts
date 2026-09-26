@@ -7,6 +7,7 @@ import {
   type SoundEffect,
   type MusicTrack,
   type PalettePresetName,
+  type Scene,
   type Theme,
   type TemplateField,
 } from '@momentpath/contracts';
@@ -41,6 +42,21 @@ const from = (placeholder = 'Rahul'): FieldInput => ({
 });
 
 const track = (t: MusicTrack): Music => ({ source: 'LIBRARY', track: t });
+
+/** Gives a step its scene direction (see contracts/scene.ts): layout, motion, music, climax. */
+const scene = <T extends object>(
+  step: T,
+  direction: Partial<Scene>,
+): T & { scene: Partial<Scene> } => ({
+  ...step,
+  scene: direction,
+});
+
+/** A message with its own button label. */
+const says = (n: number, heading: string, button: string, ...paragraphs: string[]) => {
+  const step = message(n, heading, ...paragraphs);
+  return { ...step, config: { ...step.config, buttonLabel: button } };
+};
 
 const theme = (palette: PalettePresetName, extra: Partial<Omit<Theme, 'palette'>> = {}): Theme => ({
   ...DEFAULT_THEME,
@@ -199,7 +215,7 @@ interface Recipe {
   title: string;
   theme: Theme;
   fields: FieldInput[];
-  steps: { key: string; type: string; config: object }[];
+  steps: { key: string; type: string; config: object; scene?: Partial<Scene> }[];
   /** The message shown when the final surprise is opened; the creator can change it. */
   giftMessage: string;
 }
@@ -561,17 +577,20 @@ const RECIPES: Recipe[] = [
     giftMessage: 'I will plan the perfect day. Can not wait! — {{from}}',
   },
   {
+    // The first premium experience (motion profile + scenes): a slow, restrained story that
+    // narrows to one question, then a climax meaningfully bigger than anything before it.
     key: 'proposal',
     name: 'Proposal',
-    description: 'Walk them through your story with a memory puzzle before the big question.',
+    description: 'Your story, a memory only they know, then the question — by candlelight.',
     occasion: 'Love',
     emoji: '💍',
     title: 'For you, {{name}}',
-    theme: theme('lavender', {
+    theme: theme('dusk', {
       font: 'SERIF',
-      animation: 'RISE',
-      music: track('LOVE_PIANO'),
+      animation: 'FADE',
+      music: { source: 'RECORDED', track: 'CLAIR_DE_LUNE' },
       celebration: 'HEARTS',
+      motionProfile: 'CINEMATIC',
     }),
     fields: [
       name(),
@@ -586,22 +605,75 @@ const RECIPES: Recipe[] = [
       },
     ],
     steps: [
-      message(
-        1,
-        '{{name}}, this is our story 💜',
-        'Every moment with you has been my favourite moment.',
+      // Opening: the name arrives word by word; music begins gently.
+      scene(
+        says(
+          1,
+          '{{name}}, this is our story ❤️',
+          'Remember with me',
+          'Some stories deserve to be told slowly.',
+        ),
+        { layout: 'FLOAT', entrance: 'WORD_REVEAL', music: 0.75, transition: 'FADE_THROUGH_DARK' },
       ),
-      puzzle(2, 'Where did we first meet?', '{{firstPlace}}', 'Think back to the very beginning…'),
-      message(3, 'You remembered 🥹', 'Then you already know how much you mean to me.'),
-      yesNo(4, 'Will you marry me?', {
-        yes: 'YES! 💍',
-        no: 'No',
-        evasive: true,
-        onYes: ['💍💖🥂', 'FANFARE'],
+      // Memory: only they know the answer; the story acknowledges it rather than "correct".
+      scene(
+        puzzle(
+          2,
+          'Do you remember where we first met?',
+          '{{firstPlace}}',
+          'Think back to the very beginning…',
+        ),
+        {
+          layout: 'FLOAT',
+          entrance: 'BLUR_REVEAL',
+          music: 0.75,
+          reaction: 'You remembered 🥹',
+        },
+      ),
+      // Build: a line that is allowed to breathe.
+      scene(
+        says(
+          3,
+          'Somehow every ordinary moment with you became one of my favourites.',
+          'Keep going',
+        ),
+        { layout: 'FLOAT', entrance: 'WORD_REVEAL', music: 0.6, transition: 'FADE_THROUGH_DARK' },
+      ),
+      // Anticipation: fewer things on screen, music falls back.
+      scene(says(4, 'There is one more thing I’ve wanted to ask you…', 'Ask me'), {
+        layout: 'FOCUS',
+        entrance: 'BLUR_REVEAL',
+        music: 0.3,
+        transition: 'FADE_THROUGH_DARK',
       }),
-      gift(5, 'Forever starts now', 'I love you.', 'Open my heart'),
+      // The question owns the screen. Yes is the climax.
+      scene(
+        yesNo(5, 'Will you marry me?', {
+          yes: 'Yes ❤️',
+          no: 'No',
+          evasive: true,
+          onYes: ['💍', 'NONE'],
+        }),
+        {
+          layout: 'FOCUS',
+          entrance: 'WORD_REVEAL',
+          music: 0.2,
+          climax: 'PROPOSAL',
+          reaction: 'You said yes 💍',
+        },
+      ),
+      // Final reveal: a letter, not a gift box.
+      scene(
+        gift(6, 'Forever starts now.', 'There is something I wrote for you.', 'Open my letter'),
+        {
+          layout: 'FLOAT',
+          entrance: 'BLUR_REVEAL',
+          music: 0.9,
+        },
+      ),
     ],
-    giftMessage: 'You have made me the happiest person alive. — {{from}}',
+    giftMessage:
+      'You have made me the happiest person alive. Every day from now on, I choose you.\n\n— {{from}}',
   },
 
   // ——— Celebrate ———

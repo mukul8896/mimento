@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { CelebrationSchema, MusicSchema, NO_MUSIC, type Music } from './sound';
+import { MotionProfileSchema } from './scene';
 
 /**
  * Themes are a closed set of design tokens. Creators never supply CSS or JavaScript;
@@ -33,6 +34,8 @@ export const ThemeSchema = z
     /** Tap and answer sound effects. */
     sounds: z.boolean().default(true),
     celebration: CelebrationSchema.default('CONFETTI'),
+    /** The template's character (scene.ts); absent derives one from the animation. */
+    motionProfile: MotionProfileSchema.optional(),
   })
   .meta({ id: 'Theme' });
 export type Theme = z.infer<typeof ThemeSchema>;
@@ -113,6 +116,14 @@ export const PALETTE_PRESETS = {
     accent: '#6d3fc6',
     accentText: '#ffffff',
   },
+  /** Deep plum and rose gold: candlelight for proposals and anniversaries. */
+  dusk: {
+    background: '#1b1020',
+    surface: '#2a1a31',
+    text: '#fbeff3',
+    accent: '#f2b8c8',
+    accentText: '#2a1320',
+  },
 } as const satisfies Record<string, ThemePalette>;
 export type PalettePresetName = keyof typeof PALETTE_PRESETS;
 
@@ -146,6 +157,24 @@ export function contrastRatio(a: string, b: string): number {
   const lb = luminance(b);
   const [hi, lo] = la > lb ? [la, lb] : [lb, la];
   return (hi + 0.05) / (lo + 0.05);
+}
+
+/** True for a colour dark enough that light text sits on it (the dusk and midnight palettes). */
+export function isDark(hex: string): boolean {
+  return luminance(hex) < 0.18;
+}
+
+/** `a` mixed with `b`: weight 1 is all `a`, 0 is all `b`. Both #rrggbb. */
+export function mixHex(a: string, b: string, weight: number): string {
+  const w = Math.min(1, Math.max(0, weight));
+  let out = '#';
+  for (const i of [1, 3, 5]) {
+    const v = Math.round(
+      parseInt(a.slice(i, i + 2), 16) * w + parseInt(b.slice(i, i + 2), 16) * (1 - w),
+    );
+    out += v.toString(16).padStart(2, '0');
+  }
+  return out;
 }
 
 export const MIN_TEXT_CONTRAST = 4.5;

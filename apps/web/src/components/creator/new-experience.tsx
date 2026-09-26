@@ -2,11 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import { motion, useReducedMotion } from 'motion/react';
-import { useMemo, useState } from 'react';
-import { suggestedDate, type TemplateField } from '@momentpath/contracts';
+import { useEffect, useMemo, useState } from 'react';
+import { DEFAULT_THEME, suggestedDate, type TemplateField } from '@momentpath/contracts';
 import { Alert, Button, Dialog, Field, Input } from '@momentpath/design-system';
 import { ApiError, browserApi, unwrap } from '@/lib/api/browser';
 import { PlusProCompare } from './plus-pro';
+import { HANDOVER_MS, LAUNCH_MS, SceneLaunch, type Launch } from './scene-launch';
+import { clearStage, setStage } from '@/lib/stage';
 import { TemplateCard, type TemplateSummary } from '@/components/site/landing/template-card';
 import {
   OccasionChips,
@@ -178,6 +180,10 @@ export function NewExperience({
     template: TemplateSummary | null;
   } | null>(linked && linkedWork ? { item: linkedWork, template: linked } : null);
   const [discarding, setDiscarding] = useState(false);
+  // The bloom into the chosen template while the surprise is prepared (see SceneLaunch).
+  const [launch, setLaunch] = useState<Launch | null>(null);
+  // Back from a surprise's stage: the page fades home to the site's own colours.
+  useEffect(() => clearStage(), []);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [occasion, setOccasion] = useState('All');
@@ -190,9 +196,41 @@ export function NewExperience({
   );
   const shown = occasion === 'All' ? ordered : ordered.filter((t) => t.occasion === occasion);
 
+  /**
+   * Grows the tapped card into the template's world (SceneLaunch) and sets the page's stage to
+   * the same colours, so the next page opens on them. Resolves when the bloom has played.
+   */
+  function beginLaunch(template: TemplateSummary | null): Promise<void> {
+    const card = document.querySelector(
+      `[data-testid="${template ? `template-${template.key}` : 'create-from-scratch'}"]`,
+    );
+    const box = card?.getBoundingClientRect();
+    const visible = box && box.bottom > 0 && box.top < window.innerHeight;
+    // From scratch opens the builder on the default look, so the bloom lands on it too.
+    const palette = template?.theme.palette ?? DEFAULT_THEME.palette;
+    setLaunch({
+      emoji: template?.emoji ?? '✏️',
+      palette,
+      fromColor: template ? palette.background : '#2a1830',
+      label: template ? template.name : 'Your own experience',
+      from: visible ? { top: box.top, left: box.left, width: box.width, height: box.height } : null,
+    });
+    setStage(palette);
+    return new Promise((r) => window.setTimeout(r, reduced ? 250 : LAUNCH_MS));
+  }
+
+  /** The title fades as the next page is fetched; the stage colour carries across. */
+  function handOver(path: string) {
+    setLaunch((l) => (l ? { ...l, leaving: true } : l));
+    window.setTimeout(() => router.push(path), reduced ? 0 : HANDOVER_MS);
+  }
+
   async function create(templateKey: string | null, fields?: Record<string, string>) {
     setBusy(templateKey ?? 'blank');
     setError(null);
+    const chosen = templateKey ? (templates.find((t) => t.key === templateKey) ?? null) : null;
+    setPersonalising(null);
+    const bloom = beginLaunch(chosen);
     try {
       const exp = unwrap(
         await browserApi().POST('/api/v1/experiences', {
@@ -200,13 +238,16 @@ export function NewExperience({
         }),
       );
       // Templates are personalised in their preview; a blank start opens the PRO builder.
-      router.push(`/experiences/${exp.id}/${templateKey ? 'personalize' : 'edit'}`);
+      await bloom;
+      handOver(`/experiences/${exp.id}/${templateKey ? 'personalize' : 'edit'}`);
     } catch (err) {
       setError(
         err instanceof ApiError
           ? (err.problem.issues?.[0]?.message ?? err.problem.detail ?? err.problem.title)
           : 'Could not create the experience.',
       );
+      setLaunch(null);
+      clearStage();
       setBusy(null);
     }
   }
@@ -269,12 +310,12 @@ export function NewExperience({
         data-testid="create-from-scratch"
         whileHover={reduced ? undefined : { y: -3 }}
         whileTap={reduced ? undefined : { scale: 0.985 }}
-        className="group relative w-full overflow-hidden rounded-3xl bg-gradient-to-br from-violet-700 via-fuchsia-700 to-brand-700 p-5 text-left text-white shadow-lg shadow-fuchsia-900/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:opacity-60 sm:p-6"
+        className="group relative w-full overflow-hidden rounded-3xl bg-gradient-to-br from-ink-950 via-ink-900 to-[#6b2349] p-5 text-left text-white shadow-lg shadow-ink-900/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:opacity-60 sm:p-6"
       >
         {/* Decorative: soft light and a few floating pieces of what you can build. */}
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute -top-16 -right-10 size-48 rounded-full bg-white/15 blur-2xl"
+          className="pointer-events-none absolute -top-16 -right-10 size-48 rounded-full bg-rose-300/25 blur-2xl"
         />
         <span aria-hidden="true" className="pointer-events-none absolute inset-0">
           {[
@@ -298,10 +339,10 @@ export function NewExperience({
           ))}
         </span>
         <span className="relative block max-w-[16rem] sm:max-w-md">
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold tracking-widest ring-1 ring-white/25 backdrop-blur">
+          <span className="inline-flex items-center gap-2 rounded-full bg-gold-300/20 px-2.5 py-1 text-[11px] font-bold tracking-widest text-gold-200 ring-1 ring-gold-300/40 backdrop-blur">
             PRO
           </span>
-          <span className="mt-3 block text-2xl font-extrabold leading-tight tracking-tight">
+          <span className="mt-3 block font-display text-3xl leading-tight font-semibold">
             Create from Scratch
           </span>
           <span className="mt-1 block text-sm text-white/85">
@@ -319,7 +360,7 @@ export function NewExperience({
           <span className="text-xs text-white/85" suppressHydrationWarning>
             {scratchWork ? `✎ In progress · edited ${editedAgo(scratchWork.editedAt)}` : ''}
           </span>
-          <span className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 text-sm font-bold text-fuchsia-800 shadow-md transition group-hover:gap-3">
+          <span className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-white px-4 text-sm font-bold text-ink-900 shadow-md transition group-hover:gap-3">
             {busy === 'blank' ? 'Creating…' : scratchWork ? 'Continue building' : 'Start building'}
             <span aria-hidden="true">→</span>
           </span>
@@ -327,7 +368,9 @@ export function NewExperience({
       </motion.button>
       <h2 className="pt-2 text-lg font-semibold">
         Or pick a ready-made template{' '}
-        <span className="text-sm font-normal text-ink-500">— personalise it with PLUS</span>
+        <span className="font-sans text-sm font-normal text-ink-500">
+          — personalise it with PLUS
+        </span>
       </h2>
       <OccasionChips occasions={occasions} value={occasion} onChange={setOccasion} />
       <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -390,7 +433,12 @@ export function NewExperience({
             </Button>
             <Button
               data-testid="continue-in-progress"
-              onClick={() => resume && router.push(pathOf(resume.item))}
+              onClick={() => {
+                if (!resume) return;
+                const path = pathOf(resume.item);
+                setResume(null);
+                void beginLaunch(resume.template).then(() => handOver(path));
+              }}
             >
               Continue
             </Button>
@@ -401,6 +449,7 @@ export function NewExperience({
           Starting over removes your changes to this one. Your other surprises stay as they are.
         </p>
       </Dialog>
+      {launch ? <SceneLaunch launch={launch} /> : null}
       <PersonaliseSheet
         template={personalising}
         busy={busy !== null}

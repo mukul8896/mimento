@@ -1,6 +1,6 @@
 # INSTRUCTION.md — current application state
 
-_Last updated: 2026-09-25 (template personalization & PRO; Phase 2 live; 1-year retention; passkeys)._ Update this file at the end of every session.
+_Last updated: 2026-09-26 (premium experience system; dancing buttons; warm & premium website makeover)._ Update this file at the end of every session.
 
 ## Status snapshot
 
@@ -17,6 +17,86 @@ stages 2 and 3 are not started.**
 | Docker Compose, Dockerfiles                                                             | **Verified 2026-09-23** — services healthy, both images build, API + web serve                     |
 | GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
 | Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
+
+## Warm & premium website makeover + one smooth creator journey (2026-09-26)
+
+Not committed or deployed yet (neither is the premium experience work below).
+
+- **Look:** warm ink scale (cream `ink-50` → plum `ink-950`), rose and gold tokens in `globals.css`;
+  one self-hosted display serif, Fraunces (`app/fonts/fraunces-latin.woff2`, OFL, via
+  `next/font/local`), used for `h1`/`h2` on the site only (the player keeps its theme fonts).
+  Helpers: `.wr-glow`, `.wr-rose-text`, `.wr-halo`, `.wr-breathe` (off for reduced motion), `.wr-press`.
+- **Homepage** rewritten (`app/page.tsx`, `landing/hero.tsx`): the hero plays the real Proposal
+  template in a tilted phone; `gift-hero`, `floating-bg` and `try-it` are gone.
+- **Dancing buttons:** the player's outline buttons bob in time with the music
+  (`AudioEngine.energy()`; see `player/motion/dance.ts`). Off for reduced motion and automation.
+- **Journey continuity:** `app/(creator)/template.tsx` gives every creator page the same short
+  rise-in; choosing a template shows `creator/scene-launch.tsx`, a full-screen bloom in the
+  template's colours ("Setting the scene…") while the draft is created, so Personalize opens out of it.
+- **Each experience has its own pace:** `PACE` in `prisma/templates.ts` gives every template a
+  motion profile (brisk PLAYFUL; warm FESTIVE/WARM; tender ROMANTIC/NOSTALGIC/CINEMATIC), and
+  `Profile.reactionHold` sets how long an answer's reaction stays. Owner-approved grouping.
+  Needs a reseed (`pnpm db:seed`) to reach a database.
+- **Immersive stage (owner choice: "setting only"):** while personalising, the page background,
+  header and the words on the background take the template's palette (`lib/stage.ts`,
+  `creator/stage.tsx`, `.wr-stage-*`/`.wr-on-stage*` in `globals.css`); cards, sheets, inputs and
+  Publish keep the site style. Leaving fades back to cream. The launch grows out of the tapped
+  card in its own colour and hands over to Personalize on the same colour (`scene-launch.tsx`).
+- **Restyled:** Create Experience header and the plum Create from Scratch card, policy/pricing
+  shell, footer, 404, success and manage headings.
+- **Verified 2026-09-26:** lint, typecheck, format, unit (contracts 90, api 80, web 49),
+  integration 132, build, E2E 86 passed / 1 skipped.
+
+## Premium experience system — first template: Proposal (2026-09-26)
+
+See [ADR 0009](docs/decisions/0009-premium-experience-system.md) and the scene-by-scene spec
+[docs/experience/proposal.md](docs/experience/proposal.md). Owner decisions:
+
+- Motion + CSS + Lottie, no GSAP.
+- Hybrid audio: recorded licensed music plus synthesised cues.
+- Free ending "B".
+- No branding at all on paid surprises.
+- Starter assets picked from free-licence libraries, with their licences recorded.
+
+- **Contracts:** `scene.ts` (Scene, motion profiles, layouts, entrances, transitions, climaxes);
+  `DraftStep.scene?`; `Theme.motionProfile?`; `Music` `RECORDED` (`RECORDED_LIBRARY`);
+  `PublicExperience.branded`; palette `dusk`.
+- **API:** `Step.scene` column (migration `20260926170000_step_scene`, mapped in step-mapping);
+  the recipient payload sets `branded` = no PLUS/PRO entitlement.
+- **Player** (`components/player/motion/`):
+  - `profiles.ts`; `scene.tsx` (layouts, CSS-staggered entrances, word reveal, veil
+    transitions, reaction moment); `climax.tsx` (hush → heartbeat → light bloom → swell →
+    illustration → shower); `illustration.tsx` (lazy lottie-web light).
+  - `free-ending.tsx` (ending B, "See it again" keeps the final scene mounted).
+  - Scene markers replace progress bars, and taps are guarded during hand-overs and the climax.
+  - Calm profiles give no feedback on Continue, and the right-answer feedback is the reaction line.
+  - The letter reveal is used for written gifts.
+  - The engine gained `setLevel`, `cue` (`SWELL`, `REVEAL`, `HEARTBEAT`) and recorded streaming.
+  - The music picker lists recorded tracks.
+- **Assets:**
+  - `public/audio/romantic-clair-de-lune.m4a`: public domain, from Wikimedia Commons, 112 s,
+    790 KB, AAC mono.
+  - `public/lottie/{ring,heart}.json`: original, generated by `scripts/build-lottie.mjs`.
+- **Tests:**
+  - contracts `scene.test.ts`;
+  - web `motion/assets.test.ts` (shapes-only Lottie, size limits, licences recorded, profiles);
+  - integration `scenes.int.test.ts` (scenes survive create, save, publish and reach the
+    recipient; the puzzle answer is still hidden; branded free versus paid);
+  - E2E `proposal.mobile.spec.ts` (journey + accessibility + no console/CSP errors, reduced
+    motion, taps during the climax, paid ending).
+  - Totals: unit 90 + 46 + 80, integration 131, E2E 86 passed / 1 skipped.
+- **Next:**
+  - Birthday surprise on the system.
+  - The scratch-card upgrade (continuous stroke, scratch sound).
+  - Expressive multiple choice with reactions per answer.
+  - Final Reveal types (ticket, photo memory) and the "Final surprise" → "Final Reveal" wording in the builder.
+  - Analytics events: none yet.
+  - More recorded tracks per category (birthday, playful, festive, calm) with licences.
+  - Owner: test on real phones and in the WhatsApp/Instagram in-app browsers.
+- **Deploying:** migration `20260926170000_step_scene`, then reseed. The seed upserts template
+  content, so Proposal becomes the new six-scene version. Existing Proposal drafts made from the
+  old five-step version would then need PRO, because their structure no longer matches;
+  production has only test data.
 
 ## Create Experience polish (2026-09-26)
 

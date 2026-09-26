@@ -106,7 +106,7 @@ export function ManageExperience({ experience }: { experience: Detail }) {
           <p className="text-xs font-bold tracking-widest text-brand-700 uppercase">
             Manage Surprise
           </p>
-          <h1 className="mt-1 break-words text-2xl font-semibold">
+          <h1 className="mt-1 break-words text-3xl font-semibold">
             {experience.title || 'Untitled'}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">

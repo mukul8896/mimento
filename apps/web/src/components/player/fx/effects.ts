@@ -237,3 +237,31 @@ export function playEffect(o: Out, effect: SoundEffect, t: number): void {
       return;
   }
 }
+
+/**
+ * Climax cues: not creator-selectable effects, but the sound of an experience's peak.
+ * SWELL rises from nothing into a warm chord; REVEAL is a soft, bright shimmer.
+ */
+export type Cue = 'HEARTBEAT' | 'SWELL' | 'REVEAL';
+
+export function playCue(o: Out, cue: Cue, t: number): void {
+  if (cue === 'HEARTBEAT') return playEffect(o, 'HEARTBEAT', t);
+  if (cue === 'REVEAL') {
+    sparkle(o, t, 8);
+    ['E6', 'G#6', 'B6'].forEach((m, i) =>
+      playNote(o, 'chime', t + 0.05 + i * 0.1, n(m), 1.4, 0.55),
+    );
+    return;
+  }
+  // A major-ninth pad that blooms over two seconds, with a bell on top as it arrives.
+  const chord = ['E3', 'B3', 'E4', 'G#4', 'B4', 'F#5'];
+  const g = o.ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(1, t + 1.6);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 5.5);
+  g.connect(o.dry);
+  const swell: Out = { ...o, dry: g };
+  chord.forEach((m, i) => playNote(swell, 'pad', t + i * 0.04, n(m), 4.8, 0.7));
+  playNote(o, 'bell', t + 1.5, n('B5'), 2.5, 0.5);
+  playNote(o, 'bell', t + 1.65, n('E6'), 2.5, 0.45);
+}

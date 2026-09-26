@@ -2,6 +2,7 @@ import {
   DEFAULT_THEME,
   PALETTE_PRESETS,
   richTextFromParagraphs,
+  type MotionProfile,
   type TemplateContentInput,
   type Tier,
 } from '@momentpath/contracts';
@@ -289,4 +290,50 @@ const CLASSIC_TEMPLATES: TemplateDefinition[] = [
   },
 ];
 
-export const TEMPLATES: TemplateDefinition[] = [...CLASSIC_TEMPLATES, ...OCCASION_TEMPLATES];
+/**
+ * Each experience moves at its own pace (docs/decisions/0009): celebrations are brisk and
+ * bouncy, festivals and family moments warm, and the tender ones take their time. A template
+ * that sets its own motionProfile (the Proposal) keeps it.
+ */
+export const PACE: Record<string, MotionProfile> = {
+  // Brisk
+  'date-invitation': 'PLAYFUL',
+  'birthday-surprise': 'PLAYFUL',
+  'birthday-wish': 'PLAYFUL',
+  'birthday-midnight': 'PLAYFUL',
+  'holi-wishes': 'PLAYFUL',
+  'new-year-countdown': 'PLAYFUL',
+  friendship: 'PLAYFUL',
+  congratulations: 'PLAYFUL',
+  graduation: 'PLAYFUL',
+  'good-luck': 'PLAYFUL',
+  'meet-me': 'PLAYFUL',
+  // Warm
+  'diwali-wishes': 'FESTIVE',
+  'eid-mubarak': 'FESTIVE',
+  'christmas-wishes': 'FESTIVE',
+  'raksha-bandhan': 'FESTIVE',
+  'thank-you': 'WARM',
+  'mothers-day': 'WARM',
+  'fathers-day': 'WARM',
+  'new-baby': 'WARM',
+  'wedding-wishes': 'WARM',
+  // Tender
+  anniversary: 'ROMANTIC',
+  valentine: 'ROMANTIC',
+  proposal: 'CINEMATIC',
+  sorry: 'NOSTALGIC',
+  'get-well-soon': 'NOSTALGIC',
+  farewell: 'NOSTALGIC',
+};
+
+const paced = (t: TemplateDefinition): TemplateDefinition => {
+  const profile = t.content.theme.motionProfile ?? PACE[t.key];
+  return profile
+    ? { ...t, content: { ...t.content, theme: { ...t.content.theme, motionProfile: profile } } }
+    : t;
+};
+
+export const TEMPLATES: TemplateDefinition[] = [...CLASSIC_TEMPLATES, ...OCCASION_TEMPLATES].map(
+  paced,
+);

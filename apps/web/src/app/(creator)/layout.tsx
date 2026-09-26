@@ -14,7 +14,7 @@ export default async function CreatorLayout({ children }: { children: React.Reac
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-30 border-b border-ink-100 bg-white/90 backdrop-blur pt-[env(safe-area-inset-top)]">
+      <header className="wr-stage-header sticky top-0 z-30 border-b border-ink-100 bg-white/90 backdrop-blur pt-[env(safe-area-inset-top)]">
         <div className="mx-auto h-14 max-w-6xl px-4 sm:px-6">
           <SiteNav admin={me.isAdmin} />
         </div>

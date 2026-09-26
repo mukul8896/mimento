@@ -7,13 +7,15 @@ import {
   type Transition,
   type Variants,
 } from 'motion/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   NO_MUSIC,
   type Answer,
   type DraftStep,
   type Reaction,
+  type Climax,
   type RevealedGift,
+  type SceneTransition,
   type Theme,
 } from '@momentpath/contracts';
 import { PlayerError, type PlayerBackend, type PlayerState } from './backend';
@@ -24,6 +26,19 @@ import { ParticleLayer, type Point } from './fx/particles';
 import { ReportDialog } from './report-dialog';
 import { OpeningSoon, PinGate } from './access-screens';
 import { EditContext, type EditTarget } from './editable';
+import { ClimaxLayer } from './motion/climax';
+import { profileOf } from './motion/profiles';
+import { danceFrame, STILL } from './motion/dance';
+import {
+  entranceStyle,
+  layoutClass,
+  ReactionMoment,
+  SceneContext,
+  sceneOf,
+  sceneVariants,
+  Veil,
+} from './motion/scene';
+import { FreeEnding } from './free-ending';
 import { CountdownStep } from './steps/countdown-step';
 import { GalleryStep } from './steps/gallery-step';
 import { GiftStep } from './steps/gift-step';
@@ -75,6 +90,7 @@ const TRANSITIONS: Record<Theme['animation'], Transition> = {
 };
 
 const SOUND_PREF = 'wr-sound';
+const noSubscribe = () => () => {};
 
 function readMutedPref(): boolean {
   if (typeof window === 'undefined') return false;
@@ -163,6 +179,23 @@ export function Player({
   const ambient = useRef<ParticleLayer | null>(null);
   const lastPointer = useRef<Point | null>(null);
   const card = useRef<HTMLElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+  /** Until when buttons hold still: a finger is on the screen, so nothing moves under it. */
+  const stillUntil = useRef(0);
+
+  // Scenes (templates with a motion profile): how the last scene left, the veil between
+  // scenes, the short reaction after an answer, the climax, and a guard against taps while
+  // one scene hands over to the next.
+  const [leaving, setLeaving] = useState<SceneTransition | undefined>(undefined);
+  const [veil, setVeil] = useState<{ kind: SceneTransition; run: number } | null>(null);
+  const [reaction, setReaction] = useState<string | null>(null);
+  const [climax, setClimax] = useState<{
+    kind: Exclude<Climax, 'NONE'>;
+    text: string;
+    done: () => void;
+  } | null>(null);
+  const [settling, setSettling] = useState(false);
+  const [promo, setPromo] = useState<'waiting' | 'shown' | 'dismissed'>('waiting');
 
   const [attempt, setAttempt] = useState(0);
   const [pin, setPin] = useState<string | undefined>(undefined);
@@ -195,6 +228,8 @@ export function Player({
   // With branching the list order is not the recipient's order, so count steps they have done.
   const position = Math.min((state?.progress.completedStepKeys.length ?? 0) + 1, steps.length);
   const finished = state?.progress.completed === true && current?.type !== 'GIFT_REVEAL';
+  const profile = profileOf(theme);
+  const scene = sceneOf(current);
   const music = theme.music ?? NO_MUSIC;
   const musicUrl =
     music.source === 'UPLOAD'
@@ -209,6 +244,10 @@ export function Player({
   }, [engine, music, musicUrl, closed]);
   // Embedded videos have their own sound; the music steps back while one is on screen.
   useEffect(() => engine.setDucked(current?.type === 'VIDEO'), [engine, current?.type]);
+  // Scenes set how present the music is: it can soften before the question that matters.
+  useEffect(() => {
+    if (!climax) engine.setLevel(profile ? (scene.music ?? 1) : 1);
+  }, [engine, profile, scene.music, climax]);
 
   useEffect(() => {
     if (reducedMotion || !burstCanvas.current || !ambientCanvas.current) return;
@@ -221,11 +260,60 @@ export function Player({
     };
   }, [reducedMotion]);
 
+  // Buttons move with the music. Not with reduced motion, and not in automated browsers, which
+  // wait for elements to stop moving before they tap them; real phones always dance.
+  const dance = profile?.dance ?? null;
+  // Read on the client only (the server renders still buttons), so hydration always matches.
+  const automated = useSyncExternalStore(
+    noSubscribe,
+    () => navigator.webdriver === true,
+    () => true,
+  );
+  const dancing = dance !== null && !reducedMotion && !closed && !automated;
+  useEffect(() => {
+    const el = root.current;
+    if (!dancing || !dance || !el) return;
+    let raf = 0;
+    let last = 0;
+    let smooth = 0;
+    let shown = STILL;
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick);
+      if (now - last < 33 || document.hidden) return; // about 30 frames a second is plenty
+      last = now;
+      const energy = engine.energy();
+      smooth += (energy - smooth) * 0.12;
+      const target =
+        now < stillUntil.current ? STILL : danceFrame(now / 1000, energy, smooth, dance);
+      // Ease towards the target, so pausing for a tap (and resuming) is never a jump.
+      shown = {
+        bobA: shown.bobA + (target.bobA - shown.bobA) * 0.35,
+        bobB: shown.bobB + (target.bobB - shown.bobB) * 0.35,
+        sway: shown.sway + (target.sway - shown.sway) * 0.35,
+      };
+      el.style.setProperty('--mp-bob-a', `${shown.bobA.toFixed(2)}px`);
+      el.style.setProperty('--mp-bob-b', `${shown.bobB.toFixed(2)}px`);
+      el.style.setProperty('--mp-sway', `${shown.sway.toFixed(2)}deg`);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      el.style.removeProperty('--mp-bob-a');
+      el.style.removeProperty('--mp-bob-b');
+      el.style.removeProperty('--mp-sway');
+    };
+  }, [dancing, dance, engine]);
+
   const celebration = theme.celebration ?? 'CONFETTI';
   const loaded = state !== null;
+  const ambientMode = profile?.ambient ?? 'full';
   useEffect(() => {
-    ambient.current?.setAmbient(loaded && !closed ? ambientGlyphs(celebration) : []);
-  }, [celebration, loaded, closed, reducedMotion]);
+    const on = loaded && !closed && ambientMode !== 'none';
+    ambient.current?.setAmbient(
+      on ? ambientGlyphs(celebration) : [],
+      ambientMode === 'faint' ? 4 : undefined,
+    );
+  }, [celebration, loaded, closed, reducedMotion, ambientMode]);
 
   const fx: Fx = useMemo(() => {
     const effect: Fx['effect'] = (e) => {
@@ -285,6 +373,20 @@ export function Player({
 
   /** Immediate feedback for the tap itself, before the server has answered. */
   function answerFx(step: DraftStep, answer: Answer) {
+    // The climax is the feedback for its own answer; nothing should compete with it.
+    if (
+      profile &&
+      answer.kind === 'CHOICE' &&
+      answer.value === 'YES' &&
+      sceneOf(step).climax !== 'NONE'
+    )
+      return;
+    if (profile && answer.kind === 'ACK') {
+      if (profile.continueFx === 'none') return;
+      fx.effect('POP');
+      if (profile.continueFx === 'burst') fx.burst();
+      return;
+    }
     if (answer.kind === 'CHOICE' && step.type === 'YES_NO_CHOICE') {
       const reaction =
         answer.value === 'YES'
@@ -293,7 +395,7 @@ export function Player({
             ? step.config.noReaction
             : step.config.maybeReaction;
       fx.react(reaction);
-      if (answer.value === 'YES' && !reducedMotion)
+      if (answer.value === 'YES' && !reducedMotion && (profile?.yesFx ?? 'shower') === 'shower')
         bursts.current?.shower(
           reaction.emoji ? splitEmoji(reaction.emoji) : burstGlyphs(celebration),
         );
@@ -305,6 +407,12 @@ export function Player({
 
   function resultFx(step: DraftStep, answer: Answer, correct: boolean | null) {
     if (answer.kind !== 'OPTION' && answer.kind !== 'TEXT') return;
+    // In quieter profiles the scene's own reaction line is the celebration of a right answer.
+    if (profile && profile.continueFx === 'none') {
+      if (correct === true) engine.cue('REVEAL');
+      else if (correct === false) shake();
+      return;
+    }
     if (correct === true) {
       fx.effect('DING');
       fx.burst({ size: 'big' });
@@ -316,6 +424,45 @@ export function Player({
       fx.burst();
     }
   }
+
+  /** Moves to the next scene, letting the one being left choose how it hands over. */
+  const advance = useCallback(
+    (from: DraftStep, next: string | null) => {
+      const hand = from.scene?.transition ?? profile?.transition;
+      setLeaving(hand);
+      if (
+        profile &&
+        !reducedMotion &&
+        (hand === 'FADE_THROUGH_DARK' || hand === 'FADE_THROUGH_LIGHT')
+      )
+        setVeil((v) => ({ kind: hand, run: (v?.run ?? 0) + 1 }));
+      setViewing(next);
+      if (profile) {
+        setSettling(true);
+        window.setTimeout(
+          () => setSettling(false),
+          (reducedMotion ? 0.3 : profile.duration * 1.5) * 1000,
+        );
+      }
+    },
+    [profile, reducedMotion],
+  );
+
+  /** The climax plays over everything; resolves when it has finished. */
+  const playClimax = useCallback(
+    (kind: Exclude<Climax, 'NONE'>, text: string) =>
+      new Promise<void>((resolve) =>
+        setClimax({
+          kind,
+          text,
+          done: () => {
+            setClimax(null);
+            resolve();
+          },
+        }),
+      ),
+    [],
+  );
 
   const submit = useCallback(
     async (answer: Answer): Promise<boolean | null> => {
@@ -334,7 +481,20 @@ export function Player({
         )
           return false;
         setState((s) => (s ? { ...s, progress: res.progress } : s));
-        setViewing(res.progress.nextStepKey);
+        const sc = sceneOf(current);
+        if (profile) {
+          if (answer.kind === 'CHOICE' && answer.value === 'YES' && sc.climax !== 'NONE') {
+            await playClimax(sc.climax, sc.reaction);
+          } else if (sc.reaction && res.correct !== false) {
+            // A moment of acknowledgement before the story moves on.
+            setReaction(sc.reaction);
+            await new Promise((r) =>
+              window.setTimeout(r, reducedMotion ? 900 : (profile?.reactionHold ?? 1.8) * 1000),
+            );
+            setReaction(null);
+          }
+        }
+        advance(current, res.progress.nextStepKey);
         return res.correct;
       } catch (err) {
         setNotice(
@@ -347,7 +507,7 @@ export function Player({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the fx helpers only read refs and fx
-    [backend, current, fx],
+    [backend, current, fx, profile, advance, playClimax, reducedMotion],
   );
 
   const reveal = useCallback(async (): Promise<RevealedGift | null> => {
@@ -357,8 +517,17 @@ export function Player({
     try {
       const res = await backend.reveal(current.key);
       setState((s) => (s ? { ...s, progress: res.progress } : s));
-      fx.effect('FANFARE');
-      fx.celebrate();
+      const sc = sceneOf(current);
+      if (profile && sc.climax !== 'NONE') {
+        await playClimax(sc.climax, sc.reaction);
+      } else if (profile) {
+        // The final reveal lands softly when the climax already happened earlier.
+        engine.cue('REVEAL');
+        if (profile.ambient === 'full') fx.celebrate();
+      } else {
+        fx.effect('FANFARE');
+        fx.celebrate();
+      }
       return res.gift;
     } catch (err) {
       const code = err instanceof PlayerError ? err.code : '';
@@ -374,7 +543,17 @@ export function Player({
     } finally {
       setBusy(false);
     }
-  }, [backend, current, fx]);
+  }, [backend, current, fx, profile, playClimax, engine]);
+
+  // Free surprises: once the ending has had room to breathe, a gentle invitation follows.
+  const branded = state?.experience.branded !== false;
+  const ended =
+    finished || (current?.type === 'GIFT_REVEAL' && state?.progress.giftRevealed === true);
+  useEffect(() => {
+    if (!branded || !ended || promo !== 'waiting' || onEdit) return;
+    const timer = window.setTimeout(() => setPromo('shown'), finished ? 4500 : 9000);
+    return () => window.clearTimeout(timer);
+  }, [branded, ended, finished, promo, onEdit]);
 
   function close() {
     // Fire-and-forget: closing must work even offline and never submits an answer.
@@ -388,8 +567,23 @@ export function Player({
     [onEdit, currentKey],
   );
 
-  const variants = reducedMotion ? VARIANTS.NONE : VARIANTS[theme.animation];
-  const transition = reducedMotion ? TRANSITIONS.NONE : TRANSITIONS[theme.animation];
+  const variants = profile
+    ? sceneVariants(profile, reducedMotion)
+    : reducedMotion
+      ? VARIANTS.NONE
+      : VARIANTS[theme.animation];
+  const transition = profile
+    ? undefined
+    : reducedMotion
+      ? TRANSITIONS.NONE
+      : TRANSITIONS[theme.animation];
+  const entrance = profile ? (scene.entrance ?? profile.entrance) : null;
+  const enter = profile && entrance ? entranceStyle(profile, entrance) : null;
+  const sceneState = useMemo(
+    () => (profile && entrance ? { scene, entrance, reducedMotion } : null),
+    [profile, entrance, scene, reducedMotion],
+  );
+  const holding = settling || reaction !== null || climax !== null;
   const shell = embedded ? 'relative h-full min-h-full' : 'relative min-h-dvh';
   const layer = `pointer-events-none ${embedded ? 'absolute' : 'fixed'} inset-0 size-full`;
 
@@ -401,11 +595,15 @@ export function Player({
 
   return (
     <div
-      className={`${themeClass(theme)} ${shell} flex flex-col overflow-x-hidden`}
+      ref={root}
+      className={`${themeClass(theme)} ${shell} flex flex-col overflow-x-hidden ${
+        profile && profile.continueFx === 'none' ? 'mp-calm' : ''
+      } ${dancing ? 'mp-dance' : ''}`}
       style={themeStyle(theme)}
       data-testid="player"
       onPointerDownCapture={(e) => {
         lastPointer.current = { x: e.clientX, y: e.clientY };
+        stillUntil.current = performance.now() + 700;
       }}
       onPointerUpCapture={unlock}
       onKeyDownCapture={(e) => {
@@ -415,9 +613,49 @@ export function Player({
     >
       <canvas ref={ambientCanvas} aria-hidden="true" className={`${layer} z-0`} />
       <canvas ref={burstCanvas} aria-hidden="true" className={`${layer} z-30`} />
+      {veil && profile ? (
+        <Veil kind={veil.kind} run={veil.run} duration={profile.duration} palette={theme.palette} />
+      ) : null}
+      <AnimatePresence>
+        {climax ? (
+          <ClimaxLayer
+            key="climax"
+            kind={climax.kind}
+            text={climax.text}
+            reducedMotion={reducedMotion}
+            controls={{
+              cue: (c, d) => engine.cue(c, d),
+              setLevel: (l) => engine.setLevel(l),
+              celebrate: () => fx.celebrate(),
+            }}
+            onDone={climax.done}
+          />
+        ) : null}
+      </AnimatePresence>
       <header className="sticky top-0 z-40 flex items-center justify-between gap-3 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
         <div className="min-w-0 flex-1">
-          {state && !closed && steps.length > 0 ? (
+          {state && !closed && steps.length > 0 && profile ? (
+            // Quiet scene markers: where they are in the story, not a questionnaire's bar.
+            <div
+              aria-label={`Step ${position} of ${steps.length}`}
+              role="img"
+              className="flex items-center gap-1.5"
+              data-testid="scene-markers"
+            >
+              {steps.map((s, i) => (
+                <span
+                  key={s.key}
+                  className={`h-1.5 rounded-full bg-[var(--mp-accent)] transition-all duration-700 ${
+                    i === position - 1 && !finished
+                      ? 'w-5 opacity-100'
+                      : i < position || finished
+                        ? 'w-1.5 opacity-70'
+                        : 'w-1.5 opacity-20'
+                  }`}
+                />
+              ))}
+            </div>
+          ) : state && !closed && steps.length > 0 ? (
             <div
               aria-label={`Step ${position} of ${steps.length}`}
               role="img"
@@ -509,6 +747,12 @@ export function Player({
           <p className="text-center opacity-70" role="status">
             Loading…
           </p>
+        ) : promo === 'shown' && (finished || !current) ? (
+          <FreeEnding
+            onBack={() => setPromo('dismissed')}
+            reducedMotion={reducedMotion}
+            preview={backend.mode === 'preview'}
+          />
         ) : finished || !current ? (
           <div className="space-y-3 text-center" data-testid="finished-screen">
             <p className="text-[2em]" aria-hidden="true">
@@ -519,52 +763,85 @@ export function Player({
           </div>
         ) : (
           <>
-            {position === 1 && !hideIntro ? (
-              <p className="mb-4 rounded-2xl bg-black/5 px-3 py-2 text-center text-sm">
-                {state.experience.responsesVisibleToCreator
-                  ? 'Your answers will be shared with the person who sent this.'
-                  : 'Only overall totals are shared with the person who sent this.'}{' '}
-                You can close this at any time.
-              </p>
+            {/* The final scene stays mounted under the invitation, so "See it again" returns
+                to it exactly as it was — the letter still open. */}
+            {promo === 'shown' ? (
+              <FreeEnding
+                onBack={() => setPromo('dismissed')}
+                reducedMotion={reducedMotion}
+                preview={backend.mode === 'preview'}
+              />
             ) : null}
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.section
-                ref={card}
-                key={current.key}
-                aria-label={`Step ${position} of ${steps.length}`}
-                variants={variants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={transition}
-                className={`rounded-3xl bg-[var(--mp-surface)] p-5 shadow-lg sm:p-7 ${theme.animation === 'NONE' ? '' : 'mp-stagger'}`}
-              >
-                <FxContext.Provider value={fx}>
-                  <EditContext.Provider value={editTarget}>
-                    <StepView
-                      step={current}
-                      media={state.experience.media}
-                      busy={busy}
-                      reducedMotion={reducedMotion}
-                      submit={submit}
-                      reveal={reveal}
-                      preview={backend.mode === 'preview'}
-                    />
-                  </EditContext.Provider>
-                </FxContext.Provider>
-              </motion.section>
-            </AnimatePresence>
-            {notice ? (
-              <p role="alert" className="mt-4 text-center text-sm font-medium">
-                {notice}
-              </p>
-            ) : null}
+            <div className={promo === 'shown' ? 'hidden' : 'contents'}>
+              {position === 1 && !hideIntro ? (
+                <p className="mb-4 rounded-2xl bg-black/5 px-3 py-2 text-center text-sm">
+                  {state.experience.responsesVisibleToCreator
+                    ? 'Your answers will be shared with the person who sent this.'
+                    : 'Only overall totals are shared with the person who sent this.'}{' '}
+                  You can close this at any time.
+                </p>
+              ) : null}
+              <AnimatePresence mode="wait" initial={false} custom={leaving}>
+                <motion.section
+                  ref={card}
+                  key={current.key}
+                  aria-label={`Step ${position} of ${steps.length}`}
+                  aria-busy={holding || undefined}
+                  variants={variants}
+                  custom={leaving}
+                  initial="initial"
+                  animate={
+                    climax
+                      ? { opacity: 0, transition: { duration: 0.6 } }
+                      : reaction
+                        ? { opacity: 0.12, transition: { duration: 0.35 } }
+                        : 'animate'
+                  }
+                  exit="exit"
+                  transition={transition}
+                  className={
+                    enter
+                      ? `${layoutClass(scene)} ${enter.className} ${holding ? 'pointer-events-none' : ''}`
+                      : `rounded-3xl bg-[var(--mp-surface)] p-5 shadow-lg sm:p-7 ${theme.animation === 'NONE' ? '' : 'mp-stagger'}`
+                  }
+                  style={enter?.style}
+                  data-layout={profile ? scene.layout : undefined}
+                >
+                  <FxContext.Provider value={fx}>
+                    <SceneContext.Provider value={sceneState}>
+                      <EditContext.Provider value={editTarget}>
+                        <StepView
+                          step={current}
+                          media={state.experience.media}
+                          busy={busy}
+                          reducedMotion={reducedMotion}
+                          submit={submit}
+                          reveal={reveal}
+                          preview={backend.mode === 'preview'}
+                        />
+                      </EditContext.Provider>
+                    </SceneContext.Provider>
+                  </FxContext.Provider>
+                </motion.section>
+              </AnimatePresence>
+              <AnimatePresence>
+                {reaction ? (
+                  <ReactionMoment key="reaction" text={reaction} reducedMotion={reducedMotion} />
+                ) : null}
+              </AnimatePresence>
+              {notice ? (
+                <p role="alert" className="mt-4 text-center text-sm font-medium">
+                  {notice}
+                </p>
+              ) : null}
+            </div>
           </>
         )}
       </main>
 
       <footer className="relative z-10 flex items-center justify-between gap-2 px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-xs opacity-70">
-        <span>Made with Wish Revealer</span>
+        {/* Paid surprises carry no Wish Revealer branding. */}
+        <span>{branded ? 'Made with Wish Revealer' : ''}</span>
         {backend.mode === 'live' && error?.code !== 'EXPERIENCE_UNAVAILABLE' ? (
           <button type="button" className="min-h-9 underline" onClick={() => setReporting(true)}>
             Report

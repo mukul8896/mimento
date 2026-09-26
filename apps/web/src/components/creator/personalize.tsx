@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
   MUSIC_LIBRARY,
+  RECORDED_LIBRARY,
   STEP_TYPES,
   type DraftDocument,
   type PublicExperience,
@@ -13,6 +14,7 @@ import {
 import type { Schemas } from '@momentpath/api-client';
 import { Alert, Button, cx, Dialog, Field, Input, Switch } from '@momentpath/design-system';
 import { Player } from '@/components/player/player';
+import { Stage } from './stage';
 import { PencilIcon } from '@/components/player/editable';
 import { PreviewBackend } from '@/components/player/preview-backend';
 import type { MediaItem } from '@/components/editor/media-upload';
@@ -287,10 +289,12 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
       theme: state.theme,
       versionNumber: 0,
       responsesVisibleToCreator: state.settings.responseVisibility === 'FULL',
+      // The creator sees the ending their recipient will: the invitation only on free ones.
+      branded: detail.tier.required === 'FREE',
       steps,
       media,
     }),
-    [state.title, state.theme, state.settings, steps, media],
+    [state.title, state.theme, state.settings, steps, media, detail.tier.required],
   );
   const startKey = mode === 'edit' ? (current?.key ?? null) : null;
   const backend = useMemo(
@@ -385,9 +389,11 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
   const musicName =
     music.source === 'LIBRARY'
       ? `${MUSIC_LIBRARY[music.track].emoji} ${MUSIC_LIBRARY[music.track].name}`
-      : music.source === 'UPLOAD'
-        ? '🎤 Your own song'
-        : 'No music';
+      : music.source === 'RECORDED'
+        ? `${RECORDED_LIBRARY[music.track].emoji} ${RECORDED_LIBRARY[music.track].name}`
+        : music.source === 'UPLOAD'
+          ? '🎤 Your own song'
+          : 'No music';
   const stepName = (i: number) => `Step ${i + 1} · ${STEP_TYPE_LABEL[steps[i]!.type]}`;
   const templateName = detail.template?.name ?? 'Template';
 
@@ -409,17 +415,18 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
       className="mx-auto max-w-6xl px-4 pt-3 pb-36 sm:px-6 lg:pb-12"
       data-testid={pro ? 'builder' : 'personalize'}
     >
+      <Stage palette={state.theme.palette} />
       {/* Top bar: where you are and that your work is safe */}
       <div className="flex items-center gap-2">
         <Link
           href="/new"
           aria-label="Back to templates"
-          className="-ml-2 inline-flex size-11 shrink-0 items-center justify-center rounded-full text-lg text-ink-600 hover:bg-ink-100"
+          className="wr-on-stage -ml-2 inline-flex size-11 shrink-0 items-center justify-center rounded-full text-lg text-ink-600 hover:bg-ink-100"
         >
           ←
         </Link>
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-2 text-xs font-medium text-ink-500">
+          <p className="wr-on-stage-muted flex items-center gap-2 text-xs font-medium text-ink-500">
             <span
               className={cx(
                 'rounded-full px-2 py-0.5 text-[10px] font-bold tracking-widest text-white',
@@ -436,7 +443,7 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
                 : templateName}
             </span>
           </p>
-          <h1 className="truncate text-lg font-semibold leading-tight">
+          <h1 className="wr-on-stage truncate text-lg font-semibold leading-tight">
             {state.title || 'Your surprise'}
           </h1>
         </div>
@@ -473,7 +480,7 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
           <div
             role="group"
             aria-label="Preview mode"
-            className="grid grid-cols-2 gap-1 rounded-2xl bg-ink-100 p-1"
+            className="wr-stage-track grid grid-cols-2 gap-1 rounded-2xl bg-ink-100 p-1"
           >
             {(
               [
@@ -492,7 +499,7 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
                 }}
                 className={cx(
                   'min-h-11 rounded-xl text-sm font-semibold transition',
-                  mode === m ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-600',
+                  mode === m ? 'bg-white text-ink-900 shadow-sm' : 'wr-on-stage text-ink-600',
                 )}
               >
                 <span className="inline-flex items-center justify-center gap-1.5">
@@ -506,7 +513,7 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
               </button>
             ))}
           </div>
-          <p className="mt-2 text-center text-sm text-ink-600" aria-live="polite">
+          <p className="wr-on-stage-muted mt-2 text-center text-sm text-ink-600" aria-live="polite">
             {mode === 'edit' ? (
               <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 font-medium text-ink-800 shadow-sm ring-1 ring-ink-100">
                 <span className="inline-flex size-6 items-center justify-center rounded-full bg-brand-600 text-white">
@@ -521,7 +528,7 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
 
           <div className="mx-auto mt-3 w-full max-w-[400px]">
             <div
-              className="h-[min(600px,68dvh)] overflow-hidden rounded-[2rem] bg-white shadow-xl ring-[6px] ring-ink-900"
+              className="wr-stage-frame h-[min(600px,68dvh)] overflow-hidden rounded-[2rem] bg-white shadow-xl ring-[6px] ring-ink-900"
               data-testid="preview"
             >
               {steps.length === 0 ? (
@@ -615,7 +622,10 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
               ›
             </button>
           </nav>
-          <p className="mt-1 text-center text-xs text-ink-500" data-testid="step-position">
+          <p
+            className="wr-on-stage-muted mt-1 text-center text-xs text-ink-500"
+            data-testid="step-position"
+          >
             {current ? `${stepName(index)} of ${steps.length}` : ''}
           </p>
         </section>

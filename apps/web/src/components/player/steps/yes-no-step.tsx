@@ -6,6 +6,7 @@ import { useFx } from '../fx/fx';
 import { accentButton, outlineButton } from '../theme';
 import type { StepProps } from './types';
 import { EditContext, Editable } from '../editable';
+import { SceneHeading } from '../motion/scene';
 
 interface Position {
   left: number;
@@ -85,7 +86,9 @@ export function YesNoStep({ step, busy, submit, reducedMotion }: StepProps<'YES_
   return (
     <div className="space-y-6">
       <Editable field="Question" block>
-        <h2 className="text-center text-[1.75em] font-bold leading-tight">{cfg.question}</h2>
+        <SceneHeading className="text-center text-[1.75em] font-bold leading-tight">
+          {cfg.question}
+        </SceneHeading>
       </Editable>
       <div
         ref={arena}

@@ -910,6 +910,8 @@ export interface components {
              * @enum {string}
              */
             celebration: "CONFETTI" | "HEARTS" | "SPARKLES" | "BALLOONS" | "FESTIVE" | "FLOWERS" | "SNOW" | "NONE";
+            /** @enum {string} */
+            motionProfile?: "PLAYFUL" | "ROMANTIC" | "CINEMATIC" | "FESTIVE" | "ELEGANT" | "WARM" | "NOSTALGIC";
         };
         Music_Output: {
             /** @constant */
@@ -919,6 +921,11 @@ export interface components {
             source: "LIBRARY";
             /** @enum {string} */
             track: "LOVE_PIANO" | "BIRTHDAY_BOX" | "PARTY" | "FESTIVE" | "JINGLE" | "AULD_LANG_SYNE" | "DREAMY" | "PLAYFUL";
+        } | {
+            /** @constant */
+            source: "RECORDED";
+            /** @enum {string} */
+            track: "CLAIR_DE_LUNE";
         } | {
             /** @constant */
             source: "UPLOAD";
@@ -982,6 +989,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting_Output"];
+            scene?: components["schemas"]["Scene_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -998,6 +1006,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting_Output"];
+            scene?: components["schemas"]["Scene_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1020,6 +1029,7 @@ export interface components {
                 wrongAnswerMessage: string;
             };
             next?: components["schemas"]["StepRouting_Output"];
+            scene?: components["schemas"]["Scene_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1093,6 +1103,7 @@ export interface components {
                 };
             };
             next?: components["schemas"]["StepRouting_Output"];
+            scene?: components["schemas"]["Scene_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1113,6 +1124,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting_Output"];
+            scene?: components["schemas"]["Scene_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1140,6 +1152,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting_Output"];
+            scene?: components["schemas"]["Scene_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1158,6 +1171,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting_Output"];
+            scene?: components["schemas"]["Scene_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1179,6 +1193,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting_Output"];
+            scene?: components["schemas"]["Scene_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1195,6 +1210,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting_Output"];
+            scene?: components["schemas"]["Scene_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1211,6 +1227,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting_Output"];
+            scene?: components["schemas"]["Scene_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1233,6 +1250,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting_Output"];
+            scene?: components["schemas"]["Scene_Output"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1265,6 +1283,7 @@ export interface components {
                 revealAt: string | null;
             };
             next?: components["schemas"]["StepRouting_Output"];
+            scene?: components["schemas"]["Scene_Output"];
         };
         RichTextDoc_Output: {
             /** @constant */
@@ -1353,6 +1372,25 @@ export interface components {
             }[];
             /** @default null */
             otherwise: (string | "END") | null;
+        };
+        Scene_Output: {
+            /**
+             * @default CARD
+             * @enum {string}
+             */
+            layout: "CARD" | "FLOAT" | "FOCUS";
+            /** @enum {string} */
+            entrance?: "FADE" | "FADE_UP" | "SOFT_SCALE" | "BLUR_REVEAL" | "WORD_REVEAL" | "LIGHT_REVEAL";
+            /** @enum {string} */
+            transition?: "CROSSFADE" | "SOFT_SLIDE" | "BLUR" | "ZOOM_THROUGH" | "FADE_THROUGH_DARK" | "FADE_THROUGH_LIGHT";
+            /** @default  */
+            reaction: string;
+            music?: number;
+            /**
+             * @default NONE
+             * @enum {string}
+             */
+            climax: "NONE" | "ROMANTIC" | "PROPOSAL" | "BIRTHDAY" | "FESTIVAL" | "LIGHT_BURST";
         };
         TemplatePreviewDto_Output: {
             title: string;
@@ -1645,6 +1683,8 @@ export interface components {
              * @enum {string}
              */
             celebration: "CONFETTI" | "HEARTS" | "SPARKLES" | "BALLOONS" | "FESTIVE" | "FLOWERS" | "SNOW" | "NONE";
+            /** @enum {string} */
+            motionProfile?: "PLAYFUL" | "ROMANTIC" | "CINEMATIC" | "FESTIVE" | "ELEGANT" | "WARM" | "NOSTALGIC";
         };
         Music: {
             /** @constant */
@@ -1654,6 +1694,11 @@ export interface components {
             source: "LIBRARY";
             /** @enum {string} */
             track: "LOVE_PIANO" | "BIRTHDAY_BOX" | "PARTY" | "FESTIVE" | "JINGLE" | "AULD_LANG_SYNE" | "DREAMY" | "PLAYFUL";
+        } | {
+            /** @constant */
+            source: "RECORDED";
+            /** @enum {string} */
+            track: "CLAIR_DE_LUNE";
         } | {
             /** @constant */
             source: "UPLOAD";
@@ -1683,6 +1728,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting"];
+            scene?: components["schemas"]["Scene"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1699,6 +1745,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting"];
+            scene?: components["schemas"]["Scene"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1721,6 +1768,7 @@ export interface components {
                 wrongAnswerMessage: string;
             };
             next?: components["schemas"]["StepRouting"];
+            scene?: components["schemas"]["Scene"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1794,6 +1842,7 @@ export interface components {
                 };
             };
             next?: components["schemas"]["StepRouting"];
+            scene?: components["schemas"]["Scene"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1814,6 +1863,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting"];
+            scene?: components["schemas"]["Scene"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1841,6 +1891,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting"];
+            scene?: components["schemas"]["Scene"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1859,6 +1910,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting"];
+            scene?: components["schemas"]["Scene"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1880,6 +1932,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting"];
+            scene?: components["schemas"]["Scene"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1896,6 +1949,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting"];
+            scene?: components["schemas"]["Scene"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1912,6 +1966,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting"];
+            scene?: components["schemas"]["Scene"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1934,6 +1989,7 @@ export interface components {
                 buttonLabel: string;
             };
             next?: components["schemas"]["StepRouting"];
+            scene?: components["schemas"]["Scene"];
         } | {
             /** Format: uuid */
             key: string;
@@ -1966,6 +2022,7 @@ export interface components {
                 revealAt: string | null;
             };
             next?: components["schemas"]["StepRouting"];
+            scene?: components["schemas"]["Scene"];
         };
         RichTextDoc: {
             /** @constant */
@@ -2055,6 +2112,25 @@ export interface components {
             /** @default null */
             otherwise: (string | "END") | null;
         };
+        Scene: {
+            /**
+             * @default CARD
+             * @enum {string}
+             */
+            layout: "CARD" | "FLOAT" | "FOCUS";
+            /** @enum {string} */
+            entrance?: "FADE" | "FADE_UP" | "SOFT_SCALE" | "BLUR_REVEAL" | "WORD_REVEAL" | "LIGHT_REVEAL";
+            /** @enum {string} */
+            transition?: "CROSSFADE" | "SOFT_SLIDE" | "BLUR" | "ZOOM_THROUGH" | "FADE_THROUGH_DARK" | "FADE_THROUGH_LIGHT";
+            /** @default  */
+            reaction: string;
+            music?: number;
+            /**
+             * @default NONE
+             * @enum {string}
+             */
+            climax: "NONE" | "ROMANTIC" | "PROPOSAL" | "BIRTHDAY" | "FESTIVAL" | "LIGHT_BURST";
+        };
         UpdateDraftRequestDto: {
             revision: number;
             title: string;
@@ -2113,6 +2189,8 @@ export interface components {
                     width: number | null;
                     height: number | null;
                 }[];
+                /** @default true */
+                branded: boolean;
             };
             progress: {
                 completedStepKeys: string[];
@@ -2219,6 +2297,8 @@ export interface components {
                     width: number | null;
                     height: number | null;
                 }[];
+                /** @default true */
+                branded: boolean;
             };
             progress: {
                 completedStepKeys: string[];
@@ -2362,6 +2442,8 @@ export interface components {
                 width: number | null;
                 height: number | null;
             }[];
+            /** @default true */
+            branded: boolean;
         };
         TakedownRequestDto: {
             reason: string;

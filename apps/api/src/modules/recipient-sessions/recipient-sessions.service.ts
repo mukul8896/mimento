@@ -130,11 +130,18 @@ export class RecipientSessionsService {
     const version = await this.version(versionId);
     const theme = ThemeSchema.parse(version.theme);
     const mediaIds = [...version.parsedSteps.flatMap(referencedMediaIds), ...themeMediaIds(theme)];
+    // Paid (PLUS or PRO unlocked) surprises carry no Wish Revealer branding; free ones end
+    // with a gentle invitation to make one. Decided here, never by the recipient's browser.
+    const entitlement = await this.prisma.entitlement.findUnique({
+      where: { experienceId: exp.id },
+      select: { tier: true },
+    });
     const experience = {
       title: version.title,
       theme,
       versionNumber: version.number,
       responsesVisibleToCreator: version.responseVisibility === 'FULL',
+      branded: !entitlement || entitlement.tier === 'FREE',
       steps: version.parsedSteps.map(publicStep),
       media: await this.media.publicMedia(mediaIds, exp.id, RECIPIENT_MEDIA_URL_TTL_SECONDS),
     };

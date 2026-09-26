@@ -21,6 +21,8 @@ export const DEMO_EXPERIENCE: PublicExperience = {
   },
   versionNumber: 0,
   responsesVisibleToCreator: false,
+  // Demos have their own call to action around them.
+  branded: false,
   media: [],
   steps: [
     {

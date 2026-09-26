@@ -11,22 +11,19 @@ function consoleErrors(page: Page): string[] {
   return errors;
 }
 
-test('landing: open the gift, play the demo, browse and play a template', async ({ page }) => {
+test('landing: the hero plays a surprise, then browse and play a template', async ({ page }) => {
   const errors = consoleErrors(page);
   await page.goto('/');
   await expectNoHorizontalScroll(page);
 
-  // The hook: tap the gift to reveal the call to action.
-  await page.getByTestId('open-gift').click();
-  await expect(page.getByRole('link', { name: 'Make one in 2 minutes' })).toBeVisible();
-
-  // The demo plays in place; its No button cannot be chosen.
-  const demo = page.getByRole('region', { name: 'Try a surprise' });
+  // The hook: one clear way in, and a real surprise playing beside it.
+  const hero = page.getByTestId('hero');
+  await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(page.getByTestId('hero-start')).toHaveAttribute('href', '/new');
+  const demo = page.getByRole('region', { name: 'A surprise, playing' });
   await demo.scrollIntoViewIfNeeded();
-  await demo.getByRole('button', { name: 'Show me' }).click();
-  await expect(demo.getByRole('button', { name: 'Yes! 😍' })).toBeVisible();
-  await demo.getByRole('button', { name: 'Yes! 😍' }).click();
-  await expect(demo.getByRole('group', { name: 'Who would you surprise first?' })).toBeVisible();
+  await expect(demo.getByRole('heading').first()).toBeVisible();
+  await expect(demo.getByRole('button').first()).toBeEnabled();
 
   // Gallery: filter to festivals and play the Diwali template.
   const gallery = page.getByTestId('template-gallery');

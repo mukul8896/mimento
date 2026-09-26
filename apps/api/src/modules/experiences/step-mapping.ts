@@ -3,7 +3,7 @@ import { Prisma, type Step } from '../../generated/prisma/client';
 
 /** Re-validates stored JSONB on the way out; corrupt rows fail loudly instead of rendering. */
 export function toDraftSteps(
-  rows: Pick<Step, 'key' | 'type' | 'config' | 'position' | 'routing'>[],
+  rows: Pick<Step, 'key' | 'type' | 'config' | 'position' | 'routing' | 'scene'>[],
 ): DraftStep[] {
   return [...rows]
     .sort((a, b) => a.position - b.position)
@@ -13,6 +13,7 @@ export function toDraftSteps(
         type: row.type,
         config: row.config,
         ...(row.routing ? { next: row.routing } : {}),
+        ...(row.scene ? { scene: row.scene } : {}),
       }),
     );
 }
@@ -25,5 +26,6 @@ export function stepRow(step: DraftStep, position: number) {
     type: step.type,
     config: step.config as Prisma.InputJsonValue,
     routing: step.next ? (step.next as Prisma.InputJsonValue) : Prisma.DbNull,
+    scene: step.scene ? (step.scene as Prisma.InputJsonValue) : Prisma.DbNull,
   };
 }

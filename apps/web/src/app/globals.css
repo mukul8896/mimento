@@ -9,17 +9,26 @@
   --color-brand-600: #c81e55;
   --color-brand-700: #a61546;
   --color-brand-800: #85123a;
-  --color-ink-50: #f7f7f8;
-  --color-ink-100: #eeeef1;
-  --color-ink-200: #dcdce2;
-  --color-ink-300: #c2c2cc;
-  --color-ink-400: #8e8e9c;
-  --color-ink-500: #6b6b7a;
-  --color-ink-600: #535362;
-  --color-ink-700: #3f3f4c;
-  --color-ink-800: #2a2a35;
-  --color-ink-900: #1b1b24;
-  --color-ink-950: #0f0f15;
+  /* Warm neutrals: cream paper to deep plum ink (the site's whole palette leans on these). */
+  --color-ink-50: #fbf6f1;
+  --color-ink-100: #f3ebe4;
+  --color-ink-200: #e6d9d0;
+  --color-ink-300: #cfbfb6;
+  --color-ink-400: #9c8a88;
+  --color-ink-500: #76636e;
+  --color-ink-600: #5c4957;
+  --color-ink-700: #463545;
+  --color-ink-800: #342434;
+  --color-ink-900: #2a1830;
+  --color-ink-950: #1b1020;
+  /* Accents: rose gold and candle gold, for glows and details — never for body text. */
+  --color-rose-100: #fbe6ec;
+  --color-rose-200: #f7d3de;
+  --color-rose-300: #f2b8c8;
+  --color-gold-200: #f4dfb8;
+  --color-gold-300: #ebc98f;
+  --color-gold-500: #c9954a;
+  --font-display: var(--font-fraunces), 'Iowan Old Style', Georgia, serif;
   --color-danger-600: #c62828;
   --color-danger-700: #a31f1f;
   --font-sans:
@@ -33,6 +42,86 @@ html {
 
 body {
   @apply bg-ink-50 text-ink-900 antialiased;
+}
+
+/*
+ * The immersive stage (lib/stage.ts): while a surprise is personalised the page takes on its
+ * colours, and leaving fades back. Unlayered on purpose so it wins over utility colours.
+ */
+body {
+  background-color: var(--wr-stage-bg, var(--color-ink-50));
+  transition: background-color 0.9s ease;
+}
+html[data-stage] body {
+  background-image: radial-gradient(
+    60rem 32rem at 50% -8rem,
+    color-mix(in srgb, var(--wr-stage-accent) 22%, transparent),
+    transparent
+  );
+  background-repeat: no-repeat;
+}
+.wr-stage-header {
+  transition:
+    background-color 0.9s ease,
+    border-color 0.9s ease;
+}
+html[data-stage] .wr-stage-header {
+  background-color: color-mix(in srgb, var(--wr-stage-bg) 88%, transparent);
+  border-color: color-mix(in srgb, var(--wr-stage-ink) 12%, transparent);
+}
+html[data-stage] .wr-stage-header a,
+html[data-stage] .wr-on-stage {
+  color: var(--wr-stage-ink);
+}
+html[data-stage] .wr-on-stage-muted {
+  color: color-mix(in srgb, var(--wr-stage-ink) 78%, var(--wr-stage-bg));
+}
+/* On a dark stage the phone gets a soft light bezel, so its edge never melts into the page. */
+html[data-stage] .wr-stage-frame {
+  --tw-ring-color: var(--wr-stage-frame, var(--color-ink-900));
+}
+html[data-stage] .wr-stage-track {
+  background-color: color-mix(in srgb, var(--wr-stage-ink) 12%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  body,
+  .wr-stage-header {
+    transition: none;
+  }
+}
+
+/* Headings in the display serif across the site; the recipient player keeps its own fonts. */
+h1,
+h2 {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  letter-spacing: -0.015em;
+}
+.mp-player h1,
+.mp-player h2,
+.mp-player h3 {
+  font-family: inherit;
+  letter-spacing: normal;
+}
+
+/* Soft light behind heroes: cheap radial gradients, no images. */
+.wr-glow {
+  background:
+    radial-gradient(
+      60% 50% at 20% 10%,
+      color-mix(in srgb, var(--color-rose-200) 80%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      50% 45% at 85% 20%,
+      color-mix(in srgb, var(--color-gold-200) 75%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      70% 60% at 50% 100%,
+      color-mix(in srgb, var(--color-rose-100) 90%, transparent),
+      transparent 70%
+    );
 }
 
 /* Player theme tokens are applied as CSS custom properties on the player root. */
@@ -304,4 +393,176 @@ body {
 /* Personalize: tap-to-edit shows only the tapped field of a step. */
 [data-focus-hide] {
   display: none !important;
+}
+
+/* ---- Scenes (premium experiences). Only for templates with a motion profile; older
+   experiences keep .mp-stagger above. Transform, opacity and filter only — cheap on phones. */
+.mp-scene {
+  --mp-step: 0.1s;
+  --mp-dur: 0.6s;
+  --mp-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes mp-e-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes mp-e-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+@keyframes mp-e-soft-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+@keyframes mp-e-blur {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(6px);
+  }
+}
+@keyframes mp-e-light {
+  from {
+    opacity: 0;
+    filter: brightness(1.8) blur(4px);
+  }
+}
+.mp-scene > * > * {
+  animation: var(--mp-kf, mp-e-fade-up) var(--mp-dur) var(--mp-ease) both;
+}
+.mp-scene > * > :nth-child(1) {
+  animation-delay: calc(var(--mp-step) * 1);
+}
+.mp-scene > * > :nth-child(2) {
+  animation-delay: calc(var(--mp-step) * 2.2);
+}
+.mp-scene > * > :nth-child(3) {
+  animation-delay: calc(var(--mp-step) * 3.4);
+}
+.mp-scene > * > :nth-child(n + 4) {
+  animation-delay: calc(var(--mp-step) * 4.4);
+}
+.mp-e-FADE {
+  --mp-kf: mp-e-fade;
+}
+.mp-e-FADE_UP {
+  --mp-kf: mp-e-fade-up;
+}
+.mp-e-SOFT_SCALE {
+  --mp-kf: mp-e-soft-scale;
+}
+.mp-e-BLUR_REVEAL {
+  --mp-kf: mp-e-blur;
+}
+.mp-e-LIGHT_REVEAL {
+  --mp-kf: mp-e-light;
+}
+.mp-e-WORD_REVEAL {
+  --mp-kf: mp-e-fade;
+}
+
+/* Word by word, for headings that should land slowly. */
+@keyframes mp-word {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(0.3em);
+  }
+}
+.mp-word {
+  display: inline-block;
+  animation: mp-word 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* FOCUS: one line owns the screen. FLOAT: text on the background, no card. */
+.mp-player .mp-focus h2,
+.mp-player .mp-focus legend,
+.mp-player .mp-focus label.mp-prompt {
+  font-size: 2.3em;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+}
+.mp-player .mp-float h2 {
+  font-size: 1.95em;
+  line-height: 1.15;
+}
+/* Quiet profiles: the call to action does not keep glowing at them. */
+.mp-player.mp-calm .mp-cta:not(:disabled) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mp-scene > * > *,
+  .mp-word {
+    animation: none;
+  }
+}
+
+/* Buttons that move with the music (motion/dance.ts writes the variables). `translate` and
+   `rotate` are separate properties, so a button's own press `scale` still works. */
+.mp-dance .mp-cta,
+.mp-dance .mp-dancer {
+  translate: 0 var(--mp-bob-a, 0px);
+  rotate: var(--mp-sway, 0deg);
+  will-change: translate, rotate;
+}
+.mp-dance .mp-dancer:nth-child(even),
+.mp-dance :nth-child(even) > .mp-dancer {
+  translate: 0 var(--mp-bob-b, 0px);
+  rotate: calc(var(--mp-sway, 0deg) * -1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mp-dance .mp-cta,
+  .mp-dance .mp-dancer {
+    translate: none;
+    rotate: none;
+  }
+}
+
+/* ---- Site (warm & premium) ---- */
+.wr-rose-text {
+  background: linear-gradient(100deg, #c81e55 0%, #d9637f 40%, #c9954a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding-right: 0.05em;
+}
+.wr-halo {
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--color-rose-300) 70%, transparent),
+    transparent
+  );
+  filter: blur(8px);
+}
+@keyframes wr-breathe {
+  0%,
+  100% {
+    opacity: 0.75;
+    scale: 0.96;
+  }
+  50% {
+    opacity: 1;
+    scale: 1.04;
+  }
+}
+.wr-breathe {
+  animation: wr-breathe 6s ease-in-out infinite;
+}
+/* Every tappable thing answers the finger at once. */
+.wr-press {
+  transition-property: transform, background-color, box-shadow, color;
+}
+.wr-press:active {
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wr-breathe {
+    animation: none;
+  }
 }

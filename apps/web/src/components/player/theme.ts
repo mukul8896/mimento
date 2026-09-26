@@ -23,6 +23,6 @@ export const accentButton =
   'disabled:opacity-60';
 
 export const outlineButton =
-  'inline-flex min-h-12 items-center justify-center rounded-2xl px-6 font-semibold transition active:scale-[0.98] ' +
+  'mp-dancer inline-flex min-h-12 items-center justify-center rounded-2xl px-6 font-semibold transition active:scale-[0.98] ' +
   'bg-[var(--mp-surface)] text-[var(--mp-text)] ring-2 ring-inset ring-[var(--mp-accent)] ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--mp-accent)]';

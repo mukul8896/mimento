@@ -255,6 +255,8 @@ model Step {
   config    Json
   /// Branching after this step (contracts/flow.ts StepRouting); null means "next in order".
   routing   Json?
+  /// How the step is presented (contracts/scene.ts); null means the classic card.
+  scene     Json?
   createdAt DateTime          @default(now()) @db.Timestamptz(3)
   responses Response[]
 
