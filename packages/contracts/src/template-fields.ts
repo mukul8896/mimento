@@ -18,7 +18,7 @@ export const DATE_SUGGESTIONS = ['NONE', 'NEXT_NEW_YEAR', 'IN_7_DAYS', 'TOMORROW
 export const TemplateFieldSchema = z.strictObject({
   key: z.string().regex(FIELD_KEY),
   label: z.string().min(1).max(60),
-  /** Example shown in the form and used in previews, e.g. "Priya". */
+  /** Example shown in the form and used in previews, e.g. "Sophia". */
   placeholder: z.string().max(80),
   /** Used when the creator leaves the field empty, e.g. "you". */
   fallback: z.string().max(80).default(''),

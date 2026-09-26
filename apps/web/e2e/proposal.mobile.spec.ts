@@ -1,12 +1,15 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { creatorApi, expectAccessible, expectNoHorizontalScroll } from './helpers';
+import { creatorApi, expectAccessible, expectNoHorizontalScroll, openSurprise } from './helpers';
 
 const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
 
 /** A published Proposal with personal details filled in; returns its id and recipient link. */
 async function proposal(api: APIRequestContext) {
   const created = await api.post('/bff/api/v1/experiences', {
-    data: { templateKey: 'proposal', fields: { name: 'Priya', from: 'Rahul', firstPlace: 'Goa' } },
+    data: {
+      templateKey: 'proposal',
+      fields: { name: 'Sophia', from: 'Ryan', firstPlace: 'Paris' },
+    },
   });
   expect(created.status(), await created.text()).toBe(201);
   const { id } = (await created.json()) as { id: string };
@@ -28,10 +31,11 @@ function collectErrors(page: Page): string[] {
 }
 
 /** Plays up to the question, the way a recipient would. */
-async function upToTheQuestion(page: Page) {
-  await expect(page.getByRole('heading', { name: 'Priya, this is our story ❤️' })).toBeVisible();
+async function upToTheQuestion(page: Page, { opened = false } = {}) {
+  if (!opened) await openSurprise(page);
+  await expect(page.getByRole('heading', { name: 'Sophia, this is our story ❤️' })).toBeVisible();
   await page.getByRole('button', { name: 'Remember with me' }).click();
-  await page.getByRole('textbox').fill('Goa');
+  await page.getByRole('textbox').fill('Paris');
   await page.getByRole('button', { name: 'Check' }).click();
   await expect(page.getByTestId('reaction')).toHaveText('You remembered 🥹');
   await page.getByRole('button', { name: 'Keep going' }).click();
@@ -59,7 +63,7 @@ test('the proposal is a journey: story, memory, the question, the climax, a lett
 
   await expect(page.getByRole('heading', { name: 'Forever starts now.' })).toBeVisible();
   await page.getByRole('button', { name: 'Open my letter' }).click();
-  await expect(page.getByTestId('gift-letter')).toContainText('— Rahul');
+  await expect(page.getByTestId('gift-letter')).toContainText('— Ryan');
   await expectNoHorizontalScroll(page);
 
   // A free surprise: after the letter has had time, a gentle invitation — never over it.
@@ -77,10 +81,12 @@ test('with reduced motion the story is complete, only calmer', async ({ page }) 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   const { url } = await proposal(await creatorApi('alice'));
   await page.goto(url);
-  // Headings arrive whole, not word by word.
-  await expect(page.getByRole('heading', { name: 'Priya, this is our story ❤️' })).toBeVisible();
+  // The envelope opens with a simple fade, and headings arrive whole, not word by word.
+  await expect(page.getByTestId('opening-cover')).toHaveAttribute('data-kind', 'ENVELOPE');
+  await openSurprise(page);
+  await expect(page.getByRole('heading', { name: 'Sophia, this is our story ❤️' })).toBeVisible();
   await expect(page.locator('.mp-word')).toHaveCount(0);
-  await upToTheQuestion(page);
+  await upToTheQuestion(page, { opened: true });
   await page.getByRole('button', { name: 'Yes ❤️' }).click();
   await expect(page.getByTestId('climax')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Forever starts now.' })).toBeVisible({
@@ -112,7 +118,8 @@ test('a paid surprise ends cleanly, with no Wish Revealer branding', async ({ pa
   });
   expect(grant.status(), await grant.text()).toBe(204);
   await page.goto(url);
-  await expect(page.getByRole('heading', { name: 'Priya, this is our story ❤️' })).toBeVisible();
+  await openSurprise(page);
+  await expect(page.getByRole('heading', { name: 'Sophia, this is our story ❤️' })).toBeVisible();
   await expect(page.getByText('Made with Wish Revealer')).toHaveCount(0);
   // Reporting stays available on every surprise.
   await expect(page.getByRole('button', { name: 'Report' })).toBeVisible();

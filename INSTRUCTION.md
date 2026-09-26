@@ -18,6 +18,45 @@ stages 2 and 3 are not started.**
 | GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
 | Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
 
+## Opening cover + international example names (2026-09-26, local only)
+
+- **Opening cover** (`player/motion/opening-cover.tsx`, `motion/cover.ts`): every recipient
+  first sees their surprise closed — an envelope (love, letters, thanks), a wrapped gift
+  (celebrations) or a glowing light (festivals), with the template's emoji. `Theme.cover`
+  (contracts) names it; `COVERS` in `prisma/templates.ts` sets one per template; others get one
+  from their motion profile. The tap is the browser's required gesture, so music now starts on
+  the first scene. It opens at the template's pace, shows who sees the answers and a "sound on"
+  hint, says "Welcome back" when resuming, keeps Close in the header, records nothing, and is
+  skipped in creator previews and the hero demo (`hideIntro`). E2E opens it via `openSurprise()`.
+- **Cover copy:** the cover never shows the title (it repeated the first scene). Each
+  template has a teaser line (`COVER_LINES`, filled with its fields, `Cover.line`), an action
+  per style ("Open the letter" / "Unwrap it" / "Light it up"); no "sound on" hint. On dark
+  palettes the envelope is a lighter shade of the palette's own hue (`envelopeColor`).
+- **Editing the cover:** a "Cover" chip before step 1 shows it in the preview (tap = edit), and
+  "Opening cover" in Personalize picks style, line and emoji — for templates and PRO alike.
+  Play it and the demos now show the cover too; only edit mode skips it.
+- **Sheets:** every Dialog has a ✕ close button; Personalize sheets dock at the right on
+  desktop (`Dialog side`) with no backdrop, so the preview stays in view.
+- **Cover prompt:** the pill under the art was not a button but looked like one; it is now a
+  quiet instruction ("👆 Tap the letter to open it"), the art has a pulsing halo, and a tap
+  anywhere on the cover opens it.
+- **Emoji fields:** `editor/emoji-picker.tsx` — tap to pick from a grid or type your own
+  (keyboard emoji on phones; only emoji kept). Used for the cover, answer reactions and
+  multiple-choice answer emoji. The cover emoji box could not be cleared before.
+- **Personalize:** desktop Publish card sits above the PRO offer (no longer sticky, so it
+  cannot overlap it); the "Tap a pencil" hint is smaller on phones; "Name" is now "Private
+  label · only you see this" (recipients never see the title).
+- **Evasive No:** full opacity, jumps to the farthest free spot with a springy hop and a
+  squash-and-wiggle; E2E asserts each tap moves it more than 60px.
+- **Sheet footers** sit above animated content (`z-10`).
+- **Test data only:** the owner confirmed there are no real users yet (production included),
+  so reseeds and destructive migrations need no data-preservation care for now.
+- **Names:** examples and placeholders are international (Sophia, Ryan, Emma, Jake & Lily,
+  Emma & James, Olivia & Liam; Paris, Central Park) — owner wants a worldwide feel.
+- **Verified:** lint, typecheck, format, unit (contracts 92, api 80, web 75), integration 132
+  (the known shared-DB 404 flake hit one run; two reruns clean), build, E2E 86 passed /
+  1 skipped, then landing re-run after a test fix. Not committed or deployed; needs a reseed.
+
 ## Warm & premium website makeover + one smooth creator journey (2026-09-26)
 
 **Deployed to production 2026-09-26** (b382e87 + e7f38db), together with the premium

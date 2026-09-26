@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
-import { createPublished, creatorApi, expectNoHorizontalScroll } from './helpers';
+import { createPublished, creatorApi, expectNoHorizontalScroll, openSurprise } from './helpers';
 
 function cspViolations(page: Page): string[] {
   const errors: string[] = [];
@@ -19,7 +19,7 @@ test('recipient plays a puzzle, countdown, video and place reveal', async ({ pag
       {
         key: randomUUID(),
         type: 'PUZZLE',
-        config: { prompt: 'Where did we first meet?', answer: 'Goa', hint: 'Beaches!' },
+        config: { prompt: 'Where did we first meet?', answer: 'Paris', hint: 'City of lights!' },
       },
       {
         key: randomUUID(),
@@ -34,21 +34,22 @@ test('recipient plays a puzzle, countdown, video and place reveal', async ({ pag
       {
         key: randomUUID(),
         type: 'PLACE_REVEAL',
-        config: { placeName: 'Marine Drive', address: 'Mumbai' },
+        config: { placeName: 'Central Park', address: 'New York' },
       },
       gift,
     ];
   });
   const csp = cspViolations(page);
   await page.goto(`/e/${token}`);
+  await openSurprise(page);
 
   // Puzzle: the answer is checked by the server; a wrong guess keeps us here.
-  await page.getByLabel('Where did we first meet?').fill('Delhi');
+  await page.getByLabel('Where did we first meet?').fill('London');
   await page.getByRole('button', { name: 'Check' }).click();
   await expect(page.getByText('Not quite — try again!')).toBeVisible();
   await page.getByRole('button', { name: 'Show a hint' }).click();
-  await expect(page.getByText('Beaches!')).toBeVisible();
-  await page.getByLabel('Where did we first meet?').fill('  goa ');
+  await expect(page.getByText('City of lights!')).toBeVisible();
+  await page.getByLabel('Where did we first meet?').fill('  paris ');
   await page.getByRole('button', { name: 'Check' }).click();
 
   // A countdown in the past can be passed straight away.
@@ -66,7 +67,7 @@ test('recipient plays a puzzle, countdown, video and place reveal', async ({ pag
   // The place stays hidden until revealed; Continue waits for it.
   await expect(page.getByRole('button', { name: 'Continue' })).toBeDisabled();
   await page.getByRole('button', { name: 'Reveal' }).click();
-  await expect(page.getByTestId('place-revealed')).toContainText('Marine Drive');
+  await expect(page.getByTestId('place-revealed')).toContainText('Central Park');
   await expect(page.getByRole('link', { name: 'Open in Maps' })).toHaveAttribute(
     'href',
     /google\.com\/maps\/search/,

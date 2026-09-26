@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import {
+  COVER_KINDS,
   MUSIC_LIBRARY,
   RECORDED_LIBRARY,
   STEP_TYPES,
+  type Cover,
   type DraftDocument,
   type PublicExperience,
   type StepType,
@@ -15,6 +17,8 @@ import type { Schemas } from '@momentpath/api-client';
 import { Alert, Button, cx, Dialog, Field, Input, Switch } from '@momentpath/design-system';
 import { Player } from '@/components/player/player';
 import { Stage } from './stage';
+import { EmojiPicker } from '@/components/editor/emoji-picker';
+import { coverOf } from '@/components/player/motion/cover';
 import { PencilIcon } from '@/components/player/editable';
 import { PreviewBackend } from '@/components/player/preview-backend';
 import type { MediaItem } from '@/components/editor/media-upload';
@@ -46,7 +50,17 @@ import { PublishFlow } from './publish-flow';
 type Detail = Schemas['ExperienceDetailDto_Output'];
 type Options = Schemas['CheckoutOptionsResponseDto_Output'];
 type Sheet =
-  'step' | 'music' | 'name' | 'delivery' | 'pro' | 'add' | 'flow' | 'look' | 'history' | null;
+  | 'step'
+  | 'music'
+  | 'cover'
+  | 'name'
+  | 'delivery'
+  | 'pro'
+  | 'add'
+  | 'flow'
+  | 'look'
+  | 'history'
+  | null;
 
 const STEP_ICON: Record<StepType, string> = {
   MESSAGE: '💌',
@@ -118,6 +132,79 @@ function showOnly(root: HTMLElement, field: string): boolean {
 
 function showAll(root: HTMLElement) {
   root.querySelectorAll('[data-focus-hide]').forEach((el) => el.removeAttribute('data-focus-hide'));
+}
+
+type CoverKind = Cover['kind'];
+
+const COVER_ICON: Record<CoverKind, string> = { ENVELOPE: '✉️', GIFT: '🎁', GLOW: '✨' };
+const COVER_NAME: Record<CoverKind, string> = {
+  ENVELOPE: 'Envelope',
+  GIFT: 'Gift box',
+  GLOW: 'Glowing light',
+};
+const COVER_HINT: Record<CoverKind, string> = {
+  ENVELOPE: 'A sealed letter — for love, thanks and heartfelt words',
+  GIFT: 'A wrapped present — for birthdays and celebrations',
+  GLOW: 'A light that blooms — for festivals and big nights',
+};
+
+/** Choose how the surprise is opened: the style, and the emoji on the seal, box or light. */
+function CoverPicker({ cover, onChange }: { cover: Cover; onChange: (next: Cover) => void }) {
+  return (
+    <div className="space-y-4">
+      <div role="radiogroup" aria-label="Cover style" className="grid gap-2">
+        {COVER_KINDS.map((kind) => (
+          <button
+            key={kind}
+            type="button"
+            role="radio"
+            aria-checked={cover.kind === kind}
+            data-testid={`cover-${kind}`}
+            onClick={() => onChange({ ...cover, kind })}
+            className={cx(
+              'flex min-h-16 items-center gap-3 rounded-2xl p-3 text-left transition',
+              cover.kind === kind
+                ? 'bg-brand-50 ring-2 ring-brand-600'
+                : 'bg-white ring-1 ring-ink-100 hover:ring-brand-300',
+            )}
+          >
+            <span aria-hidden="true" className="text-2xl">
+              {COVER_ICON[kind]}
+            </span>
+            <span className="min-w-0">
+              <span className="block font-semibold text-ink-900">{COVER_NAME[kind]}</span>
+              <span className="block text-sm text-ink-600">{COVER_HINT[kind]}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+      <Field
+        label="Line on the cover"
+        hint="A teaser — keep the first step’s words for the reveal."
+      >
+        {(p) => (
+          <Input
+            value={cover.line ?? ''}
+            maxLength={80}
+            placeholder="A letter, sealed just for you"
+            data-testid="cover-line-input"
+            onChange={(e) => onChange({ ...cover, line: e.target.value })}
+            {...p}
+          />
+        )}
+      </Field>
+      <div>
+        <p className="mb-1.5 text-sm font-medium text-ink-800">Emoji on it</p>
+        <EmojiPicker
+          label="Emoji on the cover"
+          value={cover.emoji}
+          testId="cover-emoji"
+          onChange={(emoji) => onChange({ ...cover, emoji })}
+        />
+        <p className="mt-1.5 text-xs text-ink-600">Shown on the seal, the box or in the light.</p>
+      </div>
+    </div>
+  );
 }
 
 function Row({
@@ -335,8 +422,18 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
     setSheet(null);
   }
 
+  // The opening cover comes before step 1: selecting it shows the cover in the preview.
+  const [coverSelected, setCoverSelected] = useState(false);
+  const cover = coverOf(state.theme);
+  const showCover = useCallback(() => {
+    setCoverSelected(true);
+    setMode('edit');
+    strip.current?.querySelector('li')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, []);
+
   const goTo = useCallback(
     (key: string) => {
+      setCoverSelected(false);
       dispatch({ type: 'select', key });
       setConfirmDelete(false);
       setMode('edit');
@@ -513,13 +610,16 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
               </button>
             ))}
           </div>
-          <p className="wr-on-stage-muted mt-2 text-center text-sm text-ink-600" aria-live="polite">
+          <p
+            className="wr-on-stage-muted mt-1.5 text-center text-xs text-ink-600 sm:mt-2 sm:text-sm"
+            aria-live="polite"
+          >
             {mode === 'edit' ? (
-              <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 font-medium text-ink-800 shadow-sm ring-1 ring-ink-100">
-                <span className="inline-flex size-6 items-center justify-center rounded-full bg-brand-600 text-white">
-                  <PencilIcon className="size-3.5" />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-2.5 py-0.5 font-medium text-ink-700 ring-1 ring-ink-100 sm:gap-2 sm:bg-white sm:px-3 sm:py-1 sm:shadow-sm">
+                <span className="inline-flex size-4 items-center justify-center rounded-full bg-brand-600 text-white sm:size-5">
+                  <PencilIcon className="size-2.5 sm:size-3" />
                 </span>
-                Tap a pencil to edit that part
+                Tap a pencil to edit
               </span>
             ) : (
               'This is exactly what they will see. Nothing is recorded.'
@@ -547,12 +647,15 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
               ) : (
                 <div className="h-full overflow-y-auto overscroll-contain">
                   <Player
-                    key={`${run}-${mode}`}
+                    key={`${run}-${mode}-${coverSelected && mode === 'edit' ? 'cover' : 'steps'}`}
                     backend={backend}
                     initialTheme={state.theme}
                     embedded
                     hideIntro
                     onEdit={mode === 'edit' ? onEdit : undefined}
+                    onEditCover={
+                      mode === 'edit' && coverSelected ? () => setSheet('cover') : undefined
+                    }
                   />
                 </div>
               )}
@@ -564,8 +667,8 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
             <button
               type="button"
               aria-label="Previous step"
-              disabled={index === 0}
-              onClick={() => current && index > 0 && goTo(steps[index - 1]!.key)}
+              disabled={coverSelected && mode === 'edit'}
+              onClick={() => (index > 0 ? goTo(steps[index - 1]!.key) : showCover())}
               className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-lg shadow-sm ring-1 ring-ink-100 disabled:opacity-40"
             >
               ‹
@@ -574,16 +677,36 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
               ref={strip}
               className="flex min-w-0 flex-1 snap-x gap-1.5 overflow-x-auto px-1 py-1 [scrollbar-width:none]"
             >
+              <li className="snap-center">
+                <button
+                  type="button"
+                  aria-label="Opening cover"
+                  aria-current={coverSelected && mode === 'edit' ? 'step' : undefined}
+                  data-testid="cover-chip"
+                  onClick={showCover}
+                  className={cx(
+                    'inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full px-3 text-sm font-semibold transition',
+                    coverSelected && mode === 'edit'
+                      ? 'bg-brand-600 text-white shadow-sm'
+                      : 'bg-white text-ink-700 ring-1 ring-ink-100',
+                  )}
+                >
+                  <span aria-hidden="true">{COVER_ICON[cover.kind]}</span>
+                  <span aria-hidden="true">Cover</span>
+                </button>
+              </li>
               {steps.map((s, i) => (
                 <li key={s.key} className="snap-center">
                   <button
                     type="button"
                     aria-label={`${stepName(i)}${s.next ? ' (branches)' : ''}`}
-                    aria-current={i === index && mode === 'edit' ? 'step' : undefined}
+                    aria-current={
+                      i === index && mode === 'edit' && !coverSelected ? 'step' : undefined
+                    }
                     onClick={() => goTo(s.key)}
                     className={cx(
                       'inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-full px-3 text-sm font-semibold transition',
-                      i === index && mode === 'edit'
+                      i === index && mode === 'edit' && !coverSelected
                         ? 'bg-brand-600 text-white shadow-sm'
                         : 'bg-white text-ink-700 ring-1 ring-ink-100',
                     )}
@@ -615,8 +738,12 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
             <button
               type="button"
               aria-label="Next step"
-              disabled={index >= steps.length - 1}
-              onClick={() => current && index < steps.length - 1 && goTo(steps[index + 1]!.key)}
+              disabled={!(coverSelected && mode === 'edit') && index >= steps.length - 1}
+              onClick={() =>
+                coverSelected && mode === 'edit'
+                  ? steps[0] && goTo(steps[0].key)
+                  : current && index < steps.length - 1 && goTo(steps[index + 1]!.key)
+              }
               className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-lg shadow-sm ring-1 ring-ink-100 disabled:opacity-40"
             >
               ›
@@ -626,7 +753,11 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
             className="wr-on-stage-muted mt-1 text-center text-xs text-ink-500"
             data-testid="step-position"
           >
-            {current ? `${stepName(index)} of ${steps.length}` : ''}
+            {coverSelected && mode === 'edit'
+              ? 'Opening cover — before step 1'
+              : current
+                ? `${stepName(index)} of ${steps.length}`
+                : ''}
           </p>
         </section>
 
@@ -640,7 +771,15 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
                 : 'Make it theirs — the steps stay as designed.'
             }
           >
-            {current ? (
+            {coverSelected && mode === 'edit' ? (
+              <Row
+                icon="✏️"
+                title="Edit the cover"
+                value="What they tap to open it"
+                testId="edit-step"
+                onClick={() => setSheet('cover')}
+              />
+            ) : current ? (
               <Row
                 icon="✏️"
                 title="Edit this step"
@@ -686,8 +825,18 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
               onClick={() => setSheet('music')}
             />
             <Row
+              icon={COVER_ICON[cover.kind]}
+              title="Opening cover"
+              value={`${COVER_NAME[cover.kind]} · ${cover.emoji}`}
+              testId="edit-cover"
+              onClick={() => {
+                showCover();
+                setSheet('cover');
+              }}
+            />
+            <Row
               icon="🏷️"
-              title="Name"
+              title="Private label · only you see this"
               value={state.title || 'Untitled surprise'}
               testId="edit-name"
               onClick={() => setSheet('name')}
@@ -730,6 +879,20 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
             />
           </Section>
 
+          {/* Desktop: Publish sits right after the settings, above the PRO offer */}
+          <div className="hidden rounded-3xl bg-white p-5 shadow-lg ring-1 ring-ink-100 lg:block">
+            <p className="text-sm text-ink-600">
+              {live ? 'It’s live. Publish again to share your changes.' : 'Happy with it?'}
+            </p>
+            <p className="mt-1 text-lg font-semibold" data-testid="price-label-desktop">
+              {priceLabel}
+            </p>
+            {publishButton('publish-side', 'mt-3 w-full')}
+            <p className="mt-2 text-center text-xs text-ink-500">
+              You review everything before paying.
+            </p>
+          </div>
+
           {pro ? null : (
             <section
               className="rounded-3xl bg-gradient-to-br from-ink-900 to-ink-800 p-5 text-white shadow-sm"
@@ -751,20 +914,6 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
               </Button>
             </section>
           )}
-
-          {/* Desktop: Publish lives in the side column, always in view */}
-          <div className="z-10 hidden rounded-3xl bg-white p-5 shadow-lg ring-1 ring-ink-100 lg:sticky lg:bottom-4 lg:block">
-            <p className="text-sm text-ink-600">
-              {live ? 'It’s live. Publish again to share your changes.' : 'Happy with it?'}
-            </p>
-            <p className="mt-1 text-lg font-semibold" data-testid="price-label-desktop">
-              {priceLabel}
-            </p>
-            {publishButton('publish-side', 'mt-3 w-full')}
-            <p className="mt-2 text-center text-xs text-ink-500">
-              You review everything before paying.
-            </p>
-          </div>
         </div>
       </div>
 
@@ -783,6 +932,7 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
 
       {/* Sheets */}
       <Dialog
+        side
         open={sheet === 'step' && current !== null}
         onOpenChange={(o) => !o && setSheet(null)}
         title={current ? (single && focus ? focus : stepName(index)) : 'Step'}
@@ -896,6 +1046,7 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
       </Dialog>
 
       <Dialog
+        side
         open={sheet === 'music'}
         autoFocus={false}
         onOpenChange={(o) => !o && setSheet(null)}
@@ -911,13 +1062,32 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
       </Dialog>
 
       <Dialog
-        open={sheet === 'name'}
+        side
+        open={sheet === 'cover'}
+        autoFocus={false}
+        lightOverlay
         onOpenChange={(o) => !o && setSheet(null)}
-        title="Name"
-        description="Shown in the browser tab and in your list of surprises."
+        title="Opening cover"
+        description="What they tap to open it. That tap also starts the music from the very first step."
         footer={<Button onClick={() => setSheet(null)}>Done</Button>}
       >
-        <Field label="Name of this surprise">
+        <CoverPicker
+          cover={cover}
+          onChange={(next) =>
+            dispatch({ type: 'setTheme', theme: { ...state.theme, cover: next } })
+          }
+        />
+      </Dialog>
+
+      <Dialog
+        side
+        open={sheet === 'name'}
+        onOpenChange={(o) => !o && setSheet(null)}
+        title="Private label"
+        description="Only you see this — it helps you find this surprise on your success page, your management page and the details you save. They never see it."
+        footer={<Button onClick={() => setSheet(null)}>Done</Button>}
+      >
+        <Field label="Label for this surprise (just for you)">
           {(p) => (
             <Input
               value={state.title}
@@ -930,6 +1100,7 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
       </Dialog>
 
       <Dialog
+        side
         open={sheet === 'delivery'}
         autoFocus={false}
         onOpenChange={(o) => !o && setSheet(null)}
@@ -965,6 +1136,7 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
       </Dialog>
 
       <Dialog
+        side
         open={sheet === 'pro'}
         autoFocus={false}
         onOpenChange={(o) => !o && setSheet(null)}
@@ -1006,6 +1178,7 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
       </Dialog>
 
       <Dialog
+        side
         open={sheet === 'add'}
         onOpenChange={(o) => !o && setSheet(null)}
         title="Add a step"
@@ -1034,6 +1207,7 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
       </Dialog>
 
       <Dialog
+        side
         open={sheet === 'flow'}
         onOpenChange={(o) => !o && setSheet(null)}
         title="Flow"
@@ -1065,6 +1239,7 @@ export function Personalize({ draft, detail }: { draft: DraftDocument; detail: D
       </Dialog>
 
       <Dialog
+        side
         open={sheet === 'look'}
         onOpenChange={(o) => !o && setSheet(null)}
         title="Look & feel"

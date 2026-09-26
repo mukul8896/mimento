@@ -114,3 +114,42 @@ test('Create Experience explains PLUS and PRO at a glance', async ({ page }) => 
   await expect(page.getByTestId('plus-pro')).toContainText('Add or remove steps');
   await expectNoHorizontalScroll(page);
 });
+
+test('the opening cover comes before step 1, and its style and emoji can be changed', async ({
+  page,
+}) => {
+  await personalizing(page);
+  const preview = page.getByTestId('preview');
+  await page.getByTestId('cover-chip').click();
+  await expect(page.getByTestId('step-position')).toHaveText('Opening cover — before step 1');
+  await expect(preview.getByTestId('opening-cover')).toHaveAttribute('data-kind', 'ENVELOPE');
+  // Tapping the cover in the preview edits it instead of opening it.
+  await preview.getByRole('button', { name: 'Edit the opening cover' }).click();
+  const sheet = page.getByRole('dialog');
+  await sheet.getByTestId('cover-GLOW').click();
+  // Pick from the grid…
+  await sheet.getByTestId('cover-emoji').click();
+  await sheet.getByRole('button', { name: '🌟', exact: true }).click();
+  await expect(sheet.getByTestId('cover-emoji')).toContainText('🌟');
+  // …or type your own (only emoji are kept).
+  await sheet.getByTestId('cover-emoji').click();
+  await sheet.getByLabel('Or type your own emoji').fill('a🦋b');
+  await expect(sheet.getByLabel('Or type your own emoji')).toHaveValue('🦋');
+  await sheet.getByRole('button', { name: 'Use' }).click();
+  await expect(sheet.getByTestId('cover-emoji')).toContainText('🦋');
+  await sheet.getByTestId('cover-emoji').click();
+  await sheet.getByRole('button', { name: '🌟', exact: true }).click();
+  await expect(preview.getByTestId('opening-cover')).toHaveAttribute('data-kind', 'GLOW');
+  await expect(preview.getByTestId('opening-cover')).toContainText('🌟');
+  await expectAccessible(page, '[role=dialog]');
+  await sheet.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByTestId('edit-cover')).toContainText('Glowing light · 🌟');
+  await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
+  // Saved with the surprise, and Play it starts from it.
+  await page.reload();
+  await expect(page.getByTestId('edit-cover')).toContainText('Glowing light · 🌟');
+  await page.getByTestId('mode-play').click();
+  await expect(preview.getByTestId('opening-cover')).toHaveAttribute('data-kind', 'GLOW');
+  await preview.getByTestId('open-cover').click();
+  await expect(preview.getByRole('heading', { name: 'Hey you 👋' })).toBeVisible();
+});

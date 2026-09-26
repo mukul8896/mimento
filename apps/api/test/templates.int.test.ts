@@ -44,7 +44,7 @@ describe('template gallery', () => {
   it('serves a playable preview filled with example values', async () => {
     const res = await ctx.http.get(`${API}/templates/diwali-wishes/preview`);
     expect(res.status).toBe(200);
-    expect(res.body.title).toBe('Happy Diwali, Anjali!');
+    expect(res.body.title).toBe('Happy Diwali, Emma!');
     expect(JSON.stringify(res.body.steps)).not.toContain('{{');
     expect((await ctx.http.get(`${API}/templates/nope/preview`)).status).toBe(404);
   });
@@ -54,16 +54,16 @@ describe('creating from a template', () => {
   it('fills in the personal details everywhere', async () => {
     const res = await alice.post('/experiences', {
       templateKey: 'birthday-wish',
-      fields: { name: 'Asha', from: 'Dev' },
+      fields: { name: 'Jenny', from: 'Mark' },
     });
     expect(res.status).toBe(201);
-    expect(res.body.title).toBe('Happy birthday, Asha!');
+    expect(res.body.title).toBe('Happy birthday, Jenny!');
     const draft = (await alice.get(`/experiences/${res.body.id}/draft`)).body;
-    expect(JSON.stringify(draft.steps)).toContain('Happy birthday, Asha!');
+    expect(JSON.stringify(draft.steps)).toContain('Happy birthday, Jenny!');
     expect(JSON.stringify(draft.steps)).not.toContain('{{');
     const gift = draft.steps.at(-1);
     const secret = await alice.get(`/experiences/${res.body.id}/draft/gifts/${gift.key}`);
-    expect(secret.body.secret.message).toContain('Dev');
+    expect(secret.body.secret.message).toContain('Mark');
   });
 
   it('asks for required details', async () => {

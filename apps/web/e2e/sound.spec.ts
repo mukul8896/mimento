@@ -1,5 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
-import { continueStep, createPublished, creatorApi, expectAccessible } from './helpers';
+import {
+  continueStep,
+  createPublished,
+  creatorApi,
+  expectAccessible,
+  openSurprise,
+} from './helpers';
 import { authFile } from './users';
 
 function consoleErrors(page: Page): string[] {
@@ -21,6 +27,8 @@ test('the recipient hears the music after their first tap and can mute it for go
 
   const toggle = page.getByTestId('sound-toggle');
   await expect(toggle).toHaveAttribute('aria-label', 'Turn sound off');
+  // Opening the cover is the tap that lets the music start from the first scene.
+  await openSurprise(page);
   await continueStep(page);
   // Answering plays its reaction (sound and emoji burst) without getting in the way.
   await page.getByRole('button', { name: 'Yes!' }).click();

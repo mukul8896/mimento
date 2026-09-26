@@ -52,7 +52,7 @@ async function heroDemo(): Promise<{ experience: PublicExperience; gift?: string
           responsesVisibleToCreator: false,
           branded: false,
         },
-        gift: 'You have made me the happiest person alive. Every day from now on, I choose you.\n\n— Rahul',
+        gift: 'You have made me the happiest person alive. Every day from now on, I choose you.\n\n— Ryan',
       };
     }
   } catch {

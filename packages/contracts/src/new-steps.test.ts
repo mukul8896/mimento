@@ -121,7 +121,7 @@ describe('publish rules for the new steps', () => {
   });
   it('accepts complete steps', () => {
     expect(issuesOf(step('VIDEO', { url: 'https://youtu.be/dQw4w9WgXcQ' }))).toEqual([]);
-    expect(issuesOf(step('PLACE_REVEAL', { placeName: 'Marine Drive' }))).toEqual([]);
+    expect(issuesOf(step('PLACE_REVEAL', { placeName: 'Central Park' }))).toEqual([]);
     expect(issuesOf(step('PHOTO_GALLERY', { items: [{ mediaId: media, alt: 'Us' }] }))).toEqual([]);
   });
   it('knows which media must be images and which audio', () => {

@@ -25,7 +25,7 @@ const k = (n: number) => `00000000-0000-4000-8100-${String(n).padStart(12, '0')}
 
 type FieldInput = Partial<TemplateField> & Pick<TemplateField, 'key' | 'label' | 'placeholder'>;
 
-const name = (label = 'Their name', placeholder = 'Priya'): FieldInput => ({
+const name = (label = 'Their name', placeholder = 'Sophia'): FieldInput => ({
   key: 'name',
   label,
   placeholder,
@@ -33,7 +33,7 @@ const name = (label = 'Their name', placeholder = 'Priya'): FieldInput => ({
   required: true,
   maxLength: 40,
 });
-const from = (placeholder = 'Rahul'): FieldInput => ({
+const from = (placeholder = 'Ryan'): FieldInput => ({
   key: 'from',
   label: 'Your name',
   placeholder,
@@ -345,7 +345,7 @@ const RECIPES: Recipe[] = [
       music: track('FESTIVE'),
       celebration: 'FESTIVE',
     }),
-    fields: [name('Their name', 'Anjali'), from()],
+    fields: [name('Their name', 'Emma'), from()],
     steps: [
       message(
         1,
@@ -464,7 +464,7 @@ const RECIPES: Recipe[] = [
       music: track('FESTIVE'),
       celebration: 'FLOWERS',
     }),
-    fields: [name('Their name', 'Aarav'), from('Meera')],
+    fields: [name('Their name', 'Jake'), from('Lily')],
     steps: [
       message(
         1,
@@ -598,7 +598,7 @@ const RECIPES: Recipe[] = [
       {
         key: 'firstPlace',
         label: 'Where you first met (they must guess it)',
-        placeholder: 'Goa',
+        placeholder: 'Paris',
         required: true,
         maxLength: 60,
         fallback: '',
@@ -762,7 +762,7 @@ const RECIPES: Recipe[] = [
       music: track('LOVE_PIANO'),
       celebration: 'FLOWERS',
     }),
-    fields: [name('The couple', 'Riya & Karan'), from()],
+    fields: [name('The couple', 'Emma & James'), from()],
     steps: [
       message(
         1,
@@ -793,7 +793,7 @@ const RECIPES: Recipe[] = [
       music: track('DREAMY'),
       celebration: 'BALLOONS',
     }),
-    fields: [name('Parents’ names', 'Neha & Arjun'), from()],
+    fields: [name('Parents’ names', 'Olivia & Liam'), from()],
     steps: [
       message(1, 'Congratulations, {{name}}! 👶', 'Your family just got a whole lot sweeter.'),
       choice(2, 'Who will the baby take after?', [
@@ -1079,7 +1079,7 @@ const RECIPES: Recipe[] = [
       {
         key: 'where',
         label: 'Where to meet',
-        placeholder: 'Marine Drive',
+        placeholder: 'Central Park',
         required: true,
         maxLength: 60,
         fallback: '',

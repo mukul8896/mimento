@@ -2369,6 +2369,9 @@
               "WARM",
               "NOSTALGIC"
             ]
+          },
+          "cover": {
+            "$ref": "#/components/schemas/Cover_Output"
           }
         },
         "required": [
@@ -2464,6 +2467,33 @@
             "additionalProperties": false
           }
         ]
+      },
+      "Cover_Output": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ENVELOPE",
+              "GIFT",
+              "GLOW"
+            ]
+          },
+          "emoji": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16
+          },
+          "line": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "kind",
+          "emoji"
+        ],
+        "additionalProperties": false
       },
       "TemplateListResponseDto_Output": {
         "type": "object",
@@ -5625,6 +5655,9 @@
               "WARM",
               "NOSTALGIC"
             ]
+          },
+          "cover": {
+            "$ref": "#/components/schemas/Cover"
           }
         },
         "required": [
@@ -5717,6 +5750,33 @@
             "additionalProperties": false
           }
         ]
+      },
+      "Cover": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ENVELOPE",
+              "GIFT",
+              "GLOW"
+            ]
+          },
+          "emoji": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16
+          },
+          "line": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "kind",
+          "emoji"
+        ],
+        "additionalProperties": false
       },
       "Step": {
         "oneOf": [

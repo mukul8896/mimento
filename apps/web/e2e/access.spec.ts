@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createPublished, creatorApi } from './helpers';
+import { createPublished, creatorApi, openSurprise } from './helpers';
 import { authFile } from './users';
 
 test.describe('creator', () => {
@@ -31,6 +31,7 @@ test.describe('creator', () => {
     await recipient.getByLabel('Enter the PIN you were given').fill('2580');
     await recipient.getByRole('button', { name: 'Open' }).click();
     await expect(recipient).toHaveURL(new RegExp(`/e/${token}$`));
+    await openSurprise(recipient);
     await expect(recipient.getByRole('heading', { name: 'Hey you 👋' })).toBeVisible();
     // The page title never names the surprise (the template's title is 'A little question for you').
     await expect(recipient).not.toHaveTitle(/little question/i);

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createPublished, creatorApi } from './helpers';
+import { createPublished, creatorApi, openSurprise } from './helpers';
 import { authFile } from './users';
 
 test('another creator cannot see or change an experience', async ({ browser }) => {
@@ -71,6 +71,7 @@ test('creator sees results for their experience', async ({ browser }) => {
   const anon = await browser.newContext();
   const page = await anon.newPage();
   await page.goto(`/e/${token}`);
+  await openSurprise(page);
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Yes!' }).click();
   await anon.close();

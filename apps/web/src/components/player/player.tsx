@@ -27,6 +27,8 @@ import { ReportDialog } from './report-dialog';
 import { OpeningSoon, PinGate } from './access-screens';
 import { EditContext, type EditTarget } from './editable';
 import { ClimaxLayer } from './motion/climax';
+import { coverOf, openingSeconds } from './motion/cover';
+import { OpeningCover } from './motion/opening-cover';
 import { profileOf } from './motion/profiles';
 import { danceFrame, STILL } from './motion/dance';
 import {
@@ -146,8 +148,14 @@ export interface PlayerProps {
   embedded?: boolean;
   /** Personalize page: taps on editable text, photos and buttons open their editor instead. */
   onEdit?: (stepKey: string, field: string) => void;
-  /** Hides the "your answers will be shared" note, which the creator does not need to see. */
+  /**
+   * Creator previews and demos: no "your answers will be shared" note, which only the
+   * recipient needs. The opening cover still plays — it is part of what they will see — except
+   * while editing (`onEdit`), where every tap edits instead.
+   */
   hideIntro?: boolean;
+  /** Personalize, with the cover selected: show it, and a tap edits it instead of opening. */
+  onEditCover?: () => void;
 }
 
 /**
@@ -160,6 +168,7 @@ export function Player({
   embedded = false,
   onEdit,
   hideIntro = false,
+  onEditCover,
 }: PlayerProps) {
   const [state, setState] = useState<PlayerState | null>(null);
   const [error, setError] = useState<PlayerError | null>(null);
@@ -173,6 +182,8 @@ export function Player({
   // Read on first render: the toggle only appears after the client has loaded the experience.
   const [muted, setMuted] = useState(readMutedPref);
   const [unlocked, setUnlocked] = useState(false);
+  // The recipient opens their surprise first (OpeningCover); previews start straight away.
+  const [opened, setOpened] = useState(onEdit !== undefined && !onEditCover);
   const burstCanvas = useRef<HTMLCanvasElement>(null);
   const ambientCanvas = useRef<HTMLCanvasElement>(null);
   const bursts = useRef<ParticleLayer | null>(null);
@@ -634,7 +645,7 @@ export function Player({
       </AnimatePresence>
       <header className="sticky top-0 z-40 flex items-center justify-between gap-3 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
         <div className="min-w-0 flex-1">
-          {state && !closed && steps.length > 0 && profile ? (
+          {state && opened && !closed && steps.length > 0 && profile ? (
             // Quiet scene markers: where they are in the story, not a questionnaire's bar.
             <div
               aria-label={`Step ${position} of ${steps.length}`}
@@ -655,7 +666,7 @@ export function Player({
                 />
               ))}
             </div>
-          ) : state && !closed && steps.length > 0 ? (
+          ) : state && opened && !closed && steps.length > 0 ? (
             <div
               aria-label={`Step ${position} of ${steps.length}`}
               role="img"
@@ -747,6 +758,30 @@ export function Player({
           <p className="text-center opacity-70" role="status">
             Loading…
           </p>
+        ) : !opened && current && !finished ? (
+          <OpeningCover
+            cover={coverOf(theme)}
+            notice={
+              hideIntro
+                ? null
+                : `${
+                    state.experience.responsesVisibleToCreator
+                      ? 'Your answers will be shared with the person who sent this.'
+                      : 'Only overall totals are shared with the person who sent this.'
+                  } You can close this at any time.`
+            }
+            returning={position > 1}
+            seconds={openingSeconds(profile?.duration ?? null, reducedMotion)}
+            reducedMotion={reducedMotion}
+            onEdit={onEditCover}
+            onOpen={() => {
+              unlock();
+              engine.cue('REVEAL');
+              fx.effect('POP');
+              if (coverOf(theme).kind === 'GIFT') fx.burst({ size: 'big' });
+            }}
+            onOpened={() => setOpened(true)}
+          />
         ) : promo === 'shown' && (finished || !current) ? (
           <FreeEnding
             onBack={() => setPromo('dismissed')}
@@ -773,14 +808,6 @@ export function Player({
               />
             ) : null}
             <div className={promo === 'shown' ? 'hidden' : 'contents'}>
-              {position === 1 && !hideIntro ? (
-                <p className="mb-4 rounded-2xl bg-black/5 px-3 py-2 text-center text-sm">
-                  {state.experience.responsesVisibleToCreator
-                    ? 'Your answers will be shared with the person who sent this.'
-                    : 'Only overall totals are shared with the person who sent this.'}{' '}
-                  You can close this at any time.
-                </p>
-              ) : null}
               <AnimatePresence mode="wait" initial={false} custom={leaving}>
                 <motion.section
                   ref={card}

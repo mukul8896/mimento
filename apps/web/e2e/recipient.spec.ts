@@ -5,20 +5,26 @@ import {
   creatorApi,
   expectAccessible,
   expectNoHorizontalScroll,
+  openSurprise,
   publishedYesNo,
 } from './helpers';
 
-async function openFresh(page: Page, token: string) {
+async function openFresh(page: Page, token: string, { open = true } = {}) {
   await page.goto(`/e/${token}`);
   await expect(page.getByTestId('player')).toBeVisible();
+  if (open) await openSurprise(page);
 }
 
 test('recipient completes the date invitation without horizontal scrolling', async ({ page }) => {
   const api = await creatorApi('alice');
   const { token } = await createPublished(api, 'date-invitation');
-  await openFresh(page, token);
+  await openFresh(page, token, { open: false });
+  // The opening cover: who sees the answers is said before anything is answered.
+  await expect(page.getByTestId('opening-cover')).toHaveAttribute('data-kind', 'ENVELOPE');
   await expect(page.getByText('Your answers will be shared')).toBeVisible();
   await expectAccessible(page);
+  await expectNoHorizontalScroll(page);
+  await openSurprise(page);
   await expectNoHorizontalScroll(page);
   await continueStep(page);
 
@@ -43,6 +49,9 @@ test('recipient completes the date invitation without horizontal scrolling', asy
 
   // Refreshing resumes the same session and the gift can be viewed again.
   await page.reload();
+  // Coming back part-way, the cover welcomes them back (and the tap brings the sound back).
+  await expect(page.getByRole('button', { name: 'Continue your surprise' })).toBeVisible();
+  await openSurprise(page);
   await expect(page.getByRole('button', { name: 'Show me the plan' })).toBeVisible();
 });
 
@@ -113,8 +122,15 @@ test.describe('configurable No button', () => {
     });
     await openFresh(page, token);
     const no = page.getByTestId('no-button');
-    await no.tap({ force: true });
-    await no.tap({ force: true });
+    // Each tap sends it clearly away — a real dodge, not a dead button that barely moves.
+    for (let i = 0; i < 2; i++) {
+      const before = (await no.boundingBox())!;
+      await no.tap({ force: true });
+      await page.waitForTimeout(450);
+      const after = (await no.boundingBox())!;
+      expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeGreaterThan(60);
+      await expect(no).toHaveCSS('opacity', '1');
+    }
     await expect(
       page.getByRole('heading', { name: 'Will you go on a date with me?' }),
     ).toBeVisible();

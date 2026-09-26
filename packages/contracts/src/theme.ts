@@ -23,6 +23,26 @@ export const ThemePaletteSchema = z.strictObject({
   accentText: HexColor,
 });
 
+/**
+ * The opening cover: what the recipient taps to open their surprise before the first scene.
+ * An envelope for letters and love, a wrapped gift for celebrations, a glowing light for
+ * festivals. The tap is also what lets the browser play the music from the very first scene.
+ */
+export const COVER_KINDS = ['ENVELOPE', 'GIFT', 'GLOW'] as const;
+export const CoverSchema = z
+  .strictObject({
+    kind: z.enum(COVER_KINDS),
+    /** On the seal, the box or inside the light. */
+    emoji: z.string().min(1).max(16),
+    /**
+     * The one line on the cover: a teaser, never the first scene's words (templates may use
+     * their {{fields}}). Absent shows a gentle line for the style.
+     */
+    line: z.string().max(80).optional(),
+  })
+  .meta({ id: 'Cover' });
+export type Cover = z.infer<typeof CoverSchema>;
+
 export const ThemeSchema = z
   .strictObject({
     palette: ThemePaletteSchema,
@@ -36,6 +56,8 @@ export const ThemeSchema = z
     celebration: CelebrationSchema.default('CONFETTI'),
     /** The template's character (scene.ts); absent derives one from the animation. */
     motionProfile: MotionProfileSchema.optional(),
+    /** Absent derives one from the motion profile (player/motion/cover.ts). */
+    cover: CoverSchema.optional(),
   })
   .meta({ id: 'Theme' });
 export type Theme = z.infer<typeof ThemeSchema>;

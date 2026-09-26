@@ -55,7 +55,12 @@ export function YesNoStep({ step, busy, submit, reducedMotion }: StepProps<'YES_
     if (!box || !btn) return;
     const maxLeft = Math.max(0, box.width - btn.width);
     const maxTop = Math.max(0, box.height - btn.height);
-    for (let i = 0; i < 12; i++) {
+    const from = { left: btn.left - box.left, top: btn.top - box.top };
+    // Of a handful of free spots, jump to the farthest from the finger: a dodge must be
+    // unmistakable, never a nudge of a few pixels that looks like a dead button.
+    let best: Position | null = null;
+    let bestDistance = -1;
+    for (let i = 0; i < 16; i++) {
       const candidate = { left: Math.random() * maxLeft, top: Math.random() * maxTop };
       const overlapsYes =
         yes &&
@@ -63,11 +68,24 @@ export function YesNoStep({ step, busy, submit, reducedMotion }: StepProps<'YES_
         candidate.left + btn.width > yes.left - box.left - 8 &&
         candidate.top < yes.bottom - box.top + 8 &&
         candidate.top + btn.height > yes.top - box.top - 8;
-      if (!overlapsYes || i === 11) {
-        setPosition(candidate);
-        return;
+      if (overlapsYes) continue;
+      const distance = Math.hypot(candidate.left - from.left, candidate.top - from.top);
+      if (distance > bestDistance) {
+        best = candidate;
+        bestDistance = distance;
       }
     }
+    setPosition(best ?? { left: from.left < maxLeft / 2 ? maxLeft : 0, top: maxTop });
+    // A squash and a wiggle as it hops away, so it reads as running, not as disabled.
+    noRef.current?.animate(
+      [
+        { scale: '1', rotate: '0deg' },
+        { scale: '0.82', rotate: '-10deg', offset: 0.35 },
+        { scale: '1.06', rotate: '6deg', offset: 0.7 },
+        { scale: '1', rotate: '0deg' },
+      ],
+      { duration: 380, easing: 'ease-out' },
+    );
   }, [cfg.evasiveMessage, reducedMotion, fx, editing]);
 
   // Once No becomes a normal button it returns to its natural place and the teasing stops.
@@ -129,8 +147,13 @@ export function YesNoStep({ step, busy, submit, reducedMotion }: StepProps<'YES_
               data-clickable={state.clickable}
               aria-disabled={!state.clickable || undefined}
               aria-describedby={noHint ? hintId : undefined}
-              className={`${outlineButton} min-w-28 ${state.clickable ? '' : 'opacity-80'} ${
-                floating ? 'absolute transition-[left,top] duration-200 ease-out' : ''
+              className={`${outlineButton} min-w-28 ${
+                // Evasive No looks as tempting as Yes; only the waiting modes look paused.
+                state.clickable || cfg.noButton.mode === 'EVASIVE' ? '' : 'opacity-80'
+              } ${
+                floating
+                  ? 'absolute transition-[left,top] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]'
+                  : ''
               }`}
               style={floating ? { left: floating.left, top: floating.top } : undefined}
               disabled={busy}

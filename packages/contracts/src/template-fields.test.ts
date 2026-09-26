@@ -12,11 +12,11 @@ const fields: TemplateField[] = [
   TemplateFieldSchema.parse({
     key: 'name',
     label: 'Their name',
-    placeholder: 'Priya',
+    placeholder: 'Sophia',
     fallback: 'you',
     required: true,
   }),
-  TemplateFieldSchema.parse({ key: 'from', label: 'From', placeholder: 'Rahul', fallback: 'me' }),
+  TemplateFieldSchema.parse({ key: 'from', label: 'From', placeholder: 'Ryan', fallback: 'me' }),
   TemplateFieldSchema.parse({
     key: 'when',
     label: 'When',
@@ -36,13 +36,13 @@ describe('fillTemplate', () => {
 
   it('fills text, rich text and dates from the creator’s values', () => {
     const out = fillTemplate(content, fields, {
-      name: 'Asha',
-      from: 'Dev',
+      name: 'Jenny',
+      from: 'Mark',
       when: '2027-01-01T00:00:00.000Z',
     });
-    expect(out.title).toBe('Happy birthday, Asha!');
-    expect(JSON.stringify(out.body)).toContain('Dear Asha,');
-    expect(JSON.stringify(out.body)).toContain('Love, Dev');
+    expect(out.title).toBe('Happy birthday, Jenny!');
+    expect(JSON.stringify(out.body)).toContain('Dear Jenny,');
+    expect(JSON.stringify(out.body)).toContain('Love, Mark');
     expect(out.targetAt).toBe('2027-01-01T00:00:00.000Z');
     expect(out.untouched).toBe(42);
   });
@@ -52,7 +52,7 @@ describe('fillTemplate', () => {
     expect(created.title).toBe('Happy birthday, you!');
     expect(created.targetAt).toBeNull();
     const preview = fillTemplate(content, fields, {}, 'preview');
-    expect(preview.title).toBe('Happy birthday, Priya!');
+    expect(preview.title).toBe('Happy birthday, Sophia!');
     expect(typeof preview.targetAt).toBe('string');
   });
 

@@ -1,3 +1,4 @@
+import { envelopeColor } from './motion/cover';
 import type { CSSProperties } from 'react';
 import type { Theme } from '@momentpath/contracts';
 
@@ -5,6 +6,7 @@ import type { Theme } from '@momentpath/contracts';
 export function themeStyle(theme: Theme): CSSProperties {
   return {
     '--mp-bg': theme.palette.background,
+    '--mp-envelope': envelopeColor(theme.palette),
     '--mp-surface': theme.palette.surface,
     '--mp-text': theme.palette.text,
     '--mp-accent': theme.palette.accent,

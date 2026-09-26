@@ -48,7 +48,7 @@ describe('work in progress', () => {
     const ben = await creator(ctx);
     const named = await ben.post('/experiences', {
       templateKey: 'birthday-wish',
-      fields: { name: 'Asha' },
+      fields: { name: 'Jenny' },
     });
     const pinned = await ben.post('/experiences', { templateKey: 'date-invitation' });
     await ben.put(`/experiences/${pinned.body.id}/access`, { pin: '2412' });

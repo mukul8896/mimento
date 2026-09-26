@@ -912,6 +912,7 @@ export interface components {
             celebration: "CONFETTI" | "HEARTS" | "SPARKLES" | "BALLOONS" | "FESTIVE" | "FLOWERS" | "SNOW" | "NONE";
             /** @enum {string} */
             motionProfile?: "PLAYFUL" | "ROMANTIC" | "CINEMATIC" | "FESTIVE" | "ELEGANT" | "WARM" | "NOSTALGIC";
+            cover?: components["schemas"]["Cover_Output"];
         };
         Music_Output: {
             /** @constant */
@@ -931,6 +932,12 @@ export interface components {
             source: "UPLOAD";
             /** Format: uuid */
             mediaId: string;
+        };
+        Cover_Output: {
+            /** @enum {string} */
+            kind: "ENVELOPE" | "GIFT" | "GLOW";
+            emoji: string;
+            line?: string;
         };
         TemplateListResponseDto_Output: {
             items: {
@@ -1685,6 +1692,7 @@ export interface components {
             celebration: "CONFETTI" | "HEARTS" | "SPARKLES" | "BALLOONS" | "FESTIVE" | "FLOWERS" | "SNOW" | "NONE";
             /** @enum {string} */
             motionProfile?: "PLAYFUL" | "ROMANTIC" | "CINEMATIC" | "FESTIVE" | "ELEGANT" | "WARM" | "NOSTALGIC";
+            cover?: components["schemas"]["Cover"];
         };
         Music: {
             /** @constant */
@@ -1704,6 +1712,12 @@ export interface components {
             source: "UPLOAD";
             /** Format: uuid */
             mediaId: string;
+        };
+        Cover: {
+            /** @enum {string} */
+            kind: "ENVELOPE" | "GIFT" | "GLOW";
+            emoji: string;
+            line?: string;
         };
         Step: {
             /** Format: uuid */

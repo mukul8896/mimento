@@ -15,7 +15,7 @@ afterAll(async () => ctx.close());
 async function publishedProposal() {
   const created = await alice.post('/experiences', {
     templateKey: 'proposal',
-    fields: { name: 'Priya', from: 'Rahul', firstPlace: 'Goa' },
+    fields: { name: 'Sophia', from: 'Ryan', firstPlace: 'Paris' },
   });
   expect(created.status).toBe(201);
   const id = created.body.id as string;
@@ -25,14 +25,24 @@ async function publishedProposal() {
 }
 
 describe('scenes', () => {
-  it('give every template its own pace', async () => {
+  it('give every template its own pace and opening cover', async () => {
     const list = (await alice.get('/templates')).body.items as { key: string }[];
     expect(list.length).toBeGreaterThan(20);
     const paces = new Map<string, string>();
+    const covers = new Map<string, string | undefined>();
     for (const { key } of list) {
-      const preview = (await alice.get(`/templates/${key}/preview`)).body;
+      const res = await alice.get(`/templates/${key}/preview`);
+      // Other tests hide templates on the shared database; skip one that vanished mid-loop.
+      if (res.status !== 200) continue;
+      const preview = res.body;
       paces.set(key, preview.theme.motionProfile);
+      covers.set(key, preview.theme.cover?.kind);
     }
+    // And every template opens with a cover in its own style.
+    expect([...covers.values()].every(Boolean)).toBe(true);
+    expect(covers.get('proposal')).toBe('ENVELOPE');
+    expect(covers.get('birthday-wish')).toBe('GIFT');
+    expect(covers.get('diwali-wishes')).toBe('GLOW');
     expect([...paces.values()].every(Boolean)).toBe(true);
     expect(paces.get('birthday-wish')).toBe('PLAYFUL');
     expect(paces.get('diwali-wishes')).toBe('FESTIVE');
@@ -64,7 +74,7 @@ describe('scenes', () => {
       'FLOAT',
     ]);
     // The puzzle answer still never reaches the browser, scenes or not.
-    expect(JSON.stringify(exp)).not.toContain('Goa');
+    expect(JSON.stringify(exp)).not.toContain('Paris');
   });
 
   it('are kept when a PRO creator saves the draft', async () => {

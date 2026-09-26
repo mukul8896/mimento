@@ -2,6 +2,7 @@ import {
   DEFAULT_THEME,
   PALETTE_PRESETS,
   richTextFromParagraphs,
+  type Cover,
   type MotionProfile,
   type TemplateContentInput,
   type Tier,
@@ -23,6 +24,8 @@ export interface TemplateDefinition {
   version: number;
   content: TemplateContentInput;
 }
+
+type CoverKind = Cover['kind'];
 
 const k = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
@@ -327,11 +330,91 @@ export const PACE: Record<string, MotionProfile> = {
   farewell: 'NOSTALGIC',
 };
 
+/**
+ * How each surprise is opened: a sealed envelope for letters and love, a wrapped gift for
+ * celebrations, a glowing light for festivals. The template's own emoji goes on the seal,
+ * the box or in the light.
+ */
+/**
+ * The line on each cover: a teaser that invites the tap without giving away the first scene.
+ */
+export const COVER_LINES: Record<string, string> = {
+  'date-invitation': 'Psst… someone has a little question for you',
+  'birthday-surprise': 'Something is wrapped up for your birthday',
+  anniversary: 'A letter about us, sealed with love',
+  'birthday-wish': '{{name}}, someone wrapped up your birthday',
+  'birthday-midnight': '{{name}}, something is counting down to your day',
+  'diwali-wishes': '{{name}}, a little light for your Diwali',
+  'new-year-countdown': '{{name}}, your new year starts here',
+  'holi-wishes': '{{name}}, a splash of colour is waiting',
+  'raksha-bandhan': '{{name}}, a thread of love, just for you',
+  'eid-mubarak': '{{name}}, a little moonlight for your Eid',
+  'christmas-wishes': '{{name}}, something is waiting under the tree',
+  valentine: '{{name}}, this letter has been waiting for you',
+  proposal: '{{name}}, open this when your heart is ready',
+  congratulations: '{{name}}, you earned this one',
+  graduation: '{{name}}, a little something for the graduate',
+  'wedding-wishes': '{{name}}, a gift for your happily ever after',
+  'new-baby': 'A tiny gift for the newest little one',
+  'good-luck': '{{name}}, a little luck, wrapped for you',
+  'get-well-soon': '{{name}}, a warm letter to make you smile',
+  'thank-you': '{{name}}, a few words I have been meaning to say',
+  sorry: '{{name}}, I wrote this for you',
+  farewell: '{{name}}, before you go…',
+  friendship: '{{name}}, for the best friend in the world',
+  'mothers-day': 'A letter full of love, just for you',
+  'fathers-day': 'A letter for the best dad, just for you',
+  'meet-me': '{{name}}, you are invited to something secret',
+};
+
+export const COVERS: Record<string, CoverKind> = {
+  'date-invitation': 'ENVELOPE',
+  anniversary: 'ENVELOPE',
+  valentine: 'ENVELOPE',
+  proposal: 'ENVELOPE',
+  sorry: 'ENVELOPE',
+  'meet-me': 'ENVELOPE',
+  'thank-you': 'ENVELOPE',
+  'mothers-day': 'ENVELOPE',
+  'fathers-day': 'ENVELOPE',
+  farewell: 'ENVELOPE',
+  'get-well-soon': 'ENVELOPE',
+  'birthday-surprise': 'GIFT',
+  'birthday-wish': 'GIFT',
+  'birthday-midnight': 'GIFT',
+  congratulations: 'GIFT',
+  graduation: 'GIFT',
+  'new-baby': 'GIFT',
+  friendship: 'GIFT',
+  'good-luck': 'GIFT',
+  'wedding-wishes': 'GIFT',
+  'diwali-wishes': 'GLOW',
+  'eid-mubarak': 'GLOW',
+  'christmas-wishes': 'GLOW',
+  'raksha-bandhan': 'GLOW',
+  'holi-wishes': 'GLOW',
+  'new-year-countdown': 'GLOW',
+};
+
 const paced = (t: TemplateDefinition): TemplateDefinition => {
-  const profile = t.content.theme.motionProfile ?? PACE[t.key];
-  return profile
-    ? { ...t, content: { ...t.content, theme: { ...t.content.theme, motionProfile: profile } } }
-    : t;
+  const theme = t.content.theme;
+  const motionProfile = theme.motionProfile ?? PACE[t.key];
+  const kind = COVERS[t.key];
+  const line = COVER_LINES[t.key];
+  const cover =
+    theme.cover ??
+    (kind ? { kind, emoji: t.content.emoji ?? '🎁', ...(line ? { line } : {}) } : undefined);
+  return {
+    ...t,
+    content: {
+      ...t.content,
+      theme: {
+        ...theme,
+        ...(motionProfile ? { motionProfile } : {}),
+        ...(cover ? { cover } : {}),
+      },
+    },
+  };
 };
 
 export const TEMPLATES: TemplateDefinition[] = [...CLASSIC_TEMPLATES, ...OCCASION_TEMPLATES].map(

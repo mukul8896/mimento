@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { continueStep, createPublished, creatorApi, useTemplate } from './helpers';
+import { continueStep, createPublished, creatorApi, openSurprise, useTemplate } from './helpers';
 import { authFile } from './users';
 
 function collectErrors(page: Page): string[] {
@@ -98,6 +98,7 @@ test('a recipient who says No reaches the end without the gift', async ({ page }
   });
 
   await page.goto(`/e/${token}`);
+  await openSurprise(page);
   await continueStep(page);
   await page.getByRole('button', { name: 'No', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'That’s everything' })).toBeVisible();
@@ -106,6 +107,7 @@ test('a recipient who says No reaches the end without the gift', async ({ page }
   // Someone else who says Yes carries on to the next step.
   const other = await page.context().browser()!.newPage();
   await other.goto(`/e/${token}`);
+  await openSurprise(other);
   await continueStep(other);
   await other.getByRole('button', { name: 'Yes!' }).click();
   await expect(other.getByRole('group', { name: 'Pick the vibe' })).toBeVisible();

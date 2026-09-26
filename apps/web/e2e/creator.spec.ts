@@ -1,5 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
-import { expectAccessible, expectNoHorizontalScroll, startFresh, useTemplate } from './helpers';
+import {
+  expectAccessible,
+  expectNoHorizontalScroll,
+  openSurprise,
+  startFresh,
+  useTemplate,
+} from './helpers';
 import { authFile } from './users';
 
 test.use({ storageState: authFile('alice') });
@@ -54,6 +60,8 @@ test('creator personalises a template in its preview and publishes in minutes', 
 
   // Play it as they will: from the start, with the real buttons working.
   await page.getByTestId('mode-play').click();
+  // Starting with the opening cover the recipient will tap.
+  await preview.getByTestId('open-cover').click();
   await expect(preview.getByRole('heading', { name: 'Hi Sam 👋' })).toBeVisible();
 
   await saved(page);
@@ -96,6 +104,7 @@ test('creator personalises a template in its preview and publishes in minutes', 
 
   const recipient = await page.context().browser()!.newPage();
   await recipient.goto(url);
+  await openSurprise(recipient);
   await expect(recipient.getByRole('heading', { name: 'Hi Sam 👋' })).toBeVisible();
   await expect(recipient.locator('[data-editable]')).toHaveCount(0);
   await recipient.close();

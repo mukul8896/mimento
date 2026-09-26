@@ -25,7 +25,7 @@ describe('structureChange', () => {
   it('allows every content change: words, answer labels, button text', () => {
     const personalised = [
       msg(1, 'Happy birthday, Pratikshya!'),
-      quiz(2, ['Goa', 'Pune']),
+      quiz(2, ['Paris', 'Pune']),
       DraftStepSchema.parse({
         key: k(3),
         type: 'MESSAGE',
@@ -39,7 +39,7 @@ describe('structureChange', () => {
     ['a step added', [...base, msg(4)]],
     ['a step removed', base.slice(0, 2)],
     ['steps reordered', [base[1]!, base[0]!, base[2]!]],
-    ['an answer choice added', [base[0]!, quiz(2, ['Paris', 'Delhi', 'Goa']), base[2]!]],
+    ['an answer choice added', [base[0]!, quiz(2, ['Paris', 'Delhi', 'Paris']), base[2]!]],
   ])('refuses %s', (_label, after) => {
     expect(structureChange(base, after)).not.toBeNull();
   });

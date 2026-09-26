@@ -64,7 +64,7 @@ describe('puzzle', () => {
     const started = await r.start();
     expect(JSON.stringify(started.body)).not.toContain('Jaipur');
 
-    const wrong = await r.answer(key, { kind: 'TEXT', value: 'Delhi' });
+    const wrong = await r.answer(key, { kind: 'TEXT', value: 'London' });
     expect(wrong.status).toBe(200);
     expect(wrong.body).toMatchObject({ correct: false, progress: { nextStepKey: key } });
     const right = await r.answer(key, { kind: 'TEXT', value: '  JAIPUR ' });
@@ -148,7 +148,7 @@ describe('gallery, video and place reveal', () => {
         config: { items: [{ mediaId: photo.body.id, alt: 'Us at the beach' }] },
       },
       video,
-      { key: randomUUID(), type: 'PLACE_REVEAL', config: { placeName: 'Marine Drive' } },
+      { key: randomUUID(), type: 'PLACE_REVEAL', config: { placeName: 'Central Park' } },
     ];
     const saved = await alice.put(`/experiences/${exp.id}/draft`, {
       revision: draft.revision,
@@ -188,7 +188,7 @@ describe('background music', () => {
 
   it('plays a built-in track, and new experiences start silent', async () => {
     const { id } = await draftWith([
-      { key: randomUUID(), type: 'PLACE_REVEAL', config: { placeName: 'Marine Drive' } },
+      { key: randomUUID(), type: 'PLACE_REVEAL', config: { placeName: 'Central Park' } },
     ]);
     expect((await alice.get(`/experiences/${id}/draft`)).body.theme).toMatchObject({
       music: { source: 'NONE' },
@@ -206,7 +206,7 @@ describe('background music', () => {
 
   it('plays the creator’s own upload: it must be theirs and audio, and reaches the recipient', async () => {
     const { id } = await draftWith([
-      { key: randomUUID(), type: 'PLACE_REVEAL', config: { placeName: 'Marine Drive' } },
+      { key: randomUUID(), type: 'PLACE_REVEAL', config: { placeName: 'Central Park' } },
     ]);
     // A file from another experience cannot be borrowed.
     const { body: other } = await alice.post('/experiences', {});

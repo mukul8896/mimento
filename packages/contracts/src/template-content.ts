@@ -35,14 +35,22 @@ export function materializeTemplate(
   mode: 'create' | 'preview' = 'create',
 ): MaterializedTemplate {
   const filled = fillTemplate(
-    { title: content.title, steps: content.steps, giftDefaults: content.giftDefaults },
+    {
+      title: content.title,
+      steps: content.steps,
+      giftDefaults: content.giftDefaults,
+      cover: content.theme.cover,
+    },
     content.fields,
     values,
     mode,
   );
   return {
     title: filled.title.slice(0, 120),
-    theme: content.theme,
+    // The cover's line can greet them by name, like the steps.
+    theme: filled.cover
+      ? { ...content.theme, cover: { ...filled.cover, line: filled.cover.line?.slice(0, 80) } }
+      : content.theme,
     steps: filled.steps.map((s) => DraftStepSchema.parse(s)),
     giftDefaults: Object.fromEntries(
       Object.entries(filled.giftDefaults).map(([k, v]) => [k, GiftSecretSchema.parse(v)]),

@@ -129,6 +129,12 @@ export async function expectAccessible(page: Page, include?: string) {
 }
 
 /** Clicks through a message-type step. */
+/** Opens the surprise from its opening cover, the way a recipient taps it. */
+export async function openSurprise(page: Page) {
+  await page.getByTestId('open-cover').click();
+  await expect(page.getByTestId('opening-cover')).toBeHidden({ timeout: 5_000 });
+}
+
 export async function continueStep(page: Page, label: RegExp | string = /continue|let’s go/i) {
   await page.getByRole('button', { name: label }).click();
 }

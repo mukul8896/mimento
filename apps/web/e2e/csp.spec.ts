@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createPublished, creatorApi, useTemplate } from './helpers';
+import { createPublished, creatorApi, openSurprise, useTemplate } from './helpers';
 import { authFile } from './users';
 
 function collectErrors(page: Page): string[] {
@@ -15,6 +15,7 @@ test('recipient player runs without CSP violations or console errors', async ({ 
   const { token } = await createPublished(await creatorApi('alice'), 'date-invitation');
   const errors = collectErrors(page);
   await page.goto(`/e/${token}`);
+  await openSurprise(page);
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Yes!' }).click();
   await expect(page.getByLabel('Sunset picnic')).toBeVisible();

@@ -4,7 +4,6 @@ import {
   MAX_GALLERY_ITEMS,
   NO_BUTTON_LIMITS,
   parseVideoUrl,
-  emojiOnly,
   SOUND_EFFECT_LABELS,
   SOUND_EFFECTS,
   type DraftStep,
@@ -14,6 +13,7 @@ import {
   type StepConfigOf,
   type StepType,
 } from '@momentpath/contracts';
+import { EmojiPicker } from './emoji-picker';
 import { Alert, Button, Field, Input, Select, Switch, Textarea } from '@momentpath/design-system';
 import { previewEffect } from '@/components/player/fx/preview';
 import { GiftSecretForm } from './gift-secret-form';
@@ -130,19 +130,16 @@ function ReactionFields({
   onChange: (v: Reaction) => void;
 }) {
   return (
-    <div className="grid grid-cols-[5.5rem_1fr] items-end gap-2 rounded-xl p-3 ring-1 ring-inset ring-ink-200">
-      <Field label={`${title} emoji`}>
-        {(p) => (
-          <Input
-            value={value.emoji}
-            maxLength={16}
-            placeholder="🎉"
-            className="text-center text-xl"
-            onChange={(e) => onChange({ ...value, emoji: emojiOnly(e.target.value) })}
-            {...p}
-          />
-        )}
-      </Field>
+    <div className="space-y-3 rounded-xl p-3 ring-1 ring-inset ring-ink-200">
+      <div>
+        <p className="mb-1.5 text-sm font-medium text-ink-800">{title} emoji</p>
+        <EmojiPicker
+          label={`${title} emoji`}
+          value={value.emoji}
+          optional
+          onChange={(emoji) => onChange({ ...value, emoji })}
+        />
+      </div>
       <SoundPicker
         label={`${title} sound`}
         value={value.sound}
@@ -241,11 +238,11 @@ function MultipleChoiceForm({ step, onChange, ctx }: FormProps<'MULTIPLE_CHOICE'
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium text-ink-800">Answers</legend>
         <p className="text-xs text-ink-600">
-          Optional: put an emoji in the small box next to an answer — it bursts out on their screen
-          when they pick that answer.
+          Optional: tap the small box next to an answer to pick an emoji — it bursts out on their
+          screen when they pick that answer.
         </p>
         {c.options.map((o, i) => (
-          <div key={o.id} className="flex items-center gap-2">
+          <div key={o.id} className="flex flex-wrap items-center gap-2">
             <div className="min-w-0 flex-1">
               <Input
                 aria-label={`Answer ${i + 1}`}
@@ -258,23 +255,15 @@ function MultipleChoiceForm({ step, onChange, ctx }: FormProps<'MULTIPLE_CHOICE'
                 }
               />
             </div>
-            <div className="w-14 shrink-0">
-              <Input
-                aria-label={`Emoji for answer ${i + 1}`}
-                title="Emoji that bursts out when this answer is picked (optional)"
-                value={o.emoji}
-                maxLength={16}
-                placeholder="Emoji"
-                className="px-1 text-center placeholder:text-xs"
-                onChange={(e) =>
-                  setOptions(
-                    c.options.map((x) =>
-                      x.id === o.id ? { ...x, emoji: emojiOnly(e.target.value) } : x,
-                    ),
-                  )
-                }
-              />
-            </div>
+            <EmojiPicker
+              label={`Emoji for answer ${i + 1}`}
+              value={o.emoji}
+              optional
+              compact
+              onChange={(emoji) =>
+                setOptions(c.options.map((x) => (x.id === o.id ? { ...x, emoji } : x)))
+              }
+            />
             {ctx.locked ? null : (
               <Button
                 variant="ghost"
