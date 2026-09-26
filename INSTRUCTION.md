@@ -18,7 +18,7 @@ stages 2 and 3 are not started.**
 | GitHub Actions CI                                                                       | Written, **not yet run** (no git remote)                                                           |
 | Docs                                                                                    | README, docs/architecture.md, decisions/, api.md, privacy-security.md, runbook.md, phase-status.md |
 
-## Opening cover + international example names (2026-09-26, local only)
+## Opening cover + international example names (2026-09-26, deployed 5ff48df)
 
 - **Opening cover** (`player/motion/opening-cover.tsx`, `motion/cover.ts`): every recipient
   first sees their surprise closed — an envelope (love, letters, thanks), a wrapped gift
@@ -55,7 +55,8 @@ stages 2 and 3 are not started.**
   Emma & James, Olivia & Liam; Paris, Central Park) — owner wants a worldwide feel.
 - **Verified:** lint, typecheck, format, unit (contracts 92, api 80, web 75), integration 132
   (the known shared-DB 404 flake hit one run; two reruns clean), build, E2E 86 passed /
-  1 skipped, then landing re-run after a test fix. Not committed or deployed; needs a reseed.
+  1 skipped, then landing re-run after a test fix. Deployed to production 2026-09-26 (5ff48df): 26
+  templates reseeded, backup `/root/backups/pre-deploy-20260926-1800.sql.gz`.
 
 ## Warm & premium website makeover + one smooth creator journey (2026-09-26)
 
