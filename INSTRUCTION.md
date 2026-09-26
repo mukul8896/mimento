@@ -20,7 +20,15 @@ stages 2 and 3 are not started.**
 
 ## Warm & premium website makeover + one smooth creator journey (2026-09-26)
 
-Not committed or deployed yet (neither is the premium experience work below).
+**Deployed to production 2026-09-26** (b382e87 + e7f38db), together with the premium
+experience work below: migration `20260926170000_step_scene` applied, 26 templates reseeded,
+backup `/root/backups/pre-deploy-20260926-1534.sql.gz`. The web image now copies
+`apps/web/public/` (standalone output leaves it out; the audio and Lottie files 404'd without it).
+
+- **Dark surprises:** the page sits on a lifted shade of the palette's own hue
+  (`stageColors` in `lib/stage.ts`) and the preview gets a light bezel, so its edge stays
+  clear. Scene veils come from the palette (`player/motion/veil.ts`): a dark surprise never
+  fades through white. Tested in `motion/veil.test.ts`.
 
 - **Look:** warm ink scale (cream `ink-50` → plum `ink-950`), rose and gold tokens in `globals.css`;
   one self-hosted display serif, Fraunces (`app/fonts/fraunces-latin.woff2`, OFL, via
@@ -44,7 +52,7 @@ Not committed or deployed yet (neither is the premium experience work below).
   card in its own colour and hands over to Personalize on the same colour (`scene-launch.tsx`).
 - **Restyled:** Create Experience header and the plum Create from Scratch card, policy/pricing
   shell, footer, 404, success and manage headings.
-- **Verified 2026-09-26:** lint, typecheck, format, unit (contracts 90, api 80, web 49),
+- **Verified 2026-09-26:** lint, typecheck, format, unit (contracts 92, api 80, web 71),
   integration 132, build, E2E 86 passed / 1 skipped.
 
 ## Premium experience system — first template: Proposal (2026-09-26)
